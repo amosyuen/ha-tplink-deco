@@ -1,0 +1,12 @@
+{
+  "domain": "tplink_deco",
+  "name": "TP-Link Deco",
+  "documentation": "https://github.com/amosyuen/ha-tplink-deco",
+  "issue_tracker": "https://github.com/amosyuen/ha-tplink-deco/issues",
+  "iot_class": "local_polling",
+  "version": "0.0.0",
+  "config_flow": true,
+  "dependencies": [],
+  "codeowners": ["@amosyuen"],
+  "requirements": ["pycryptodome>=3.12.0"]
+}

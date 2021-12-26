@@ -1,0 +1,42 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "TP-Link Deco",
+        "description": "Use the credentials for the admin web portal. See https://github.com/amosyuen/tplink-deco",
+        "data": {
+          "host": "Host",
+          "username": "Username",
+          "password": "Password",
+          "interval_seconds": "Seconds between updates",
+          "consider_home": "Seconds to wait till marking a device tracker as not home after not being seen."
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid authentication",
+      "timeout_connect": "Timeout establishing connection",
+      "unknown": "Unexpected error"
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "title": "TP-Link Deco",
+        "description": "Use the credentials for the admin web portal. See https://github.com/amosyuen/tplink-deco",
+        "data": {
+          "host": "Host",
+          "username": "Username",
+          "password": "Password",
+          "interval_seconds": "Seconds between updates",
+          "consider_home": "Seconds to wait till marking a device tracker as not home after not being seen."
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid authentication",
+      "timeout_connect": "Timeout establishing connection",
+      "unknown": "Unexpected error"
+    }
+  }
+}

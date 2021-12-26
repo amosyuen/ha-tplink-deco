@@ -1,0 +1,25 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "TP-Link Deco",
+        "data": {
+          "username": "Identifiant",
+          "password": "Mot de Passe"
+        }
+      }
+    },
+    "error": {}
+  },
+  "options": {
+    "step": {
+      "user": {
+        "title": "TP-Link Deco",
+        "data": {
+          "username": "Identifiant",
+          "password": "Mot de Passe"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "_template": "gh:oncleben31/cookiecutter-homeassistant-custom-component",
+  "class_name_prefix": "TplinkDeco",
+  "domain_name": "tplink_deco",
+  "friendly_name": "TP-Link Deco",
+  "github_user": "amosyuen",
+  "project_name": "tplink-deco",
+  "test_suite": "no",
+  "version": "0.0.0"
+}

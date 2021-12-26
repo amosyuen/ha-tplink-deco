@@ -1,0 +1,25 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "TP-Link Deco",
+        "data": {
+          "username": "Brukernavn",
+          "password": "Passord"
+        }
+      }
+    },
+    "error": {}
+  },
+  "options": {
+    "step": {
+      "user": {
+        "title": "TP-Link Deco",
+        "data": {
+          "username": "Brukernavn",
+          "password": "Passord"
+        }
+      }
+    }
+  }
+}
