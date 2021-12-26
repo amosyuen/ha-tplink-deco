@@ -1,0 +1,28 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "TP-Link Deco",
+        "description": "Hvis du trenger hjep til konfigurasjon ta en titt her: https://github.com/amosyuen/tp-link-deco",
+        "data": {
+          "username": "Brukernavn",
+          "password": "Passord"
+        }
+      }
+    },
+    "error": {
+      "auth": "Brukernavn/Passord er feil."
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "data": {
+          "binary_sensor": "Binær sensor aktivert",
+          "sensor": "Sensor aktivert",
+          "switch": "Bryter aktivert"
+        }
+      }
+    }
+  }
+}

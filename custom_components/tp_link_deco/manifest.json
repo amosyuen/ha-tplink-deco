@@ -1,0 +1,15 @@
+{
+  "domain": "tp_link_deco",
+  "name": "TP-Link Deco",
+  "documentation": "https://github.com/amosyuen/ha-tp-link-deco",
+  "issue_tracker": "https://github.com/amosyuen/ha-tp-link-deco/issues",
+  "dependencies": [],
+  "config_flow": true,
+  "codeowners": [
+    "@amosyuen"
+  ],
+  "requirements": [
+    "pycryptodome>=3.12.0"
+  ],
+  "version": "0.0.0"
+}
