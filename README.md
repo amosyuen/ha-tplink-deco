@@ -37,10 +37,17 @@ up_kb_per_s|100
 ### HACS
 
 1. Install [HACS](https://hacs.xyz/)
-1. Go to HACS integrations section
-1. Click "EXPLORE & DOWNLOAD REPOSITORIES"
+2. Go to HACS integrations section
+3. Click upper right three dots
+4. In repository field enter "amosyuen/ha-tplink-deco"  
+5. In category field select " integration"
+6. Click "Add"  
+Then the repository is added
+
+Next lower right: click "+ Explore & Download repositories"
 1. Search for "TP-Link Deco" and add it
-1. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "TP-Link Deco".
+1. Restart HA
+3. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "TP-Link Deco".
 
 ### Manual
 
