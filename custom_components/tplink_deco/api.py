@@ -23,7 +23,7 @@ from cryptography.hazmat.primitives.ciphers import modes
 
 from .exceptions import AuthException
 
-TIMEOUT = 10
+TIMEOUT = 30
 
 AES_KEY_BYTES = 16
 MIN_AES_KEY = 10 ** (AES_KEY_BYTES - 1)
@@ -262,7 +262,7 @@ class TplinkDecoApi:
 
                 return response_json
         except asyncio.TimeoutError as err:
-            _LOGGER.error(
+            _LOGGER.debug(
                 "%s timed out",
                 context,
             )

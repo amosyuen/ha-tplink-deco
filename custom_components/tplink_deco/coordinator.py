@@ -10,7 +10,6 @@ from homeassistant.core import CALLBACK_TYPE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from homeassistant.helpers.update_coordinator import UpdateFailed
 from homeassistant.util import dt as dt_util
 
 from .api import TplinkDecoApi
@@ -74,41 +73,37 @@ class TplinkDecoDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
     async def _async_update_data(self):
-        """Update data via library."""
-        try:
-            new_clients = await self._api.async_list_clients()
+        """Update data via api."""
+        new_clients = await self._api.async_list_clients()
 
-            old_clients = self.data or {}
-            data = {}
-            utc_point_in_time = dt_util.utcnow()
+        old_clients = self.data or {}
+        data = {}
+        utc_point_in_time = dt_util.utcnow()
 
-            client_added = False
-            for mac in new_clients:
-                client = old_clients.get(mac)
-                if client is None:
-                    client_added = True
-                    client = TPLinkDecoClient(mac)
-                    client.update(new_clients[mac], utc_point_in_time)
-                    data[mac] = client
-                else:
-                    client.update(new_clients[mac], utc_point_in_time)
+        client_added = False
+        for mac in new_clients:
+            client = old_clients.get(mac)
+            if client is None:
+                client_added = True
+                client = TPLinkDecoClient(mac)
+                client.update(new_clients[mac], utc_point_in_time)
+                data[mac] = client
+            else:
+                client.update(new_clients[mac], utc_point_in_time)
 
-            # Copy over clients no longer online
-            for client in old_clients.values():
-                mac = client.mac
-                if mac not in data:
-                    data[mac] = client
-                    client.online = (
-                        utc_point_in_time - client.last_activity
-                    ).total_seconds() < self._consider_home_seconds
+        # Copy over clients no longer online
+        for client in old_clients.values():
+            mac = client.mac
+            if mac not in data:
+                data[mac] = client
+                client.online = (
+                    utc_point_in_time - client.last_activity
+                ).total_seconds() < self._consider_home_seconds
 
-            if client_added:
-                async_dispatcher_send(self.hass, SIGNAL_CLIENT_ADDED)
+        if client_added:
+            async_dispatcher_send(self.hass, SIGNAL_CLIENT_ADDED)
 
-            return data
-        except Exception as err:
-            _LOGGER.error("Error updating coordinator: %s", err)
-            raise UpdateFailed() from err
+        return data
 
     @callback
     def on_close(self, func: CALLBACK_TYPE) -> None:
