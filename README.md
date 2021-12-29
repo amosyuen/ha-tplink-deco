@@ -21,14 +21,14 @@ This integration is a local polling integration that logs into the admin web UI 
 
 Besides the device being present (connected to the router), the following attributes are also exposed:
 
-Attribute | Example Values (comma separated)
-===|===
-mac|1A-B2-C3-4D-56-EF
-ip_address|192.168.0.100
-connection_type|band5, band2_4
-interface|main, guest
-down_kb_per_s|100
-up_kb_per_s|100
+| Attribute       | Example Values (comma separated) |
+| --------------- | -------------------------------- |
+| mac             | 1A-B2-C3-4D-56-EF                |
+| ip_address      | 192.168.0.100                    |
+| connection_type | band5, band2_4                   |
+| interface       | main, guest                      |
+| down_kb_per_s   | 100                              |
+| up_kb_per_s     | 100                              |
 
 {% if not installed %}
 
@@ -67,6 +67,7 @@ The login credentials must be the deco **owner** credentials and the username sh
 
 ## Tested Devices
 
+- Deco M9 Plus
 - Deco X60
 
 ## Contributions are welcome!
