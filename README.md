@@ -46,8 +46,8 @@ Then the repository is added
 
 Next lower right: click "+ Explore & Download repositories"
 1. Search for "TP-Link Deco" and add it
-1. Restart HA
-3. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "TP-Link Deco".
+1. HA Restart is not needed since it is configured in UI config flow
+1. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "TP-Link Deco".
 
 ### Manual
 
