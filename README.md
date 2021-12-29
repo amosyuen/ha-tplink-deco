@@ -44,8 +44,8 @@ up_kb_per_s|100
 6. Click "Add"
 7. In the lower right click "+ Explore & Download repositories"
 8. Search for "TP-Link Deco" and add it
-    * HA Restart is not needed since it is configured in UI config flow
-10. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "TP-Link Deco"
+    - HA Restart is not needed since it is configured in UI config flow
+9. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "TP-Link Deco"
 
 ### Manual
 
