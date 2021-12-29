@@ -4,7 +4,7 @@
   "domain_name": "tplink_deco",
   "friendly_name": "TP-Link Deco",
   "github_user": "amosyuen",
-  "project_name": "tplink-deco",
+  "project_name": "ha-tplink-deco",
   "test_suite": "no",
   "version": "0.0.0"
 }

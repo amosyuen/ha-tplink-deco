@@ -6,7 +6,7 @@ NAME = "TP-Link Deco"
 DOMAIN = "tplink_deco"
 VERSION = "0.0.0"
 
-ISSUE_URL = "https://github.com/amosyuen/tplink-deco/issues"
+ISSUE_URL = "https://github.com/amosyuen/ha-tplink-deco/issues"
 
 # Signals
 SIGNAL_CLIENT_ADDED = f"{DOMAIN}-client-added"
