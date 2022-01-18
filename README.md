@@ -67,6 +67,7 @@ The login credentials must be the deco **owner** credentials and the username sh
 
 ## Tested Devices
 
+- Deco M5
 - Deco M9 Plus
 - Deco X60
 
