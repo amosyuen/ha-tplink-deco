@@ -114,7 +114,7 @@ class TplinkDecoDataUpdateCoordinator(DataUpdateCoordinator):
         """Call functions on close."""
         for func in self._on_close:
             try:
-                await func()
+                func()
             except Exception as err:
                 _LOGGER.error("Error calling on_close function %s: %s", func, err)
         self._on_close.clear()
