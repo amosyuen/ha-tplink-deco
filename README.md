@@ -38,14 +38,10 @@ Besides the device being present (connected to the router), the following attrib
 
 1. Install [HACS](https://hacs.xyz/)
 2. Go to HACS integrations section
-3. Click upper right three dots
-4. In repository field enter "amosyuen/ha-tplink-deco"
-5. In category field select " integration"
-6. Click "Add"
-7. In the lower right click "+ Explore & Download repositories"
-8. Search for "TP-Link Deco" and add it
+3. In the lower right click "+ Explore & Download repositories"
+4. Search for "TP-Link Deco" and add it
    - HA Restart is not needed since it is configured in UI config flow
-9. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "TP-Link Deco"
+5. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "TP-Link Deco"
 
 ### Manual
 
@@ -92,7 +88,7 @@ Code template was mainly taken from [@Ludeeus](https://github.com/ludeeus)'s [in
 [commits-shield]: https://img.shields.io/github/commit-activity/y/amosyuen/ha-tplink-deco.svg?style=for-the-badge
 [commits]: https://github.com/amosyuen/ha-tplink-deco/commits/main
 [hacs]: https://hacs.xyz
-[hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
+[hacsbadge]: https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge
 [exampleimg]: example.png
 [forum-shield]: https://img.shields.io/badge/community-forum-brightgreen.svg?style=for-the-badge
 [forum]: https://community.home-assistant.io/
