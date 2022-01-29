@@ -37,21 +37,21 @@ Besides the device being present (connected to the router), the following attrib
 ### HACS
 
 1. Install [HACS](https://hacs.xyz/)
-2. Go to HACS integrations section
+2. Go to HACS "Integrations >" section
 3. In the lower right click "+ Explore & Download repositories"
 4. Search for "TP-Link Deco" and add it
    - HA Restart is not needed since it is configured in UI config flow
-5. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "TP-Link Deco"
+5. In the Home Assistant (HA) UI go to "Configuration" -> "Devices & Services" -> click "+ Add Integration" and search for "TP-Link Deco"
 
 ### Manual
 
-1. Using the tool of choice open the directory (folder) for your HA configuration (where you find `configuration.yaml`).
+1. Using the tool of choice open the directory (folder) for your [HA configuration](https://www.home-assistant.io/docs/configuration/) (where you find `configuration.yaml`).
 2. If you do not have a `custom_components` directory (folder) there, you need to create it.
 3. In the `custom_components` directory (folder) create a new folder called `tplink_deco`.
 4. Download _all_ the files from the `custom_components/tplink_deco/` directory (folder) in this repository.
 5. Place the files you downloaded in the new directory (folder) you created.
 6. Restart Home Assistant
-7. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "TP-Link Deco"
+7. In the Home Assistant (HA) UI go to "Configuration" -> "Devices & Services" -> click "+ Add Integration" and search for "TP-Link Deco"
 
 {% endif %}
 
