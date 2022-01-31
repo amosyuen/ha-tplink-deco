@@ -67,6 +67,7 @@ The login credentials must be the deco **owner** credentials and the username sh
 - Deco M5
 - Deco M9 Plus
 - Deco P7
+- Deco S4
 - Deco X20
 - Deco X60
 
