@@ -54,7 +54,7 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, ScannerEntity):
     def __init__(
         self, coordinator: TplinkDecoDataUpdateCoordinator, client: TPLinkDecoClient
     ) -> None:
-        """Initialize a AsusWrt device."""
+        """Initialize a TP-Link Deco device."""
         self._client = client
         super().__init__(coordinator)
 
@@ -99,8 +99,8 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, ScannerEntity):
         return {
             "connection_type": self._client.connection_type,
             "interface": self._client.interface,
-            "down_kb_per_s": self._client.up_kb_per_s,
-            "up_kb_per_s": self._client.up_kb_per_s,
+            "down_kilobytes_per_s": self._client.down_kilobytes_per_s,
+            "up_kilobytes_per_s": self._client.up_kilobytes_per_s,
         }
 
     @callback

@@ -19,6 +19,10 @@ from .const import SIGNAL_CLIENT_ADDED
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
 
+def bytes_to_bits(bytes_count):
+    return bytes_count / 8 if bytes_count is not None else bytes_count
+
+
 class TPLinkDecoClient:
     """Class to manage TP-Link Deco Client."""
 
@@ -29,8 +33,8 @@ class TPLinkDecoClient:
         self.online = False
         self.connection_type = None
         self.interface = None
-        self.down_kb_per_s = None
-        self.up_kb_per_s = None
+        self.down_kilobytes_per_s = None
+        self.up_kilobytes_per_s = None
         self.last_activity = None
 
     def update(
@@ -43,8 +47,8 @@ class TPLinkDecoClient:
         self.online = data["online"]
         self.connection_type = data["connection_type"]
         self.interface = data["interface"]
-        self.down_kb_per_s = data["down_speed"]
-        self.up_kb_per_s = data["up_speed"]
+        self.down_kilobytes_per_s = bytes_to_bits(data["down_speed"])
+        self.up_kilobytes_per_s = bytes_to_bits(data["up_speed"])
         self.last_activity = utc_point_in_time
 
 
