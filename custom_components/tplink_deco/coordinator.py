@@ -26,7 +26,8 @@ def bytes_to_bits(bytes_count):
 class TPLinkDecoClient:
     """Class to manage TP-Link Deco Client."""
 
-    def __init__(self, mac: str) -> None:
+    def __init__(self, router_ip: str, mac: str) -> None:
+        self.router_ip = router_ip
         self.mac = mac
         self.name = None
         self.ip_address = None
@@ -89,7 +90,7 @@ class TplinkDecoDataUpdateCoordinator(DataUpdateCoordinator):
             client = old_clients.get(mac)
             if client is None:
                 client_added = True
-                client = TPLinkDecoClient(mac)
+                client = TPLinkDecoClient(self._api.host, mac)
                 client.update(new_clients[mac], utc_point_in_time)
                 data[mac] = client
             else:

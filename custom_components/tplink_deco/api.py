@@ -97,7 +97,7 @@ class TplinkDecoApi:
     def __init__(
         self, host: str, username: str, password: str, session: aiohttp.ClientSession
     ) -> None:
-        self._host = host
+        self.host = host
         self._username = username
         self._password = password
         self._session = session
@@ -130,7 +130,7 @@ class TplinkDecoApi:
         client_payload = {"operation": "read", "params": {"device_mac": "default"}}
         response_json = await self._async_post(
             "List Clients",
-            f"http://{self._host}/cgi-bin/luci/;stok={self._stok}/admin/client",
+            f"http://{self.host}/cgi-bin/luci/;stok={self._stok}/admin/client",
             params={"form": "client_list"},
             data=self._encode_payload(client_payload),
         )
@@ -163,7 +163,7 @@ class TplinkDecoApi:
     async def async_fetch_keys(self):
         response_json = await self._async_post(
             "Fetch keys",
-            f"http://{self._host}/cgi-bin/luci/;stok=/login",
+            f"http://{self.host}/cgi-bin/luci/;stok=/login",
             params={"form": "keys"},
             data=json.dumps({"operation": "read"}),
         )
@@ -177,7 +177,7 @@ class TplinkDecoApi:
     async def async_fetch_auth(self):
         response_json = await self._async_post(
             "Fetch auth",
-            f"http://{self._host}/cgi-bin/luci/;stok=/login",
+            f"http://{self.host}/cgi-bin/luci/;stok=/login",
             params={"form": "auth"},
             data=json.dumps({"operation": "read"}),
         )
@@ -203,7 +203,7 @@ class TplinkDecoApi:
         }
         response_json = await self._async_post(
             "Login",
-            f"http://{self._host}/cgi-bin/luci/;stok=/login",
+            f"http://{self.host}/cgi-bin/luci/;stok=/login",
             params={"form": "login"},
             data=self._encode_payload(login_payload),
         )

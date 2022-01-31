@@ -55,7 +55,7 @@ async def async_create_coordinator(
     data = {}
     for entry in existing_entries:
         if entry.domain == DEVICE_TRACKER_DOMAIN:
-            client = TPLinkDecoClient(entry.unique_id)
+            client = TPLinkDecoClient(api.host, entry.unique_id)
             client.name = entry.original_name
             data[entry.unique_id] = client
     coordinator = TplinkDecoDataUpdateCoordinator(

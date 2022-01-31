@@ -7,6 +7,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
@@ -102,6 +103,15 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, ScannerEntity):
             "down_kilobytes_per_s": self._client.down_kilobytes_per_s,
             "up_kilobytes_per_s": self._client.up_kilobytes_per_s,
         }
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._client.router_ip)},
+            name="TP-Link Deco",
+            manufacturer="TP-Link Deco",
+        )
 
     @callback
     async def async_on_demand_update(self):
