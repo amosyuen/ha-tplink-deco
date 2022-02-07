@@ -1,2 +1,2 @@
 class AuthException(Exception):
-    """ Auth exception """
+    """Auth exception"""

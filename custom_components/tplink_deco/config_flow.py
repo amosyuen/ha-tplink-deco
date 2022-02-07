@@ -7,7 +7,6 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components.device_tracker.const import CONF_CONSIDER_HOME
 from homeassistant.components.device_tracker.const import CONF_SCAN_INTERVAL
-from homeassistant.components.device_tracker.const import DEFAULT_CONSIDER_HOME
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST
 from homeassistant.const import CONF_PASSWORD
@@ -16,6 +15,8 @@ from homeassistant.core import callback
 from homeassistant.core import HomeAssistant
 
 from .__init__ import create_api
+from .const import DEFAULT_CONSIDER_HOME
+from .const import DEFAULT_SCAN_INTERVAL
 from .const import DOMAIN
 from .exceptions import AuthException
 
@@ -30,16 +31,14 @@ def _get_schema(data: dict[str:Any]):
             vol.Required(CONF_HOST, default=data.get(CONF_HOST, "192.168.0.1")): str,
             vol.Required(CONF_USERNAME, default=data.get(CONF_USERNAME, "admin")): str,
             vol.Required(CONF_PASSWORD, default=data.get(CONF_PASSWORD, "")): str,
-            vol.Optional(
+            vol.Required(
                 CONF_SCAN_INTERVAL,
-                default=data.get(CONF_SCAN_INTERVAL, 30),
-            ): vol.All(vol.Coerce(int), vol.Clamp(min=1)),
-            vol.Optional(
+                default=data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+            ): vol.All(vol.Coerce(int), vol.Range(min=1)),
+            vol.Required(
                 CONF_CONSIDER_HOME,
-                default=data.get(
-                    CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME.total_seconds()
-                ),
-            ): vol.All(vol.Coerce(int), vol.Clamp(min=0)),
+                default=data.get(CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME),
+            ): vol.All(vol.Coerce(int), vol.Range(min=0)),
         }
     )
 
