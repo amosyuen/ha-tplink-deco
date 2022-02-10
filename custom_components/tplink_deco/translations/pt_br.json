@@ -1,0 +1,42 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "TP-Link Deco",
+        "description": "Use as credenciais para o portal da Web do administrador. Veja https://github.com/amosyuen/ha-tplink-deco",
+        "data": {
+          "host": "Host",
+          "username": "Nome de usuário",
+          "password": "Senha",
+          "interval_seconds": "Segundos entre atualizações",
+          "consider_home": "Segundos de espera até marcar um rastreador de dispositivo reconhecercomo fora de casa depois de não ser visto."
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Autenticação inválida",
+      "timeout_connect": "Tempo limite estabelecendo conexão",
+      "unknown": "Erro inesperado"
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "title": "TP-Link Deco",
+        "description": "Use as credenciais para o portal da Web do administrador. Veja https://github.com/amosyuen/ha-tplink-deco",
+        "data": {
+          "host": "Host",
+          "username": "Nome de usuário",
+          "password": "Senha",
+          "interval_seconds": "Segundos entre atualizações",
+          "consider_home": "Segundos de espera até marcar um rastreador de dispositivo reconhecercomo fora de casa depois de não ser visto."
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Autenticação inválida",
+      "timeout_connect": "Tempo limite estabelecendo conexão",
+      "unknown": "Erro inesperado"
+    }
+  }
+}
