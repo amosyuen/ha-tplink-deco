@@ -36,8 +36,8 @@ class TPLinkDecoClient:
         self.online = False
         self.connection_type = None
         self.interface = None
-        self.down_kilobytes_per_s = None
-        self.up_kilobytes_per_s = None
+        self.down_kilobytes_per_s = 0
+        self.up_kilobytes_per_s = 0
         self.last_activity = None
 
     def update(
@@ -64,13 +64,12 @@ class TplinkDecoDataUpdateCoordinator(DataUpdateCoordinator):
         api: TplinkDecoApi,
         scan_interval_seconds: int,
         consider_home_seconds: int,
-        data: dict[str:TPLinkDecoClient],
+        data: dict[str:TPLinkDecoClient] = {},
     ) -> None:
         """Initialize."""
         self._api = api
         self._consider_home_seconds = consider_home_seconds
         self._on_close: list[Callable] = []
-        self.data = data
 
         super().__init__(
             hass,
@@ -78,6 +77,10 @@ class TplinkDecoDataUpdateCoordinator(DataUpdateCoordinator):
             name=DOMAIN,
             update_interval=timedelta(seconds=scan_interval_seconds),
         )
+        # Must happen after super().__init__
+        if len(data) > 0:
+            self.data = data
+            async_dispatcher_send(self.hass, SIGNAL_CLIENT_ADDED)
 
     async def _async_update_data(self):
         """Update data via api."""
@@ -107,9 +110,12 @@ class TplinkDecoDataUpdateCoordinator(DataUpdateCoordinator):
             mac = client.mac
             if mac not in data:
                 data[mac] = client
-                client.online = (
-                    utc_point_in_time - client.last_activity
-                ).total_seconds() < self._consider_home_seconds
+                if client.last_activity is None:
+                    client.online = False
+                else:
+                    client.online = (
+                        utc_point_in_time - client.last_activity
+                    ).total_seconds() < self._consider_home_seconds
 
         if client_added:
             async_dispatcher_send(self.hass, SIGNAL_CLIENT_ADDED)

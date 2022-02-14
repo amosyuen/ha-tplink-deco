@@ -3,11 +3,13 @@ import logging
 
 from homeassistant.components.device_tracker import SOURCE_TYPE_ROUTER
 from homeassistant.components.device_tracker.config_entry import ScannerEntity
+from homeassistant.components.device_tracker.const import ATTR_IP
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
@@ -16,6 +18,11 @@ from .coordinator import TPLinkDecoClient
 from .coordinator import TplinkDecoDataUpdateCoordinator
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
+
+ATTR_CONNECTION_TYPE = "connection_type"
+ATTR_DOWN_KILOBYTES_PER_S = "down_kilobytes_per_s"
+ATTR_INTERFACE = "interface"
+ATTR_UP_KILOBYTES_PER_S = "up_kilobytes_per_s"
 
 
 async def async_setup_entry(
@@ -49,30 +56,48 @@ async def async_setup_entry(
     add_untracked_entities()
 
 
-class TplinkDecoDeviceTracker(CoordinatorEntity, ScannerEntity):
+class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
     """TP Link Deco Entity."""
 
     def __init__(
         self, coordinator: TplinkDecoDataUpdateCoordinator, client: TPLinkDecoClient
     ) -> None:
         """Initialize a TP-Link Deco device."""
+        self._attr_connection_type = None
+        self._attr_interface = None
+        self._attr_ip_address = None
+        self._attr_name = None
         self._client = client
+        self._mac_address = client.mac
+        self._update_from_client()
         super().__init__(coordinator)
 
+    async def async_added_to_hass(self):
+        """Run when entity about to be added."""
+        await super().async_added_to_hass()
+
+        # Restore old state
+        old_state = await self.async_get_last_state()
+        if old_state is not None:
+            if self._attr_connection_type is None:
+                self._attr_connection_type = old_state.attributes.get(
+                    ATTR_CONNECTION_TYPE
+                )
+            if self._attr_interface is None:
+                self._attr_interface = old_state.attributes.get(ATTR_INTERFACE)
+            if self._attr_ip_address is None:
+                self._attr_ip_address = old_state.attributes.get(ATTR_IP)
+            self.async_write_ha_state()
+
     @property
-    def unique_id(self):
-        """Return a unique ID to use for this entity."""
-        return self.mac_address
+    def mac_address(self):
+        """Return the MAC address."""
+        return self._mac_address
 
     @property
     def source_type(self):
         """Return the source type."""
         return SOURCE_TYPE_ROUTER
-
-    @property
-    def name(self):
-        """Return the name for this entity."""
-        return self._client.name
 
     @property
     def icon(self) -> str:
@@ -85,23 +110,13 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, ScannerEntity):
         return self._client.online
 
     @property
-    def ip_address(self) -> str:
-        """Return the primary ip address of the device."""
-        return self._client.ip_address
-
-    @property
-    def mac_address(self) -> str:
-        """Return the mac address of the device."""
-        return self._client.mac
-
-    @property
     def extra_state_attributes(self):
         """Return extra state attributes."""
         return {
-            "connection_type": self._client.connection_type,
-            "interface": self._client.interface,
-            "down_kilobytes_per_s": self._client.down_kilobytes_per_s,
-            "up_kilobytes_per_s": self._client.up_kilobytes_per_s,
+            ATTR_CONNECTION_TYPE: self._attr_connection_type,
+            ATTR_INTERFACE: self._attr_interface,
+            ATTR_DOWN_KILOBYTES_PER_S: self._client.down_kilobytes_per_s,
+            ATTR_UP_KILOBYTES_PER_S: self._client.up_kilobytes_per_s,
         }
 
     @property
@@ -115,5 +130,28 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, ScannerEntity):
 
     @callback
     async def async_on_demand_update(self):
-        """Update state."""
+        """Request update from coordinator."""
         await self.coordinator.async_request_refresh()
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        if self._update_from_client():
+            self.async_write_ha_state()
+
+    def _update_from_client(self) -> None:
+        """Update data from client."""
+        changed = False
+        if self._client.connection_type is not None:
+            self._attr_connection_type = self._client.connection_type
+            changed = True
+        if self._client.interface is not None:
+            self._attr_interface = self._client.interface
+            changed = True
+        if self._client.ip_address is not None:
+            self._attr_ip_address = self._client.ip_address
+            changed = True
+        if self._client.name is not None:
+            self._attr_name = self._client.name
+            changed = True
+        return changed

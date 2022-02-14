@@ -55,6 +55,9 @@ async def async_create_coordinator(
         entry.entry_id,
     )
     data = {}
+
+    # Populate client list with existing entries so that we keep track of disconnected clients
+    # since deco list_clients only returns connected clients.
     for entry in existing_entries:
         if entry.domain == DEVICE_TRACKER_DOMAIN:
             client = TPLinkDecoClient(api.host, entry.unique_id)
@@ -75,7 +78,6 @@ async def async_setup(hass: HomeAssistant, config: Config):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up this integration using UI."""
-    _LOGGER.debug("async_setup_entry")
     if hass.data.get(DOMAIN) is None:
         hass.data.setdefault(DOMAIN, {})
         _LOGGER.info(STARTUP_MESSAGE)
