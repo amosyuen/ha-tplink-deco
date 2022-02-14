@@ -47,7 +47,7 @@ async def _async_test_credentials(hass: HomeAssistant, data: dict[str:Any]):
     """Return true if credentials is valid."""
     try:
         api = create_api(hass, data)
-        await api.async_list_clients()
+        await api.async_login()
         return {}
     except asyncio.TimeoutError:
         return {"base": "timeout_connect"}
@@ -80,22 +80,16 @@ class TplinkDecoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     title=user_input[CONF_HOST], data=user_input
                 )
 
-        return await self._show_config_form(user_input)
-
-    @staticmethod
-    @callback
-    def async_get_options_flow(config_entry: ConfigEntry):
-        return TplinkDecoOptionsFlowHandler(config_entry)
-
-    async def _show_config_form(
-        self, user_input: dict[str:Any]
-    ):  # pylint: disable=unused-argument
-        """Show the configuration form to edit location data."""
         return self.async_show_form(
             step_id="user",
             data_schema=_get_schema(user_input),
             errors=self._errors,
         )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry):
+        return TplinkDecoOptionsFlowHandler(config_entry)
 
 
 class TplinkDecoOptionsFlowHandler(config_entries.OptionsFlow):
@@ -107,13 +101,7 @@ class TplinkDecoOptionsFlowHandler(config_entries.OptionsFlow):
         self.data = dict(config_entry.data)
         self._errors = {}
 
-    async def async_step_init(
-        self, user_input: dict[str:Any] = None
-    ):  # pylint: disable=unused-argument
-        """Manage the options."""
-        return await self.async_step_user()
-
-    async def async_step_user(self, user_input: dict[str:Any] = None):
+    async def async_step_init(self, user_input: dict[str:Any] = None):
         """Handle a flow initialized by the user."""
         self._errors = {}
 
@@ -127,7 +115,7 @@ class TplinkDecoOptionsFlowHandler(config_entries.OptionsFlow):
                 )
 
         return self.async_show_form(
-            step_id="user",
+            step_id="init",
             data_schema=_get_schema(self.data),
             errors=self._errors,
         )

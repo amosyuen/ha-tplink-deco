@@ -13,7 +13,7 @@
   },
   "options": {
     "step": {
-      "user": {
+      "init": {
         "title": "TP-Link Deco",
         "data": {
           "username": "Brukernavn",
