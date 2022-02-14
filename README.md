@@ -41,7 +41,10 @@ Besides the device being present (connected to the router), the following attrib
 3. In the lower right click "+ Explore & Download repositories"
 4. Search for "TP-Link Deco" and add it
    - HA Restart is not needed since it is configured in UI config flow
-5. In the Home Assistant (HA) UI go to "Configuration" -> "Devices & Services" -> click "+ Add Integration" and search for "TP-Link Deco"
+5. In the Home Assistant (HA) UI go to "Configuration"
+6. Click "Integrations"
+7. Click "+ Add Integration"
+8. Search for "TP-Link Deco"
 
 ### Manual
 
@@ -51,7 +54,10 @@ Besides the device being present (connected to the router), the following attrib
 4. Download _all_ the files from the `custom_components/tplink_deco/` directory (folder) in this repository.
 5. Place the files you downloaded in the new directory (folder) you created.
 6. Restart Home Assistant
-7. In the Home Assistant (HA) UI go to "Configuration" -> "Devices & Services" -> click "+ Add Integration" and search for "TP-Link Deco"
+7. In the Home Assistant (HA) UI go to "Configuration"
+8. Click "Integrations"
+9. Click "+ Add Integration"
+10. Search for "TP-Link Deco"
 
 {% endif %}
 
@@ -60,6 +66,16 @@ Besides the device being present (connected to the router), the following attrib
 Config is done in the HA integrations UI.
 
 The login credentials must be the deco **owner** credentials and the username should be left as **admin**. Manager credentials will not work. Also when this integration is logged in, all other sessions for the owner will be logged out. Recommend that you create a separate manager account with full permissions to manage the router manually and use the owner credentials only for this integration.
+
+### Disable new entities
+
+If you prefer new entities to be disabled by default:
+
+1. In the Home Assistant (HA) UI go to "Configuration"
+2. Click "Integrations"
+3. Click the three dots in the bottom right corner fo the TP-Link Deco integration
+4. Click "System options"
+5. Disable "Enable newly added entities"
 
 ## Tested Devices
 
