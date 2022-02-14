@@ -27,7 +27,7 @@ TIMEOUT = 30
 
 AES_KEY_BYTES = 16
 MIN_AES_KEY = 10 ** (AES_KEY_BYTES - 1)
-MAX_AES_KEY = (10**AES_KEY_BYTES) - 1
+MAX_AES_KEY = (10 ** AES_KEY_BYTES) - 1
 
 PKCS1_v1_5_HEADER_BYTES = 11
 
@@ -117,14 +117,7 @@ class TplinkDecoApi:
         self._cookie = None
 
     async def async_list_clients(self) -> dict:
-        if self._aes_key is None:
-            self.generate_aes_key_and_iv()
-
-        if self._password_rsa_n is None:
-            await self.async_fetch_keys()
-
-        if self._seq is None or self._stok is None:
-            await self.async_fetch_auth()
+        if self._stok is None:
             await self.async_login()
 
         client_payload = {"operation": "read", "params": {"device_mac": "default"}}
@@ -142,7 +135,7 @@ class TplinkDecoApi:
 
         client_list = data["result"]["client_list"]
         # client_list is only the connected clients
-        _LOGGER.debug(f"client_list={client_list}")
+        _LOGGER.debug("len(client_list)=%d", len(client_list))
 
         clients = {}
         for client in client_list:
@@ -157,9 +150,10 @@ class TplinkDecoApi:
         self._aes_iv = secrets.randbelow(MAX_AES_KEY - MIN_AES_KEY) + MIN_AES_KEY
         self._aes_key_bytes = str(self._aes_key).encode("utf-8")
         self._aes_iv_bytes = str(self._aes_iv).encode("utf-8")
-        _LOGGER.debug(f"aes_key={self._aes_key}")
-        _LOGGER.debug(f"aes_iv={self._aes_iv}")
+        _LOGGER.debug("aes_key=%s", self._aes_key)
+        _LOGGER.debug("aes_iv=%s", self._aes_iv)
 
+    # Fetch password RSA keys
     async def async_fetch_keys(self):
         response_json = await self._async_post(
             "Fetch keys",
@@ -171,9 +165,10 @@ class TplinkDecoApi:
         keys = response_json["result"]["password"]
         self._password_rsa_n = int(keys[0], 16)
         self._password_rsa_e = int(keys[1], 16)
-        _LOGGER.debug(f"password_rsa_n={self._password_rsa_n}")
-        _LOGGER.debug(f"password_rsa_e={self._password_rsa_e}")
+        _LOGGER.debug("password_rsa_n=%s", self._password_rsa_n)
+        _LOGGER.debug("password_rsa_e=%s", self._password_rsa_e)
 
+    # Fetch sign RSA keys and seq no
     async def async_fetch_auth(self):
         response_json = await self._async_post(
             "Fetch auth",
@@ -185,14 +180,21 @@ class TplinkDecoApi:
         auth_result = response_json["result"]
         auth_key = auth_result["key"]
         self._sign_rsa_n = int(auth_key[0], 16)
-        _LOGGER.debug(f"sign_rsa_n={self._sign_rsa_n}")
+        _LOGGER.debug("sign_rsa_n=%s", self._sign_rsa_n)
         self._sign_rsa_e = int(auth_key[1], 16)
-        _LOGGER.debug(f"sign_rsa_e={self._sign_rsa_e}")
+        _LOGGER.debug("sign_rsa_e=%s", self._sign_rsa_e)
 
         self._seq = auth_result["seq"]
-        _LOGGER.debug(f"seq={self._seq}")
+        _LOGGER.debug("seq=%s", self._seq)
 
     async def async_login(self):
+        if self._aes_key is None:
+            self.generate_aes_key_and_iv()
+        if self._password_rsa_n is None:
+            await self.async_fetch_keys()
+        if self._seq is None:
+            await self.async_fetch_auth()
+
         password_encrypted = rsa_encrypt(
             self._password_rsa_n, self._password_rsa_e, self._password.encode()
         )
@@ -220,13 +222,17 @@ class TplinkDecoApi:
             raise Exception(f"Login error {data['error_code']}")
 
         self._stok = result["stok"]
-        _LOGGER.debug(f"stok={self._stok}")
+        _LOGGER.debug("stok=%s", self._stok)
 
         if self._cookie is None:
             raise Exception("Login response did not have a Set-Cookie header")
 
     async def _async_post(
-        self, context: str, url: str, params: dict[str:Any], data: Any
+        self,
+        context: str,
+        url: str,
+        params: dict[str:Any],
+        data: Any,
     ) -> dict:
         headers = {CONTENT_TYPE: "application/json"}
         if self._cookie is not None:
@@ -246,15 +252,10 @@ class TplinkDecoApi:
                     match = re.search(r"(sysauth=[a-f0-9]+)", cookie)
                     if match:
                         self._cookie = match.group(1)
-                        _LOGGER.debug(f"cookie={self._cookie}")
+                        _LOGGER.debug("cookie=%s", self._cookie)
 
                 # Sometimes server responses with incorrect content type, so disable the check
                 response_json = await response.json(content_type=None)
-                _LOGGER.debug(
-                    "%s: response_json %s",
-                    context,
-                    response_json,
-                )
                 if "error_code" in response_json:
                     error_code = response_json.get("error_code")
                     if error_code != 0:
@@ -337,9 +338,4 @@ class TplinkDecoApi:
         num_padding_bytes = int(data_decrypted[-1])
         data_decrypted = data_decrypted[:-num_padding_bytes].decode()
         data_json = json.loads(data_decrypted)
-        _LOGGER.debug(
-            "%s data_json: %s",
-            context,
-            data_json,
-        )
         return data_json
