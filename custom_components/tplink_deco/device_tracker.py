@@ -1,5 +1,6 @@
 """TP-Link Deco."""
 import logging
+from typing import Any
 
 from homeassistant.components.device_tracker import SOURCE_TYPE_ROUTER
 from homeassistant.components.device_tracker.config_entry import ScannerEntity
@@ -90,12 +91,22 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
             self.async_write_ha_state()
 
     @property
-    def mac_address(self):
-        """Return the MAC address."""
+    def mac_address(self) -> str:
+        """Return the mac address of the device."""
         return self._mac_address
 
     @property
-    def source_type(self):
+    def ip_address(self) -> str:
+        """Return the primary ip address of the device."""
+        return self._attr_ip_address
+
+    @property
+    def hostname(self) -> str:
+        """Return hostname of the device."""
+        return self._client.router_ip
+
+    @property
+    def source_type(self) -> str:
         """Return the source type."""
         return SOURCE_TYPE_ROUTER
 
@@ -105,12 +116,12 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
         return "mdi:lan-connect" if self.is_connected else "mdi:lan-disconnect"
 
     @property
-    def is_connected(self):
+    def is_connected(self) -> bool:
         """Return true if the device is connected to the router."""
         return self._client.online
 
     @property
-    def extra_state_attributes(self):
+    def extra_state_attributes(self) -> dict[str:Any]:
         """Return extra state attributes."""
         return {
             ATTR_CONNECTION_TYPE: self._attr_connection_type,
