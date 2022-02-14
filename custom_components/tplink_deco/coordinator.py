@@ -1,10 +1,12 @@
 """TP-Link Deco Coordinator"""
+import asyncio
 import logging
 from collections.abc import Callable
 from datetime import datetime
 from datetime import timedelta
 from typing import Any
 
+from custom_components.tplink_deco.exceptions import AuthException
 from homeassistant.core import callback
 from homeassistant.core import CALLBACK_TYPE
 from homeassistant.core import HomeAssistant
@@ -79,7 +81,11 @@ class TplinkDecoDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Update data via api."""
-        new_clients = await self._api.async_list_clients()
+        try:
+            new_clients = await self._api.async_list_clients()
+        except (AuthException, asyncio.TimeoutError):
+            # Retry once on auth exception (probably expired token) and timeouts
+            new_clients = await self._api.async_list_clients()
 
         old_clients = self.data or {}
         data = {}
