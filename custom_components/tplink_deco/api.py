@@ -120,27 +120,45 @@ class TplinkDecoApi:
         if self._stok is None:
             await self.async_login()
 
-        client_payload = {"operation": "read", "params": {"device_mac": "default"}}
+        # First retrieve the list of devices
+        device_list_payload = {"operation": "read", "params": {"device_mac": "default"}}
         response_json = await self._async_post(
-            "List Clients",
-            f"http://{self.host}/cgi-bin/luci/;stok={self._stok}/admin/client",
-            params={"form": "client_list"},
-            data=self._encode_payload(client_payload),
+            "List Devices",
+            f"http://{self.host}/cgi-bin/luci/;stok={self._stok}/admin/device",
+            params={"form": "device_list"},
+            data=self._encode_payload(device_list_payload),
         )
-
-        data = self._decrypt_data("List Clients", response_json["data"])
+        data = self._decrypt_data("List Devices", response_json["data"])
         error_code = data.get("error_code")
         if error_code != 0:
-            raise Exception(f"List clients error {error_code}")
+            raise Exception(f"List devices error {error_code}")
 
-        client_list = data["result"]["client_list"]
-        # client_list is only the connected clients
-        _LOGGER.debug("len(client_list)=%d", len(client_list))
+        # Store the devices in dict based on mac address
+        deco_devices = {x["mac"]:x["nickname"] for x in data["result"]["device_list"]}
 
         clients = {}
-        for client in client_list:
-            clients[client["mac"]] = client
-            client["name"] = base64.b64decode(client["name"]).decode()
+        for deco_mac, deco_name in deco_devices.items():
+            client_payload = {"operation": "read", "params": {"device_mac": deco_mac}}
+            response_json = await self._async_post(
+                "List Clients",
+                f"http://{self.host}/cgi-bin/luci/;stok={self._stok}/admin/client",
+                params={"form": "client_list"},
+                data=self._encode_payload(client_payload),
+            )
+
+            data = self._decrypt_data("List Clients", response_json["data"])
+            error_code = data.get("error_code")
+            if error_code != 0:
+                raise Exception(f"List clients error {error_code}")
+
+            client_list = data["result"]["client_list"]
+            # client_list is only the connected clients
+            _LOGGER.debug("%s::len(client_list)=%d", deco_name, len(client_list))
+
+            for client in client_list:
+                clients[client["mac"]] = client
+                client["name"] = base64.b64decode(client["name"]).decode()
+                client["deco_device"] = deco_name
 
         return clients
 
