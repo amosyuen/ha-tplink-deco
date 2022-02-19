@@ -1,0 +1,42 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "TP-Link Deco",
+        "description": "Gebruik wachtwoord van de admin web portal. Voor meer informatie, zie https://github.com/amosyuen/ha-tplink-deco",
+        "data": {
+          "host": "Host",
+          "username": "Gebruikersnaam",
+          "password": "Wachtwoord",
+          "interval_seconds": "Aantal seconden tussen updates",
+          "consider_home": "Aantal seconden sinds laatste keer dat het gezien is totdat een device als niet-thuis wordt gemarkeerd"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Incorrecte authenticatie",
+      "timeout_connect": "Timeout tijdens maken van verbinding",
+      "unknown": "Onbekende fout"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "TP-Link Deco",
+        "description": "Gebruik wachtwoord van de admin web portal. Voor meer informatie, zie https://github.com/amosyuen/ha-tplink-deco",
+        "data": {
+          "host": "Host",
+          "username": "Gebruikersnaam",
+          "password": "Wachtwoord",
+          "interval_seconds": "Aantal seconden tussen updates",
+          "consider_home": "Aantal seconden sinds laatste keer dat het gezien is totdat een device als niet-thuis wordt gemarkeerd"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Incorrecte authenticatie",
+      "timeout_connect": "Timeout tijdens maken van verbinding",
+      "unknown": "Onbekende fout"
+    }
+  }
+}
