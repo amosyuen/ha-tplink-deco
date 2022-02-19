@@ -121,7 +121,7 @@ class TplinkDecoApi:
             await self.async_login()
 
         # First retrieve the list of devices
-        device_list_payload = {"operation": "read", "params": {"device_mac": "default"}}
+        device_list_payload = {"operation": "read"}
         response_json = await self._async_post(
             "List Devices",
             f"http://{self.host}/cgi-bin/luci/;stok={self._stok}/admin/device",
