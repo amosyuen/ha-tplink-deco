@@ -29,6 +29,7 @@ Besides the device being present (connected to the router), the following attrib
 | interface            | main, guest                      |
 | down_kilobytes_per_s | 100                              |
 | up_kilobytes_per_s   | 100                              |
+| deco_device          | living_room                      |
 
 {% if not installed %}
 

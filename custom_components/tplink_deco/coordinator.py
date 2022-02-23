@@ -38,6 +38,7 @@ class TPLinkDecoClient:
         self.interface = None
         self.down_kilobytes_per_s = 0
         self.up_kilobytes_per_s = 0
+        self.deco_device = None
         self.last_activity = None
 
     def update(
@@ -52,6 +53,7 @@ class TPLinkDecoClient:
         self.interface = data["interface"]
         self.down_kilobytes_per_s = bytes_to_bits(data["down_speed"])
         self.up_kilobytes_per_s = bytes_to_bits(data["up_speed"])
+        self.deco_device = data["deco_device"]
         self.last_activity = utc_point_in_time
 
 

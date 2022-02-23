@@ -24,6 +24,7 @@ ATTR_CONNECTION_TYPE = "connection_type"
 ATTR_DOWN_KILOBYTES_PER_S = "down_kilobytes_per_s"
 ATTR_INTERFACE = "interface"
 ATTR_UP_KILOBYTES_PER_S = "up_kilobytes_per_s"
+ATTR_DECO_DEVICE = "deco_device"
 
 
 async def async_setup_entry(
@@ -128,6 +129,7 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
             ATTR_INTERFACE: self._attr_interface,
             ATTR_DOWN_KILOBYTES_PER_S: self._client.down_kilobytes_per_s,
             ATTR_UP_KILOBYTES_PER_S: self._client.up_kilobytes_per_s,
+            ATTR_DECO_DEVICE: self._client.deco_device,
         }
 
     @property
