@@ -134,7 +134,7 @@ class TplinkDecoApi:
             raise Exception(f"List devices error {error_code}")
 
         # Store the devices in dict based on mac address
-        deco_devices = {x["mac"]:x["nickname"] for x in data["result"]["device_list"]}
+        deco_devices = {x["mac"]: x["nickname"] for x in data["result"]["device_list"]}
 
         clients = {}
         for deco_mac, deco_name in deco_devices.items():
