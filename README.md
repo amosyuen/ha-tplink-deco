@@ -25,11 +25,13 @@ Besides the device being present (connected to the router), the following attrib
 | -------------------- | -------------------------------- |
 | mac                  | 1A-B2-C3-4D-56-EF                |
 | ip_address           | 192.168.0.100                    |
-| connection_type      | band5, band2_4                   |
+| connection_type      | wired, band5, band2_4            |
 | interface            | main, guest                      |
-| down_kilobytes_per_s | 100                              |
-| up_kilobytes_per_s   | 100                              |
+| down_kilobytes_per_s | 10.25                            |
+| up_kilobytes_per_s   | 11.75                            |
 | deco_device          | living_room                      |
+
+If a device is not present, the previous values are saved except for `down_kilobytes_per_s` and `up_kilobytes_per_s`.
 
 {% if not installed %}
 
