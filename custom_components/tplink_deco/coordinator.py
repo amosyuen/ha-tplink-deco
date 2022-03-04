@@ -103,9 +103,9 @@ class TplinkDecoDataUpdateCoordinator(DataUpdateCoordinator):
                 client_added = True
                 client = TPLinkDecoClient(self._api.host, mac)
                 client.update(new_clients[mac], utc_point_in_time)
-                data[mac] = client
             else:
                 client.update(new_clients[mac], utc_point_in_time)
+            data[mac] = client
 
         # Copy over clients no longer online
         for client in old_clients.values():
