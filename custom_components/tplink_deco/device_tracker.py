@@ -66,6 +66,7 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
     ) -> None:
         """Initialize a TP-Link Deco device."""
         self._attr_connection_type = None
+        self._attr_deco_device = None
         self._attr_interface = None
         self._attr_ip_address = None
         self._attr_name = None
@@ -85,6 +86,8 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
                 self._attr_connection_type = old_state.attributes.get(
                     ATTR_CONNECTION_TYPE
                 )
+            if self._attr_deco_device is None:
+                self._attr_deco_device = old_state.attributes.get(ATTR_DECO_DEVICE)
             if self._attr_interface is None:
                 self._attr_interface = old_state.attributes.get(ATTR_INTERFACE)
             if self._attr_ip_address is None:
@@ -124,7 +127,7 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
             ATTR_INTERFACE: self._attr_interface,
             ATTR_DOWN_KILOBYTES_PER_S: self._client.down_kilobytes_per_s,
             ATTR_UP_KILOBYTES_PER_S: self._client.up_kilobytes_per_s,
-            ATTR_DECO_DEVICE: self._client.deco_device,
+            ATTR_DECO_DEVICE: self._attr_deco_device,
         }
 
     @property
@@ -152,6 +155,9 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
         changed = False
         if self._client.connection_type is not None:
             self._attr_connection_type = self._client.connection_type
+            changed = True
+        if self._client.deco_device is not None:
+            self._attr_deco_device = self._client.deco_device
             changed = True
         if self._client.interface is not None:
             self._attr_interface = self._client.interface
