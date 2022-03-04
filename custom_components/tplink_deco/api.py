@@ -131,6 +131,7 @@ class TplinkDecoApi:
         data = self._decrypt_data("List Devices", response_json["data"])
         error_code = data.get("error_code")
         if error_code != 0:
+            _LOGGER.debug("list devices error data=%s", data)
             raise Exception(f"List devices error {error_code}")
 
         # Store the devices in dict based on mac address
@@ -138,22 +139,24 @@ class TplinkDecoApi:
 
         clients = {}
         for deco_mac, deco_name in deco_devices.items():
+            context = f"List Clients {deco_mac}"
             client_payload = {"operation": "read", "params": {"device_mac": deco_mac}}
             response_json = await self._async_post(
-                "List Clients",
+                context,
                 f"http://{self.host}/cgi-bin/luci/;stok={self._stok}/admin/client",
                 params={"form": "client_list"},
                 data=self._encode_payload(client_payload),
             )
 
-            data = self._decrypt_data("List Clients", response_json["data"])
+            data = self._decrypt_data(context, response_json["data"])
             error_code = data.get("error_code")
             if error_code != 0:
+                _LOGGER.debug("list clients error data=%s", data)
                 raise Exception(f"List clients error {error_code}")
 
             client_list = data["result"]["client_list"]
             # client_list is only the connected clients
-            _LOGGER.debug("%s::len(client_list)=%d", deco_name, len(client_list))
+            _LOGGER.debug("%s len(client_list)=%d", context, len(client_list))
 
             for client in client_list:
                 clients[client["mac"]] = client
