@@ -102,11 +102,6 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
         return self._attr_ip_address
 
     @property
-    def hostname(self) -> str:
-        """Return hostname of the device."""
-        return self._client.router_ip
-
-    @property
     def source_type(self) -> str:
         """Return the source type."""
         return SOURCE_TYPE_ROUTER
