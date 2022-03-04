@@ -116,7 +116,8 @@ class TplinkDecoApi:
         self._stok = None
         self._cookie = None
 
-    async def async_list_clients(self) -> dict:
+    # Return list of deco devices
+    async def async_list_devices(self) -> dict:
         if self._stok is None:
             await self.async_login()
 
@@ -131,39 +132,42 @@ class TplinkDecoApi:
         data = self._decrypt_data("List Devices", response_json["data"])
         error_code = data.get("error_code")
         if error_code != 0:
-            _LOGGER.debug("list devices error data=%s", data)
+            _LOGGER.debug("List devices error: data=%s", data)
             raise Exception(f"List devices error {error_code}")
 
-        # Store the devices in dict based on mac address
-        deco_devices = {x["mac"]: x["nickname"] for x in data["result"]["device_list"]}
+        device_list = data["result"]["device_list"]
+        _LOGGER.debug("len(device_list)=%d", len(device_list))
 
-        clients = {}
-        for deco_mac, deco_name in deco_devices.items():
-            context = f"List Clients {deco_mac}"
-            client_payload = {"operation": "read", "params": {"device_mac": deco_mac}}
-            response_json = await self._async_post(
-                context,
-                f"http://{self.host}/cgi-bin/luci/;stok={self._stok}/admin/client",
-                params={"form": "client_list"},
-                data=self._encode_payload(client_payload),
-            )
+        return device_list
 
-            data = self._decrypt_data(context, response_json["data"])
-            error_code = data.get("error_code")
-            if error_code != 0:
-                _LOGGER.debug("list clients error data=%s", data)
-                raise Exception(f"List clients error {error_code}")
+    # Return list of clients. Default lists clients for all decos.
+    async def async_list_clients(self, deco_mac="default") -> dict:
+        if self._stok is None:
+            await self.async_login()
 
-            client_list = data["result"]["client_list"]
-            # client_list is only the connected clients
-            _LOGGER.debug("%s len(client_list)=%d", context, len(client_list))
+        context = f"List Clients {deco_mac}"
+        client_payload = {"operation": "read", "params": {"device_mac": deco_mac}}
+        response_json = await self._async_post(
+            context,
+            f"http://{self.host}/cgi-bin/luci/;stok={self._stok}/admin/client",
+            params={"form": "client_list"},
+            data=self._encode_payload(client_payload),
+        )
 
-            for client in client_list:
-                clients[client["mac"]] = client
-                client["name"] = base64.b64decode(client["name"]).decode()
-                client["deco_device"] = deco_name
+        data = self._decrypt_data(context, response_json["data"])
+        error_code = data.get("error_code")
+        if error_code != 0:
+            _LOGGER.debug("%s error: data=%s", context, data)
+            raise Exception(f"List clients error {error_code}")
 
-        return clients
+        client_list = data["result"]["client_list"]
+        # client_list is only the connected clients
+        _LOGGER.debug("%s client_count=%d", context, len(client_list))
+
+        for client in client_list:
+            client["name"] = base64.b64decode(client["name"]).decode()
+
+        return client_list
 
     def generate_aes_key_and_iv(self):
         # TPLink requires key and IV to be a 16 digit number (no leading 0s)

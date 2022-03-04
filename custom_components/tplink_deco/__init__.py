@@ -26,10 +26,13 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api import TplinkDecoApi
 from .const import DEFAULT_CONSIDER_HOME
 from .const import DEFAULT_SCAN_INTERVAL
+from .const import DEVICE_CLASS_DECO
 from .const import DOMAIN
 from .const import PLATFORMS
 from .const import STARTUP_MESSAGE
-from .coordinator import TPLinkDecoClient
+from .coordinator import TpLinkDeco
+from .coordinator import TpLinkDecoClient
+from .coordinator import TpLinkDecoData
 from .coordinator import TplinkDecoDataUpdateCoordinator
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -47,6 +50,7 @@ def create_api(hass: HomeAssistant, data: dict[str:Any]):
 async def async_create_coordinator(
     hass: HomeAssistant, entry: ConfigEntry, api: TplinkDecoApi
 ):
+
     consider_home_seconds = entry.data.get(CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME)
     scan_interval_seconds = entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
 
@@ -55,15 +59,20 @@ async def async_create_coordinator(
         entity_registry.async_get(hass),
         entry.entry_id,
     )
-    data = {}
+    data = TpLinkDecoData()
 
     # Populate client list with existing entries so that we keep track of disconnected clients
     # since deco list_clients only returns connected clients.
     for entry in existing_entries:
         if entry.domain == DEVICE_TRACKER_DOMAIN:
-            client = TPLinkDecoClient(api.host, entry.unique_id)
-            client.name = entry.original_name
-            data[entry.unique_id] = client
+            if entry.original_device_class == DEVICE_CLASS_DECO:
+                deco = TpLinkDeco(entry.unique_id)
+                deco.name = entry.original_name
+                data.decos[entry.unique_id] = deco
+            else:
+                client = TpLinkDecoClient(entry.unique_id)
+                client.name = entry.original_name
+                data.clients[entry.unique_id] = client
     coordinator = TplinkDecoDataUpdateCoordinator(
         hass, api, timedelta(seconds=scan_interval_seconds), consider_home_seconds, data
     )

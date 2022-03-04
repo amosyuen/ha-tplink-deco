@@ -17,6 +17,7 @@ from homeassistant.util import dt as dt_util
 from .api import TplinkDecoApi
 from .const import DOMAIN
 from .const import SIGNAL_CLIENT_ADDED
+from .const import SIGNAL_DECO_ADDED
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
@@ -29,11 +30,52 @@ def filter_invalid_ip(ip_address):
     return None if ip_address == "UNKNOWN" else ip_address
 
 
-class TPLinkDecoClient:
+class TpLinkDeco:
+    """Class to manage TP-Link Deco device."""
+
+    def __init__(self, mac: str) -> None:
+        self.mac = mac
+
+        self.hw_version = None
+        self.sw_version = None
+        self.device_model = None
+
+        self.name = None
+        self.ip_address = None
+        self.online = None
+        self.internet_online = None
+        self.master = None
+        self.connection_type = None
+        self.interface = None
+        self.bssid_band2_4 = None
+        self.bssid_band5 = None
+        self.signal_band2_4 = None
+        self.signal_band5 = None
+
+    def update(
+        self,
+        data: dict[str:Any],
+    ) -> None:
+        self.hw_version = data["hardware_ver"]
+        self.sw_version = data["software_ver"]
+        self.device_model = data["device_model"]
+
+        self.name = data["nickname"]
+        self.ip_address = filter_invalid_ip(data["device_ip"])
+        self.online = data["group_status"] == "connected"
+        self.internet_online = data["inet_status"] == "online"
+        self.master = data["role"] == "master"
+        self.connection_type = data.get("connection_type")
+        self.bssid_band2_4 = data["bssid_2g"]
+        self.bssid_band5 = data["bssid_5g"]
+        self.signal_band2_4 = data["signal_level"].get("band2_4")
+        self.signal_band5 = data["signal_level"].get("band5")
+
+
+class TpLinkDecoClient:
     """Class to manage TP-Link Deco Client."""
 
-    def __init__(self, router_ip: str, mac: str) -> None:
-        self.router_ip = router_ip
+    def __init__(self, mac: str) -> None:
         self.mac = mac
         self.name = None
         self.ip_address = None
@@ -42,14 +84,16 @@ class TPLinkDecoClient:
         self.interface = None
         self.down_kilobytes_per_s = 0
         self.up_kilobytes_per_s = 0
-        self.deco_device = None
+        self.deco_mac = None
         self.last_activity = None
 
     def update(
         self,
         data: dict[str:Any],
+        deco_mac: str,
         utc_point_in_time: datetime,
     ) -> None:
+        self.deco_mac = deco_mac
         self.name = data["name"]
         self.ip_address = filter_invalid_ip(data["ip"])
         self.online = data["online"]
@@ -57,8 +101,21 @@ class TPLinkDecoClient:
         self.interface = data["interface"]
         self.down_kilobytes_per_s = bytes_to_bits(data["down_speed"])
         self.up_kilobytes_per_s = bytes_to_bits(data["up_speed"])
-        self.deco_device = data["deco_device"]
         self.last_activity = utc_point_in_time
+
+
+class TpLinkDecoData:
+    """Class for coordinator data."""
+
+    def __init__(
+        self,
+        master_deco: TpLinkDeco = None,
+        decos: dict[str:TpLinkDeco] = {},
+        clients: dict[str:TpLinkDecoClient] = {},
+    ) -> None:
+        self.master_deco = master_deco
+        self.decos = decos
+        self.clients = clients
 
 
 class TplinkDecoDataUpdateCoordinator(DataUpdateCoordinator):
@@ -70,7 +127,7 @@ class TplinkDecoDataUpdateCoordinator(DataUpdateCoordinator):
         api: TplinkDecoApi,
         update_interval: timedelta,
         consider_home_seconds: int,
-        data: dict[str:TPLinkDecoClient] = {},
+        data: TpLinkDecoData = TpLinkDecoData(),
     ) -> None:
         """Initialize."""
         self._api = api
@@ -85,37 +142,71 @@ class TplinkDecoDataUpdateCoordinator(DataUpdateCoordinator):
         )
         # Must happen after super().__init__
         self.data = data
-        if len(data) > 0:
-            async_dispatcher_send(self.hass, SIGNAL_CLIENT_ADDED)
 
     async def _async_update_data(self):
         """Update data via api."""
+        master_deco, decos = await self._async_update_decos()
+        clients = await self._async_update_clients(decos.values())
+        return TpLinkDecoData(master_deco, decos, clients)
+
+    async def _async_update_decos(self):
+        """Update decos."""
         try:
-            new_clients = await self._api.async_list_clients()
+            new_decos = await self._api.async_list_devices()
         except (AuthException, asyncio.TimeoutError):
             # Retry once on auth exception (probably expired token) and timeouts
-            new_clients = await self._api.async_list_clients()
+            new_decos = await self._api.async_list_devices()
 
-        old_clients = self.data
-        data = {}
-        utc_point_in_time = dt_util.utcnow()
-
-        client_added = False
-        for mac in new_clients:
-            client = old_clients.get(mac)
-            if client is None:
-                client_added = True
-                client = TPLinkDecoClient(self._api.host, mac)
-                client.update(new_clients[mac], utc_point_in_time)
+        old_decos = self.data.decos
+        master_deco = None
+        deco_added = False
+        decos = {}
+        for new_deco in new_decos:
+            mac = new_deco["mac"]
+            deco = old_decos.get(mac)
+            if deco is None:
+                deco_added = True
+                deco = TpLinkDeco(mac)
+                deco.update(new_deco)
             else:
-                client.update(new_clients[mac], utc_point_in_time)
-            data[mac] = client
+                deco.update(new_deco)
+            decos[mac] = deco
+            if deco.master:
+                master_deco = deco
+
+        if deco_added:
+            async_dispatcher_send(self.hass, SIGNAL_DECO_ADDED)
+
+        return master_deco, decos
+
+    async def _async_update_clients(self, decos: list[TpLinkDeco]):
+        """Update clients for each deco."""
+
+        old_clients = self.data.clients
+        clients = {}
+        utc_point_in_time = dt_util.utcnow()
+        client_added = False
+        for deco in decos:
+            try:
+                deco_clients = await self._api.async_list_clients(deco.mac)
+            except (AuthException, asyncio.TimeoutError):
+                # Retry once on auth exception (probably expired token) and timeouts
+                deco_clients = await self._api.async_list_clients(deco.mac)
+
+            for deco_client in deco_clients:
+                client_mac = deco_client["mac"]
+                client = old_clients.get(client_mac)
+                if client is None:
+                    client_added = True
+                    client = TpLinkDecoClient(client_mac)
+                client.update(deco_client, deco.mac, utc_point_in_time)
+                clients[client_mac] = client
 
         # Copy over clients no longer online
         for client in old_clients.values():
             mac = client.mac
-            if mac not in data:
-                data[mac] = client
+            if mac not in clients:
+                clients[mac] = client
                 if client.last_activity is None:
                     client.online = False
                 else:
@@ -126,7 +217,7 @@ class TplinkDecoDataUpdateCoordinator(DataUpdateCoordinator):
         if client_added:
             async_dispatcher_send(self.hass, SIGNAL_CLIENT_ADDED)
 
-        return data
+        return clients
 
     @callback
     def on_close(self, func: CALLBACK_TYPE) -> None:
