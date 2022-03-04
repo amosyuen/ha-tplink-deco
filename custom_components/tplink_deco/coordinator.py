@@ -64,7 +64,7 @@ class TplinkDecoDataUpdateCoordinator(DataUpdateCoordinator):
         self,
         hass: HomeAssistant,
         api: TplinkDecoApi,
-        scan_interval_seconds: int,
+        update_interval: timedelta,
         consider_home_seconds: int,
         data: dict[str:TPLinkDecoClient] = {},
     ) -> None:
@@ -77,11 +77,11 @@ class TplinkDecoDataUpdateCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(seconds=scan_interval_seconds),
+            update_interval=update_interval,
         )
         # Must happen after super().__init__
+        self.data = data
         if len(data) > 0:
-            self.data = data
             async_dispatcher_send(self.hass, SIGNAL_CLIENT_ADDED)
 
     async def _async_update_data(self):
@@ -92,7 +92,7 @@ class TplinkDecoDataUpdateCoordinator(DataUpdateCoordinator):
             # Retry once on auth exception (probably expired token) and timeouts
             new_clients = await self._api.async_list_clients()
 
-        old_clients = self.data or {}
+        old_clients = self.data
         data = {}
         utc_point_in_time = dt_util.utcnow()
 

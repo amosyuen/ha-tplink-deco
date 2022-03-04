@@ -18,6 +18,7 @@ from .__init__ import create_api
 from .const import DEFAULT_CONSIDER_HOME
 from .const import DEFAULT_SCAN_INTERVAL
 from .const import DOMAIN
+from .coordinator import TplinkDecoDataUpdateCoordinator
 from .exceptions import AuthException
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -47,7 +48,11 @@ async def _async_test_credentials(hass: HomeAssistant, data: dict[str:Any]):
     """Return true if credentials is valid."""
     try:
         api = create_api(hass, data)
-        await api.async_login()
+
+        coordinator = TplinkDecoDataUpdateCoordinator(
+            hass, api, update_interval=None, consider_home_seconds=1
+        )
+        await coordinator.async_config_entry_first_refresh()
         return {}
     except asyncio.TimeoutError:
         return {"base": "timeout_connect"}

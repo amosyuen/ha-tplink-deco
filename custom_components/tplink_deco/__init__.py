@@ -6,6 +6,7 @@ https://github.com/amosyuen/ha-tplink-deco
 """
 import asyncio
 import logging
+from datetime import timedelta
 from typing import Any
 
 from homeassistant.components.device_tracker.const import CONF_CONSIDER_HOME
@@ -64,7 +65,7 @@ async def async_create_coordinator(
             client.name = entry.original_name
             data[entry.unique_id] = client
     coordinator = TplinkDecoDataUpdateCoordinator(
-        hass, api, scan_interval_seconds, consider_home_seconds, data
+        hass, api, timedelta(seconds=scan_interval_seconds), consider_home_seconds, data
     )
     await coordinator.async_config_entry_first_refresh()
 
