@@ -4,7 +4,7 @@
   "name": "TP-Link Deco integration development",
   "context": "..",
   "appPort": ["9123:8123"],
-  "postCreateCommand": "container install",
+  "postCreateCommand": ".devcontainer/setup.sh",
   "extensions": [
     "ms-python.python",
     "github.vscode-pull-request-github",
