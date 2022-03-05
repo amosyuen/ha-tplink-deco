@@ -25,6 +25,10 @@ def bytes_to_bits(bytes_count):
     return bytes_count / 8 if bytes_count is not None else bytes_count
 
 
+def filter_invalid_ip(ip_address):
+    return None if ip_address == "UNKNOWN" else ip_address
+
+
 class TPLinkDecoClient:
     """Class to manage TP-Link Deco Client."""
 
@@ -47,7 +51,7 @@ class TPLinkDecoClient:
         utc_point_in_time: datetime,
     ) -> None:
         self.name = data["name"]
-        self.ip_address = data["ip"]
+        self.ip_address = filter_invalid_ip(data["ip"])
         self.online = data["online"]
         self.connection_type = data["connection_type"]
         self.interface = data["interface"]
