@@ -139,9 +139,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Handle removal of an entry."""
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]
-    if coordinator is not None:
-        await coordinator.async_close()
+    data = hass.data[DOMAIN][config_entry.entry_id]
+    deco_coordinator = data.get(COORDINATOR_DECOS_KEY)
+    clients_coordinator = data.get(COORDINATOR_CLIENTS_KEY)
+    if deco_coordinator is not None:
+        await deco_coordinator.async_close()
+    if clients_coordinator is not None:
+        await clients_coordinator.async_close()
 
     unloaded = all(
         await asyncio.gather(
