@@ -30,6 +30,18 @@ def filter_invalid_ip(ip_address):
     return None if ip_address == "UNKNOWN" else ip_address
 
 
+def snake_case_to_title_space(str):
+    return " ".join([w.title() for w in str.split("_")])
+
+
+async def async_call_with_retry(func, args=[]):
+    try:
+        return await func(*args)
+    except (AuthException, asyncio.TimeoutError):
+        # Retry once on auth exception (probably expired token) and timeouts
+        return await func(*args)
+
+
 class TpLinkDeco:
     """Class to manage TP-Link Deco device."""
 
@@ -60,7 +72,9 @@ class TpLinkDeco:
         self.sw_version = data["software_ver"]
         self.device_model = data["device_model"]
 
-        self.name = data["nickname"]
+        self.name = data.get("custom_nickname")  # Only set if custom value
+        if self.name is None:
+            self.name = snake_case_to_title_space(data["nickname"])
         self.ip_address = filter_invalid_ip(data["device_ip"])
         self.online = data["group_status"] == "connected"
         self.internet_online = data["inet_status"] == "online"
@@ -111,33 +125,29 @@ class TpLinkDecoData:
         self,
         master_deco: TpLinkDeco = None,
         decos: dict[str:TpLinkDeco] = {},
-        clients: dict[str:TpLinkDecoClient] = {},
     ) -> None:
         self.master_deco = master_deco
         self.decos = decos
-        self.clients = clients
 
 
-class TplinkDecoDataUpdateCoordinator(DataUpdateCoordinator):
+class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching data from the API."""
 
     def __init__(
         self,
         hass: HomeAssistant,
         api: TplinkDecoApi,
-        update_interval: timedelta,
-        consider_home_seconds: int,
+        update_interval: timedelta = None,
         data: TpLinkDecoData = TpLinkDecoData(),
     ) -> None:
         """Initialize."""
         self._api = api
-        self._consider_home_seconds = consider_home_seconds
         self._on_close: list[Callable] = []
 
         super().__init__(
             hass,
             _LOGGER,
-            name=DOMAIN,
+            name=f"{DOMAIN}-decos",
             update_interval=update_interval,
         )
         # Must happen after super().__init__
@@ -145,18 +155,7 @@ class TplinkDecoDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Update data via api."""
-        master_deco, decos = await self._async_update_decos()
-        clients = await self._async_update_clients(decos.values())
-        return TpLinkDecoData(master_deco, decos, clients)
-
-    async def _async_update_decos(self):
-        """Update decos."""
-        try:
-            new_decos = await self._api.async_list_devices()
-        except (AuthException, asyncio.TimeoutError):
-            # Retry once on auth exception (probably expired token) and timeouts
-            new_decos = await self._api.async_list_devices()
-
+        new_decos = await async_call_with_retry(self._api.async_list_devices)
         old_decos = self.data.decos
         master_deco = None
         deco_added = False
@@ -177,29 +176,77 @@ class TplinkDecoDataUpdateCoordinator(DataUpdateCoordinator):
         if deco_added:
             async_dispatcher_send(self.hass, SIGNAL_DECO_ADDED)
 
-        return master_deco, decos
+        return TpLinkDecoData(master_deco, decos)
 
-    async def _async_update_clients(self, decos: list[TpLinkDeco]):
-        """Update clients for each deco."""
+    @callback
+    def on_close(self, func: CALLBACK_TYPE) -> None:
+        """Add a function to call when coordinator is closed."""
+        self._on_close.append(func)
 
-        old_clients = self.data.clients
-        clients = {}
-        utc_point_in_time = dt_util.utcnow()
-        client_added = False
-        for deco in decos:
+    async def async_close(self) -> None:
+        """Call functions on close."""
+        for func in self._on_close:
             try:
-                deco_clients = await self._api.async_list_clients(deco.mac)
-            except (AuthException, asyncio.TimeoutError):
-                # Retry once on auth exception (probably expired token) and timeouts
-                deco_clients = await self._api.async_list_clients(deco.mac)
+                func()
+            except Exception as err:
+                _LOGGER.error("Error calling on_close function %s: %s", func, err)
+        self._on_close.clear()
 
+
+class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
+    """Class to manage fetching data from the API."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        api: TplinkDecoApi,
+        deco_update_coordinator: TplinkDecoUpdateCoordinator,
+        consider_home_seconds: int,
+        update_interval: timedelta = None,
+        data: dict[str:TpLinkDecoClient] = {},
+    ) -> None:
+        """Initialize."""
+        self._api = api
+        self._deco_update_coordinator = deco_update_coordinator
+        self._consider_home_seconds = consider_home_seconds
+        self._on_close: list[Callable] = []
+
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=f"{DOMAIN}-clients",
+            update_interval=update_interval,
+        )
+        # Must happen after super().__init__
+        self.data = data
+
+    async def _async_update_data(self):
+        """Update data via api."""
+        if len(self._deco_update_coordinator.data.decos) == 0:
+            return
+
+        old_clients = self.data
+        clients = {}
+        client_added = False
+        # List clients for all decos if _deco_update_coordinator is not provided
+        deco_macs = self._deco_update_coordinator.data.decos.keys()
+        utc_point_in_time = dt_util.utcnow()
+        # Send list client requests in parallel for each deco
+        deco_client_responses = await asyncio.gather(
+            *[
+                async_call_with_retry(self._api.async_list_clients, [deco_mac])
+                for deco_mac in deco_macs
+            ]
+        )
+        # deco_macs is not subscriptable
+        for deco_mac, deco_clients in zip(deco_macs, deco_client_responses):
             for deco_client in deco_clients:
                 client_mac = deco_client["mac"]
                 client = old_clients.get(client_mac)
                 if client is None:
                     client_added = True
                     client = TpLinkDecoClient(client_mac)
-                client.update(deco_client, deco.mac, utc_point_in_time)
+                client.update(deco_client, deco_mac, utc_point_in_time)
                 clients[client_mac] = client
 
         # Copy over clients no longer online

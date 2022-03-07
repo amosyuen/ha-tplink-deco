@@ -8,6 +8,7 @@ from homeassistant.components.device_tracker.const import ATTR_IP
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_HW_VERSION
 from homeassistant.const import ATTR_SW_VERSION
+from homeassistant.const import ATTR_VIA_DEVICE
 from homeassistant.core import callback
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -15,6 +16,8 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .const import COORDINATOR_CLIENTS_KEY
+from .const import COORDINATOR_DECOS_KEY
 from .const import DEVICE_CLASS_CLIENT
 from .const import DEVICE_CLASS_DECO
 from .const import DOMAIN
@@ -22,7 +25,8 @@ from .const import SIGNAL_CLIENT_ADDED
 from .const import SIGNAL_DECO_ADDED
 from .coordinator import TpLinkDeco
 from .coordinator import TpLinkDecoClient
-from .coordinator import TplinkDecoDataUpdateCoordinator
+from .coordinator import TplinkDecoClientUpdateCoordinator
+from .coordinator import TplinkDecoUpdateCoordinator
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
@@ -45,9 +49,12 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ):
     """Setup binary_sensor platform."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    _async_setup_decos(hass, async_add_entities, coordinator)
-    _async_setup_clients(hass, async_add_entities, coordinator)
+    coordinator_decos = hass.data[DOMAIN][entry.entry_id][COORDINATOR_DECOS_KEY]
+    coordinator_clients = hass.data[DOMAIN][entry.entry_id][COORDINATOR_CLIENTS_KEY]
+    _async_setup_decos(hass, async_add_entities, coordinator_decos)
+    _async_setup_clients(
+        hass, async_add_entities, coordinator_decos, coordinator_clients
+    )
 
 
 def _async_setup_decos(hass, async_add_entities, coordinator):
@@ -74,7 +81,9 @@ def _async_setup_decos(hass, async_add_entities, coordinator):
     )
 
 
-def _async_setup_clients(hass, async_add_entities, coordinator):
+def _async_setup_clients(
+    hass, async_add_entities, coordinator_decos, coordinator_clients
+):
     tracked_clients = set()
 
     @callback
@@ -82,40 +91,50 @@ def _async_setup_clients(hass, async_add_entities, coordinator):
         """Add new tracker entities for clients."""
         new_entities = []
 
-        for mac, client in coordinator.data.clients.items():
+        for mac, client in coordinator_clients.data.items():
             if mac in tracked_clients:
                 continue
 
-            new_entities.append(TplinkDecoClientDeviceTracker(coordinator, client))
+            new_entities.append(
+                TplinkDecoClientDeviceTracker(
+                    coordinator_decos, coordinator_clients, client
+                )
+            )
             tracked_clients.add(mac)
 
         if new_entities:
             async_add_entities(new_entities)
 
     add_untracked_clients()
-    coordinator.on_close(
+    coordinator_clients.on_close(
         async_dispatcher_connect(hass, SIGNAL_CLIENT_ADDED, add_untracked_clients)
     )
 
 
-def create_device_info(deco: TpLinkDeco) -> DeviceInfo:
+def create_device_info(deco: TpLinkDeco, master_deco: TpLinkDeco) -> DeviceInfo:
     """Return device info."""
-    return DeviceInfo(
+    if deco is None:
+        return None
+    device_info = DeviceInfo(
         id=deco.mac,
         identifiers={(DOMAIN, deco.mac)},
-        name="TP-Link Deco",
+        name=f"{deco.name} Deco",
         manufacturer="TP-Link Deco",
         model=deco.device_model,
         sw_version=deco.sw_version,
         hw_version=deco.hw_version,
     )
+    if deco != master_deco:
+        device_info[ATTR_VIA_DEVICE] = (DOMAIN, master_deco.mac)
+
+    return device_info
 
 
 class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
     """TP Link Deco Entity."""
 
     def __init__(
-        self, coordinator: TplinkDecoDataUpdateCoordinator, deco: TpLinkDeco
+        self, coordinator: TplinkDecoUpdateCoordinator, deco: TpLinkDeco
     ) -> None:
         """Initialize a TP-Link Deco device."""
         self._deco = deco
@@ -213,7 +232,7 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device info."""
-        return create_device_info(self.coordinator.data.master_deco)
+        return create_device_info(self._deco, self.coordinator.data.master_deco)
 
     @callback
     async def async_on_demand_update(self):
@@ -243,7 +262,7 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
             self._attr_ip_address = self._deco.ip_address
             changed = True
         if self._deco.name is not None:
-            self._attr_name = self._deco.name
+            self._attr_name = f"{self._deco.name} Deco"
             changed = True
         if self._deco.master is not None:
             self._attr_master = self._deco.master
@@ -259,7 +278,10 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
     """TP Link Deco Entity."""
 
     def __init__(
-        self, coordinator: TplinkDecoDataUpdateCoordinator, client: TpLinkDecoClient
+        self,
+        coordinator_decos: TplinkDecoUpdateCoordinator,
+        coordinator_clients: TplinkDecoClientUpdateCoordinator,
+        client: TpLinkDecoClient,
     ) -> None:
         """Initialize a TP-Link Deco device."""
         self._attr_connection_type = None
@@ -268,9 +290,10 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
         self._attr_ip_address = None
         self._attr_name = None
         self._client = client
+        self._coordinator_decos = coordinator_decos
         self._mac_address = client.mac
         self._update_from_client()
-        super().__init__(coordinator)
+        super().__init__(coordinator_clients)
 
     async def async_added_to_hass(self):
         """Run when entity about to be added."""
@@ -319,7 +342,7 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
     @property
     def extra_state_attributes(self) -> dict[str:Any]:
         """Return extra state attributes."""
-        deco = self.coordinator.data.decos.get(self._attr_deco_mac)
+        deco = self._coordinator_decos.data.decos.get(self._attr_deco_mac)
         return {
             ATTR_CONNECTION_TYPE: self._attr_connection_type,
             ATTR_INTERFACE: self._attr_interface,
@@ -337,7 +360,8 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
     @property
     def device_info(self) -> DeviceInfo:
         """Return device info."""
-        return create_device_info(self.coordinator.data.master_deco)
+        deco = self._coordinator_decos.data.decos.get(self._attr_deco_mac)
+        return create_device_info(deco, self._coordinator_decos.data.master_deco)
 
     @callback
     async def async_on_demand_update(self):

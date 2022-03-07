@@ -138,6 +138,11 @@ class TplinkDecoApi:
         device_list = data["result"]["device_list"]
         _LOGGER.debug("len(device_list)=%d", len(device_list))
 
+        for device in device_list:
+            custom_nickname = device.get("custom_nickname")
+            if custom_nickname is not None:
+                device["custom_nickname"] = base64.b64decode(custom_nickname).decode()
+
         return device_list
 
     # Return list of clients. Default lists clients for all decos.

@@ -14,11 +14,10 @@ from homeassistant.const import CONF_USERNAME
 from homeassistant.core import callback
 from homeassistant.core import HomeAssistant
 
-from .__init__ import create_api
+from .__init__ import async_create_and_refresh_coordinators
 from .const import DEFAULT_CONSIDER_HOME
 from .const import DEFAULT_SCAN_INTERVAL
 from .const import DOMAIN
-from .coordinator import TplinkDecoDataUpdateCoordinator
 from .exceptions import AuthException
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -47,12 +46,7 @@ def _get_schema(data: dict[str:Any]):
 async def _async_test_credentials(hass: HomeAssistant, data: dict[str:Any]):
     """Return true if credentials is valid."""
     try:
-        api = create_api(hass, data)
-
-        coordinator = TplinkDecoDataUpdateCoordinator(
-            hass, api, update_interval=None, consider_home_seconds=1
-        )
-        await coordinator.async_config_entry_first_refresh()
+        await async_create_and_refresh_coordinators(hass, data, consider_home_seconds=1)
         return {}
     except asyncio.TimeoutError:
         return {"base": "timeout_connect"}
