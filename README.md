@@ -19,21 +19,46 @@ This integration is a local polling integration that logs into the admin web UI 
 
 ### Device Trackers
 
-Besides the device being present (connected to the router), the following attributes are also exposed:
+Device trackers are added for both decos and clients. The device tracker state marks whether the device is connected to the deco. If a device is not present, the previous values for attributes are saved except for `down_kilobytes_per_s` and `up_kilobytes_per_s`.
+
+#### Common Attributes
+
+| Attribute       | Example Values (comma separated) |
+| --------------- | -------------------------------- |
+| mac             | 1A-B2-C3-4D-56-EF                |
+| ip_address      | 192.168.0.100                    |
+| device_class    | client, deco                     |
+| connection_type | wired, band5, band2_4            |
+
+#### Client Attributes
 
 | Attribute            | Example Values (comma separated) |
 | -------------------- | -------------------------------- |
-| mac                  | 1A-B2-C3-4D-56-EF                |
-| ip_address           | 192.168.0.100                    |
-| connection_type      | wired, band5, band2_4            |
 | interface            | main, guest                      |
 | down_kilobytes_per_s | 10.25                            |
 | up_kilobytes_per_s   | 11.75                            |
 | deco_device          | living_room                      |
+| deco_mac             | 1A-B2-C3-4D-56-EF                |
 
-If a device is not present, the previous values are saved except for `down_kilobytes_per_s` and `up_kilobytes_per_s`.
+#### Deco Attributes
+
+| Attribute       | Example Values (comma separated) |
+| --------------- | -------------------------------- |
+| hw_version      | 2.0                              |
+| sw_version      | 1.5.1 Build 20210204 Rel. 50164  |
+| device_model    | x60                              |
+| internet_online | false, true                      |
+| master          | false, true                      |
+| bssid_band2_4   | A1:B2:C3:D4:E5:F6                |
+| bssid_band5     | A1:B2:C3:D4:E5:F6                |
+| signal_band2_4  | 3                                |
+| signal_band2_4  | 4                                |
 
 {% if not installed %}
+
+### Devices
+
+A device is created for each deco. Each device contains the device_tracker entities for itself and any clients connected to it. Non-master deco devices will indicate that they are connected via the master deco device.
 
 ## Installation
 
