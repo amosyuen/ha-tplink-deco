@@ -136,7 +136,8 @@ class TplinkDecoApi:
             raise Exception(f"List devices error {error_code}")
 
         device_list = data["result"]["device_list"]
-        _LOGGER.debug("len(device_list)=%d", len(device_list))
+        _LOGGER.debug("List devices device_count=%d", len(device_list))
+        _LOGGER.debug("List devices device_list=%s", device_list)
 
         for device in device_list:
             custom_nickname = device.get("custom_nickname")
@@ -163,11 +164,12 @@ class TplinkDecoApi:
         error_code = data.get("error_code")
         if error_code != 0:
             _LOGGER.debug("%s error: data=%s", context, data)
-            raise Exception(f"List clients error {error_code}")
+            raise Exception(f"{context} error {error_code}")
 
         client_list = data["result"]["client_list"]
         # client_list is only the connected clients
         _LOGGER.debug("%s client_count=%d", context, len(client_list))
+        _LOGGER.debug("%s client_list=%s", context, client_list)
 
         for client in client_list:
             client["name"] = base64.b64decode(client["name"]).decode()
@@ -249,6 +251,7 @@ class TplinkDecoApi:
                 f"Invalid login credentials. {attempts} attempts remaining."
             )
         if error_code != 0:
+            _LOGGER.debug("Login error_code=%s, data=%s", error_code, data)
             raise Exception(f"Login error {data['error_code']}")
 
         self._stok = result["stok"]
@@ -289,6 +292,12 @@ class TplinkDecoApi:
                 if "error_code" in response_json:
                     error_code = response_json.get("error_code")
                     if error_code != 0:
+                        _LOGGER.debug(
+                            "%s error_code=%s, response_json=%s",
+                            context,
+                            error_code,
+                            response_json,
+                        )
                         raise Exception(f"{context} error: {error_code}")
 
                 return response_json
@@ -311,13 +320,6 @@ class TplinkDecoApi:
         except (aiohttp.ClientError) as err:
             _LOGGER.error(
                 "%s client error: %s",
-                context,
-                err,
-            )
-            raise err
-        except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.error(
-                "%s error: %s",
                 context,
                 err,
             )

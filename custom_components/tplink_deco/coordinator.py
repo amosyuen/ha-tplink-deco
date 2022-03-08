@@ -68,22 +68,23 @@ class TpLinkDeco:
         self,
         data: dict[str:Any],
     ) -> None:
-        self.hw_version = data["hardware_ver"]
-        self.sw_version = data["software_ver"]
-        self.device_model = data["device_model"]
+        self.hw_version = data.get("hardware_ver")
+        self.sw_version = data.get("software_ver")
+        self.device_model = data.get("device_model")
 
         self.name = data.get("custom_nickname")  # Only set if custom value
         if self.name is None:
-            self.name = snake_case_to_title_space(data["nickname"])
-        self.ip_address = filter_invalid_ip(data["device_ip"])
-        self.online = data["group_status"] == "connected"
-        self.internet_online = data["inet_status"] == "online"
-        self.master = data["role"] == "master"
+            self.name = snake_case_to_title_space(data.get("nickname"))
+        self.ip_address = filter_invalid_ip(data.get("device_ip"))
+        self.online = data.get("group_status") == "connected"
+        self.internet_online = data.get("inet_status") == "online"
+        self.master = data.get("role") == "master"
         self.connection_type = data.get("connection_type")
-        self.bssid_band2_4 = data["bssid_2g"]
-        self.bssid_band5 = data["bssid_5g"]
-        self.signal_band2_4 = data["signal_level"].get("band2_4")
-        self.signal_band5 = data["signal_level"].get("band5")
+        self.bssid_band2_4 = data.get("bssid_2g")
+        self.bssid_band5 = data.get("bssid_5g")
+        signal_level = data.get("signal_level", {})
+        self.signal_band2_4 = signal_level.get("band2_4")
+        self.signal_band5 = signal_level.get("band5")
 
 
 class TpLinkDecoClient:
@@ -108,13 +109,13 @@ class TpLinkDecoClient:
         utc_point_in_time: datetime,
     ) -> None:
         self.deco_mac = deco_mac
-        self.name = data["name"]
-        self.ip_address = filter_invalid_ip(data["ip"])
-        self.online = data["online"]
-        self.connection_type = data["connection_type"]
-        self.interface = data["interface"]
-        self.down_kilobytes_per_s = bytes_to_bits(data["down_speed"])
-        self.up_kilobytes_per_s = bytes_to_bits(data["up_speed"])
+        self.name = data.get("name")
+        self.ip_address = filter_invalid_ip(data.get("ip"))
+        self.online = data.get("online")
+        self.connection_type = data.get("connection_type")
+        self.interface = data.get("interface")
+        self.down_kilobytes_per_s = bytes_to_bits(data.get("down_speed", 0))
+        self.up_kilobytes_per_s = bytes_to_bits(data.get("up_speed", 0))
         self.last_activity = utc_point_in_time
 
 
