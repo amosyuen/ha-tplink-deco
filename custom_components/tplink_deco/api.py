@@ -93,6 +93,16 @@ def aes_decrypt(key: bytes, iv: bytes, plaintext: bytes) -> bytes:
     return ciphertext
 
 
+def check_data_error_code(context, data):
+    error_code = data.get("error_code")
+    if error_code:
+        if error_code == "timeout":
+            raise asyncio.TimeoutError(f'{context} response error_code="timeout"')
+
+        _LOGGER.debug("%s error_code=%s, data=%s", context, error_code, data)
+        raise Exception(f"{context} error_code={error_code}")
+
+
 class TplinkDecoApi:
     def __init__(
         self, host: str, username: str, password: str, session: aiohttp.ClientSession
@@ -118,22 +128,19 @@ class TplinkDecoApi:
 
     # Return list of deco devices
     async def async_list_devices(self) -> dict:
-        if self._stok is None:
-            await self.async_login()
+        await self.async_login_if_needed()
 
         # First retrieve the list of devices
+        context = "List Devices"
         device_list_payload = {"operation": "read"}
         response_json = await self._async_post(
-            "List Devices",
+            context,
             f"http://{self.host}/cgi-bin/luci/;stok={self._stok}/admin/device",
             params={"form": "device_list"},
             data=self._encode_payload(device_list_payload),
         )
-        data = self._decrypt_data("List Devices", response_json["data"])
-        error_code = data.get("error_code")
-        if error_code != 0:
-            _LOGGER.debug("List devices error: data=%s", data)
-            raise Exception(f"List devices error {error_code}")
+        data = self._decrypt_data(response_json["data"])
+        check_data_error_code(context, data)
 
         device_list = data["result"]["device_list"]
         _LOGGER.debug("List devices device_count=%d", len(device_list))
@@ -148,8 +155,7 @@ class TplinkDecoApi:
 
     # Return list of clients. Default lists clients for all decos.
     async def async_list_clients(self, deco_mac="default") -> dict:
-        if self._stok is None:
-            await self.async_login()
+        await self.async_login_if_needed()
 
         context = f"List Clients {deco_mac}"
         client_payload = {"operation": "read", "params": {"device_mac": deco_mac}}
@@ -160,11 +166,8 @@ class TplinkDecoApi:
             data=self._encode_payload(client_payload),
         )
 
-        data = self._decrypt_data(context, response_json["data"])
-        error_code = data.get("error_code")
-        if error_code != 0:
-            _LOGGER.debug("%s error: data=%s", context, data)
-            raise Exception(f"{context} error {error_code}")
+        data = self._decrypt_data(response_json["data"])
+        check_data_error_code(context, data)
 
         client_list = data["result"]["client_list"]
         # client_list is only the connected clients
@@ -219,6 +222,10 @@ class TplinkDecoApi:
         self._seq = auth_result["seq"]
         _LOGGER.debug("seq=%s", self._seq)
 
+    async def async_login_if_needed(self):
+        if self._seq is None or self._stok is None or self._cookie is None:
+            return await self.async_login()
+
     async def async_login(self):
         if self._aes_key is None:
             self.generate_aes_key_and_iv()
@@ -235,24 +242,23 @@ class TplinkDecoApi:
             "params": {"password": password_encrypted},
             "operation": "login",
         }
+        context = "Login"
         response_json = await self._async_post(
-            "Login",
+            context,
             f"http://{self.host}/cgi-bin/luci/;stok=/login",
             params={"form": "login"},
             data=self._encode_payload(login_payload),
         )
 
-        data = self._decrypt_data("Login", response_json["data"])
+        data = self._decrypt_data(response_json["data"])
         error_code = data["error_code"]
         result = data["result"]
         if error_code == -5002:
-            attempts = result["attemptsAllowed"]
+            attempts = result.get("attemptsAllowed", "unknown")
             raise AuthException(
                 f"Invalid login credentials. {attempts} attempts remaining."
             )
-        if error_code != 0:
-            _LOGGER.debug("Login error_code=%s, data=%s", error_code, data)
-            raise Exception(f"Login error {data['error_code']}")
+        check_data_error_code(context, data)
 
         self._stok = result["stok"]
         _LOGGER.debug("stok=%s", self._stok)
@@ -291,7 +297,8 @@ class TplinkDecoApi:
                 response_json = await response.json(content_type=None)
                 if "error_code" in response_json:
                     error_code = response_json.get("error_code")
-                    if error_code != 0:
+
+                    if error_code != 0 and error_code != "":
                         _LOGGER.debug(
                             "%s error_code=%s, response_json=%s",
                             context,
@@ -357,7 +364,7 @@ class TplinkDecoApi:
         self._stok = None
         self._cookie = None
 
-    def _decrypt_data(self, context: str, data: str):
+    def _decrypt_data(self, data: str):
         if data == "":
             self._clear_auth()
             raise Exception("Need to re-login")
