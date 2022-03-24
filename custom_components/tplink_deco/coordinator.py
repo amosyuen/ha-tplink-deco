@@ -142,7 +142,7 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
         data: TpLinkDecoData = TpLinkDecoData(),
     ) -> None:
         """Initialize."""
-        self._api = api
+        self.api = api
         self._on_close: list[Callable] = []
 
         super().__init__(
@@ -156,7 +156,7 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Update data via api."""
-        new_decos = await async_call_with_retry(self._api.async_list_devices)
+        new_decos = await async_call_with_retry(self.api.async_list_devices)
         old_decos = self.data.decos
         master_deco = None
         deco_added = False
@@ -207,7 +207,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         data: dict[str:TpLinkDecoClient] = {},
     ) -> None:
         """Initialize."""
-        self._api = api
+        self.api = api
         self._deco_update_coordinator = deco_update_coordinator
         self._consider_home_seconds = consider_home_seconds
         self._on_close: list[Callable] = []
@@ -235,7 +235,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         # Send list client requests in parallel for each deco
         deco_client_responses = await asyncio.gather(
             *[
-                async_call_with_retry(self._api.async_list_clients, [deco_mac])
+                async_call_with_retry(self.api.async_list_clients, [deco_mac])
                 for deco_mac in deco_macs
             ]
         )

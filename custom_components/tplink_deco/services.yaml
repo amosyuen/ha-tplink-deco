@@ -1,0 +1,8 @@
+reboot_deco:
+  name: Reboot Deco
+  description: Reboot Deco
+  target:
+    entity:
+      integration: tplink_deco
+      domain: device_tracker
+      device_class: deco

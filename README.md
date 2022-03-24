@@ -54,11 +54,25 @@ Device trackers are added for both decos and clients. The device tracker state m
 | signal_band2_4  | 3                                |
 | signal_band2_4  | 4                                |
 
-{% if not installed %}
-
 ### Devices
 
 A device is created for each deco. Each device contains the device_tracker entities for itself and any clients connected to it. Non-master deco devices will indicate that they are connected via the master deco device.
+
+### Services
+
+#### Reboot Deco Service
+
+Reboots the specified decos. Example yaml:
+
+```yaml
+service: tplink_deco.reboot_deco
+target:
+  entity_id:
+    - device_tracker.guest_room_deco
+    - device_tracker.living_room_deco
+```
+
+{% if not installed %}
 
 ## Installation
 

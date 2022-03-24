@@ -8,18 +8,23 @@ import asyncio
 import logging
 from datetime import timedelta
 from typing import Any
+from typing import cast
 
+import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 from homeassistant.components.device_tracker.const import CONF_CONSIDER_HOME
 from homeassistant.components.device_tracker.const import CONF_SCAN_INTERVAL
 from homeassistant.components.device_tracker.const import (
     DOMAIN as DEVICE_TRACKER_DOMAIN,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.const import CONF_HOST
 from homeassistant.const import CONF_PASSWORD
 from homeassistant.const import CONF_USERNAME
 from homeassistant.core import Config
 from homeassistant.core import HomeAssistant
+from homeassistant.core import ServiceCall
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -31,6 +36,7 @@ from .const import DEFAULT_SCAN_INTERVAL
 from .const import DEVICE_CLASS_DECO
 from .const import DOMAIN
 from .const import PLATFORMS
+from .const import SERVICE_REBOOT_DECO
 from .coordinator import TpLinkDeco
 from .coordinator import TpLinkDecoClient
 from .coordinator import TplinkDecoClientUpdateCoordinator
@@ -124,14 +130,38 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     if hass.data.get(DOMAIN) is None:
         hass.data.setdefault(DOMAIN, {})
 
-    hass.data[DOMAIN][config_entry.entry_id] = await async_create_coordinators(
-        hass, config_entry
-    )
+    data = await async_create_coordinators(hass, config_entry)
+    hass.data[DOMAIN][config_entry.entry_id] = data
+    deco_coordinator = data[COORDINATOR_DECOS_KEY]
 
     for platform in PLATFORMS:
         hass.async_add_job(
             hass.config_entries.async_forward_entry_setup(config_entry, platform)
         )
+
+    async def async_reboot_deco(service: ServiceCall) -> None:
+        entity_ids = cast([int], service.data.get(ATTR_ENTITY_ID))
+        macs = []
+        for entity_id in entity_ids:
+            state = hass.states.get(entity_id)
+            mac = state.attributes.get("mac") if state else None
+            if mac is None:
+                raise Exception(f"Entity ID {entity_id} does not have attributes.mac")
+            macs.append(mac)
+        await deco_coordinator.api.async_reboot_decos(macs)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REBOOT_DECO,
+        async_reboot_deco,
+        schema=vol.Schema(
+            {
+                vol.Required(ATTR_ENTITY_ID): vol.All(
+                    cv.ensure_list(cv.entity_id), [cv.entity_id]
+                ),
+            }
+        ),
+    )
 
     config_entry.async_on_unload(config_entry.add_update_listener(update_listener))
     return True

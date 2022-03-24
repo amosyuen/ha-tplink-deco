@@ -153,6 +153,26 @@ class TplinkDecoApi:
 
         return device_list
 
+    # Reboot decos.
+    async def async_reboot_decos(self, deco_macs) -> dict:
+        await self.async_login_if_needed()
+
+        context = f"Reboot Decos {deco_macs}"
+        client_payload = {
+            "operation": "reboot",
+            "params": {"mac_list": [{"mac": mac} for mac in deco_macs]},
+        }
+        response_json = await self._async_post(
+            context,
+            f"http://{self.host}/cgi-bin/luci/;stok={self._stok}/admin/device",
+            params={"form": "system"},
+            data=self._encode_payload(client_payload),
+        )
+
+        data = self._decrypt_data(response_json["data"])
+        check_data_error_code(context, data)
+        _LOGGER.debug("Rebooted decos %s", deco_macs)
+
     # Return list of clients. Default lists clients for all decos.
     async def async_list_clients(self, deco_mac="default") -> dict:
         await self.async_login_if_needed()

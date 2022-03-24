@@ -20,5 +20,8 @@ DEVICE_CLASS_DECO = "deco"
 SIGNAL_CLIENT_ADDED = f"{DOMAIN}-client-added"
 SIGNAL_DECO_ADDED = f"{DOMAIN}-deco-added"
 
+# Services
+SERVICE_REBOOT_DECO = "reboot_deco"
+
 # Platforms
 PLATFORMS = [DEVICE_TRACKER_DOMAIN]
