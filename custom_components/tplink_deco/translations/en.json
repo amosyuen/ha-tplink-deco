@@ -2,7 +2,6 @@
   "config": {
     "step": {
       "user": {
-        "title": "TP-Link Deco",
         "description": "Use the credentials for the admin web portal. See https://github.com/amosyuen/ha-tplink-deco",
         "data": {
           "host": "Host",
@@ -22,7 +21,6 @@
   "options": {
     "step": {
       "init": {
-        "title": "TP-Link Deco",
         "description": "Use the credentials for the admin web portal. See https://github.com/amosyuen/ha-tplink-deco",
         "data": {
           "host": "Host",
