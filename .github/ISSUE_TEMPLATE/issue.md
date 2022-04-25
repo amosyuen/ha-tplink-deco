@@ -9,7 +9,6 @@ Issues not containing the minimum requirements will be closed:
 
 - Issues without a description (using the header is not good enough) will be closed.
 - Issues without debug logging will be closed.
-- Issues without configuration will be closed
 
 -->
 
@@ -19,11 +18,7 @@ Issues not containing the minimum requirements will be closed:
 If you are unsure about the version check the const.py file.
 -->
 
-## Configuration
-
-```yaml
-Add your logs here.
-```
+## Deco Model
 
 ## Describe the bug
 
@@ -31,10 +26,17 @@ A clear and concise description of what the bug is.
 
 ## Debug log
 
-<!-- To enable debug logs check this https://www.home-assistant.io/components/logger/ -->
+<!--
+To enable debug logs see https://www.home-assistant.io/components/logger/. Add these lines to your config:
+
+logger:
+  logs:
+    custom_components.tplink_deco: debug
+
+-->
 
 ```text
 
-Add your logs here.
+Add your debug logs here.
 
 ```
