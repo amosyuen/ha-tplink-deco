@@ -27,12 +27,7 @@ A clear and concise description of what the bug is.
 ## Debug log
 
 <!--
-To enable debug logs see https://www.home-assistant.io/components/logger/. Add these lines to your config:
-
-logger:
-  logs:
-    custom_components.tplink_deco: debug
-
+Please follow steps in https://github.com/amosyuen/ha-tplink-deco/blob/master/DEBUGGING.md
 -->
 
 ```text
