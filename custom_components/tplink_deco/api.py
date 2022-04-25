@@ -139,19 +139,25 @@ class TplinkDecoApi:
             params={"form": "device_list"},
             data=self._encode_payload(device_list_payload),
         )
-        data = self._decrypt_data(response_json["data"])
+        data = self._decrypt_data(context, response_json["data"])
         check_data_error_code(context, data)
 
-        device_list = data["result"]["device_list"]
-        _LOGGER.debug("List devices device_count=%d", len(device_list))
-        _LOGGER.debug("List devices device_list=%s", device_list)
+        try:
+            device_list = data["result"]["device_list"]
+            _LOGGER.debug("List devices device_count=%d", len(device_list))
+            _LOGGER.debug("List devices device_list=%s", device_list)
 
-        for device in device_list:
-            custom_nickname = device.get("custom_nickname")
-            if custom_nickname is not None:
-                device["custom_nickname"] = base64.b64decode(custom_nickname).decode()
+            for device in device_list:
+                custom_nickname = device.get("custom_nickname")
+                if custom_nickname is not None:
+                    device["custom_nickname"] = base64.b64decode(
+                        custom_nickname
+                    ).decode()
 
-        return device_list
+            return device_list
+        except Exception as err:
+            _LOGGER.error("%s parse response error=%s, data=%s", context, err, data)
+            raise err
 
     # Reboot decos.
     async def async_reboot_decos(self, deco_macs) -> dict:
@@ -169,7 +175,7 @@ class TplinkDecoApi:
             data=self._encode_payload(client_payload),
         )
 
-        data = self._decrypt_data(response_json["data"])
+        data = self._decrypt_data(context, response_json["data"])
         check_data_error_code(context, data)
         _LOGGER.debug("Rebooted decos %s", deco_macs)
 
@@ -186,18 +192,22 @@ class TplinkDecoApi:
             data=self._encode_payload(client_payload),
         )
 
-        data = self._decrypt_data(response_json["data"])
+        data = self._decrypt_data(context, response_json["data"])
         check_data_error_code(context, data)
 
-        client_list = data["result"]["client_list"]
-        # client_list is only the connected clients
-        _LOGGER.debug("%s client_count=%d", context, len(client_list))
-        _LOGGER.debug("%s client_list=%s", context, client_list)
+        try:
+            client_list = data["result"]["client_list"]
+            # client_list is only the connected clients
+            _LOGGER.debug("%s client_count=%d", context, len(client_list))
+            _LOGGER.debug("%s client_list=%s", context, client_list)
 
-        for client in client_list:
-            client["name"] = base64.b64decode(client["name"]).decode()
+            for client in client_list:
+                client["name"] = base64.b64decode(client["name"]).decode()
 
-        return client_list
+            return client_list
+        except Exception as err:
+            _LOGGER.error("%s parse response error=%s, data=%s", context, err, data)
+            raise err
 
     def generate_aes_key_and_iv(self):
         # TPLink requires key and IV to be a 16 digit number (no leading 0s)
@@ -210,37 +220,57 @@ class TplinkDecoApi:
 
     # Fetch password RSA keys
     async def async_fetch_keys(self):
+        context = "Fetch keys"
         response_json = await self._async_post(
-            "Fetch keys",
+            context,
             f"http://{self.host}/cgi-bin/luci/;stok=/login",
             params={"form": "keys"},
             data=json.dumps({"operation": "read"}),
         )
 
-        keys = response_json["result"]["password"]
-        self._password_rsa_n = int(keys[0], 16)
-        self._password_rsa_e = int(keys[1], 16)
-        _LOGGER.debug("password_rsa_n=%s", self._password_rsa_n)
-        _LOGGER.debug("password_rsa_e=%s", self._password_rsa_e)
+        try:
+            keys = response_json["result"]["password"]
+            self._password_rsa_n = int(keys[0], 16)
+            self._password_rsa_e = int(keys[1], 16)
+            _LOGGER.debug("password_rsa_n=%s", self._password_rsa_n)
+            _LOGGER.debug("password_rsa_e=%s", self._password_rsa_e)
+        except Exception as err:
+            _LOGGER.error(
+                "%s parse response error=%s, response_json=%s",
+                context,
+                err,
+                response_json,
+            )
+            raise err
 
     # Fetch sign RSA keys and seq no
     async def async_fetch_auth(self):
+        context = "Fetch auth"
         response_json = await self._async_post(
-            "Fetch auth",
+            context,
             f"http://{self.host}/cgi-bin/luci/;stok=/login",
             params={"form": "auth"},
             data=json.dumps({"operation": "read"}),
         )
 
-        auth_result = response_json["result"]
-        auth_key = auth_result["key"]
-        self._sign_rsa_n = int(auth_key[0], 16)
-        _LOGGER.debug("sign_rsa_n=%s", self._sign_rsa_n)
-        self._sign_rsa_e = int(auth_key[1], 16)
-        _LOGGER.debug("sign_rsa_e=%s", self._sign_rsa_e)
+        try:
+            auth_result = response_json["result"]
+            auth_key = auth_result["key"]
+            self._sign_rsa_n = int(auth_key[0], 16)
+            _LOGGER.debug("sign_rsa_n=%s", self._sign_rsa_n)
+            self._sign_rsa_e = int(auth_key[1], 16)
+            _LOGGER.debug("sign_rsa_e=%s", self._sign_rsa_e)
 
-        self._seq = auth_result["seq"]
-        _LOGGER.debug("seq=%s", self._seq)
+            self._seq = auth_result["seq"]
+            _LOGGER.debug("seq=%s", self._seq)
+        except Exception as err:
+            _LOGGER.error(
+                "%s parse response error=%s, response_json=%s",
+                context,
+                err,
+                response_json,
+            )
+            raise err
 
     async def async_login_if_needed(self):
         if self._seq is None or self._stok is None or self._cookie is None:
@@ -270,9 +300,9 @@ class TplinkDecoApi:
             data=self._encode_payload(login_payload),
         )
 
-        data = self._decrypt_data(response_json["data"])
-        error_code = data["error_code"]
-        result = data["result"]
+        data = self._decrypt_data(context, response_json["data"])
+        error_code = data.get("error_code")
+        result = data.get("result")
         if error_code == -5002:
             attempts = result.get("attemptsAllowed", "unknown")
             raise AuthException(
@@ -280,8 +310,12 @@ class TplinkDecoApi:
             )
         check_data_error_code(context, data)
 
-        self._stok = result["stok"]
-        _LOGGER.debug("stok=%s", self._stok)
+        try:
+            self._stok = result["stok"]
+            _LOGGER.debug("stok=%s", self._stok)
+        except Exception as err:
+            _LOGGER.error("%s parse response error=%s, data=%s", context, err, data)
+            raise err
 
         if self._cookie is None:
             raise Exception("Login response did not have a Set-Cookie header")
@@ -340,8 +374,16 @@ class TplinkDecoApi:
                 context,
                 err,
             )
-            if err.status == 401 or err.status == 403:
+            if err.status == 401:
                 self._clear_auth()
+                raise err
+            if err.status == 403:
+                self._clear_auth()
+                _LOGGER.warn(
+                    "%s 403 error: %s. Likely caused by logging in with admin account on another device.",
+                    context,
+                    err,
+                )
                 raise AuthException from err
             raise err
         except (aiohttp.ClientError) as err:
@@ -360,6 +402,10 @@ class TplinkDecoApi:
         return payload
 
     def _encode_sign(self, data_len: int):
+        if self._seq is None:
+            raise AuthException(
+                "_seq is None. Likely caused by logging in with admin account on another device."
+            )
         seq_with_data_len = self._seq + data_len
         auth_hash = (
             hashlib.md5(f"{self._username}{self._password}".encode()).digest().hex()
@@ -384,17 +430,28 @@ class TplinkDecoApi:
         self._stok = None
         self._cookie = None
 
-    def _decrypt_data(self, data: str):
+    def _decrypt_data(self, context: str, data: str):
         if data == "":
             self._clear_auth()
-            raise Exception("Need to re-login")
+            raise AuthException(
+                "Data empty. Likely caused by logging in with admin account on another device."
+            )
 
-        data_decoded = base64.b64decode(data)
-        data_decrypted = aes_decrypt(
-            self._aes_key_bytes, self._aes_iv_bytes, data_decoded
-        )
-        # Remove the PKCS #7 padding
-        num_padding_bytes = int(data_decrypted[-1])
-        data_decrypted = data_decrypted[:-num_padding_bytes].decode()
-        data_json = json.loads(data_decrypted)
-        return data_json
+        try:
+            data_decoded = base64.b64decode(data)
+            data_decrypted = aes_decrypt(
+                self._aes_key_bytes, self._aes_iv_bytes, data_decoded
+            )
+            # Remove the PKCS #7 padding
+            num_padding_bytes = int(data_decrypted[-1])
+            data_decrypted = data_decrypted[:-num_padding_bytes].decode()
+            data_json = json.loads(data_decrypted)
+            return data_json
+        except Exception as err:
+            _LOGGER.error(
+                "%s decode data error=%s, data=%s",
+                context,
+                err,
+                data,
+            )
+            raise err
