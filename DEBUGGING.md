@@ -27,6 +27,7 @@ Follow the below steps to check that the router is behaving as expected.
 2. Enable the browser developer console
 3. Login to the admin UI page
 4. Go to the page with the failing call (Example: Go to page that lists clients if the list clients call is failing)
+   - For the List Clients call, make sure to select a specific deco to list clients for
 5. Find the call that is failing in the developer console network tab.
    Call | Example URL
    ---|---
