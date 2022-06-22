@@ -132,6 +132,7 @@ If you prefer new entities to be disabled by default:
 - Deco P9
 - Deco S4
 - Deco X20
+- Deco X50
 - Deco X60
 - Deco X68
 
