@@ -138,7 +138,7 @@ If you prefer new entities to be disabled by default:
 
 ## Contributions are welcome!
 
-If you want to contribute to this please read the [Contribution guidelines](CONTRIBUTING.md)
+If you want to contribute to this please read the [Contribution guidelines](https://github.com/amosyuen/ha-tplink-deco/blob/master/CONTRIBUTING.md)
 
 ## Credits
 
