@@ -27,7 +27,7 @@ def bytes_to_bits(bytes_count):
 
 
 def filter_invalid_ip(ip_address):
-    return None if ip_address == "UNKNOWN" else ip_address
+    return None if ip_address == "UNKNOWN" or not ip_address else ip_address
 
 
 def snake_case_to_title_space(str):
