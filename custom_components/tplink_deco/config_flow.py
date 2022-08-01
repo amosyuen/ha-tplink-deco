@@ -15,6 +15,7 @@ from homeassistant.core import callback
 from homeassistant.core import HomeAssistant
 
 from .__init__ import async_create_and_refresh_coordinators
+from .const import CONFIG_VERIFY_SSL
 from .const import DEFAULT_CONSIDER_HOME
 from .const import DEFAULT_SCAN_INTERVAL
 from .const import DOMAIN
@@ -39,6 +40,10 @@ def _get_schema(data: dict[str:Any]):
                 CONF_CONSIDER_HOME,
                 default=data.get(CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME),
             ): vol.All(vol.Coerce(int), vol.Range(min=0)),
+            vol.Required(
+                CONFIG_VERIFY_SSL,
+                default=data.get(CONFIG_VERIFY_SSL, True),
+            ): bool,
         }
     )
 
@@ -61,7 +66,7 @@ async def _async_test_credentials(hass: HomeAssistant, data: dict[str:Any]):
 class TplinkDecoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for tplink_deco."""
 
-    VERSION = 1
+    VERSION = 2
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
 
     def __init__(self):

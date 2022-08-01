@@ -105,11 +105,17 @@ def check_data_error_code(context, data):
 
 class TplinkDecoApi:
     def __init__(
-        self, host: str, username: str, password: str, session: aiohttp.ClientSession
+        self,
+        host: str,
+        username: str,
+        password: str,
+        verify_ssl: bool,
+        session: aiohttp.ClientSession,
     ) -> None:
         self.host = host
         self._username = username
         self._password = password
+        self._verify_ssl = verify_ssl
         self._session = session
 
         self._aes_key = None
@@ -337,6 +343,7 @@ class TplinkDecoApi:
                     params=params,
                     data=data,
                     headers=headers,
+                    verify_ssl=self._verify_ssl,
                 )
                 response.raise_for_status()
 

@@ -16,6 +16,9 @@ DEFAULT_SCAN_INTERVAL = 30
 DEVICE_CLASS_CLIENT = "client"
 DEVICE_CLASS_DECO = "deco"
 
+# Config
+CONFIG_VERIFY_SSL = "verify_ssl"
+
 # Signals
 SIGNAL_CLIENT_ADDED = f"{DOMAIN}-client-added"
 SIGNAL_DECO_ADDED = f"{DOMAIN}-deco-added"

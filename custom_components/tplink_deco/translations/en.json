@@ -8,7 +8,8 @@
           "username": "Username",
           "password": "Password",
           "interval_seconds": "Seconds between updates",
-          "consider_home": "Seconds to wait till marking a device tracker as not home after not being seen."
+          "consider_home": "Seconds to wait till marking a device tracker as not home after not being seen.",
+          "verify_ssl": "Whether to verify SSL certificate is valid"
         }
       }
     },
@@ -27,7 +28,8 @@
           "username": "Username",
           "password": "Password",
           "interval_seconds": "Seconds between updates",
-          "consider_home": "Seconds to wait till marking a device tracker as not home after not being seen."
+          "consider_home": "Seconds to wait till marking a device tracker as not home after not being seen.",
+          "verify_ssl": "Whether to verify SSL certificate is valid"
         }
       }
     },
