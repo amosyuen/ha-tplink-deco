@@ -5,6 +5,9 @@
   "context": "..",
   "appPort": ["9123:8123"],
   "postCreateCommand": ".devcontainer/setup.sh",
+  "mounts": [
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached"
+  ],
   "extensions": [
     "ms-python.python",
     "github.vscode-pull-request-github",
