@@ -1,5 +1,6 @@
 """TP-Link Deco Coordinator"""
 import asyncio
+import ipaddress
 import logging
 from collections.abc import Callable
 from datetime import datetime
@@ -27,7 +28,10 @@ def bytes_to_bits(bytes_count):
 
 
 def filter_invalid_ip(ip_address):
-    return None if ip_address == "UNKNOWN" or not ip_address else ip_address
+    try:
+        return ipaddress.ip_address(ip_address)
+    except ValueError:
+        return None
 
 
 def snake_case_to_title_space(str):
