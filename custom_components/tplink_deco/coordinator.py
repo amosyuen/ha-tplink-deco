@@ -29,7 +29,9 @@ def bytes_to_bits(bytes_count):
 
 def filter_invalid_ip(ip_address):
     try:
-        return ipaddress.ip_address(ip_address)
+        # Check that it parsed to an IP address
+        ipaddress.ip_address(ip_address)
+        return ip_address
     except ValueError:
         return None
 
