@@ -115,7 +115,7 @@ class TplinkDecoOptionsFlowHandler(config_entries.OptionsFlow):
             self._errors = await _async_test_credentials(self.hass, self.data)
             if len(self._errors) == 0:
                 return self.async_create_entry(
-                    title=self.config_entry.data.get(CONF_HOST), data=self.data
+                    title=self.data.get(CONF_HOST), data=self.data
                 )
 
         return self.async_show_form(
