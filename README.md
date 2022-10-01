@@ -141,6 +141,7 @@ If you prefer new entities to be disabled by default:
 - Deco X50
 - Deco X60
 - Deco X68
+- Deco X90
 
 ## Contributions are welcome!
 
