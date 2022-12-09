@@ -146,6 +146,7 @@ If you prefer new entities to be disabled by default:
 - Deco X60
 - Deco X68
 - Deco X90
+- Mercusys Halo H80X
 
 ## Contributions are welcome!
 
