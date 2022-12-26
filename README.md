@@ -148,6 +148,10 @@ If you prefer new entities to be disabled by default:
 - Deco X90
 - Mercusys Halo H80X
 
+## Not Working Devices
+
+- Deco S7 (1.3.0 Build 20220609 Rel. 64814)
+
 ## Contributions are welcome!
 
 If you want to contribute to this please read the [Contribution guidelines](https://github.com/amosyuen/ha-tplink-deco/blob/master/CONTRIBUTING.md)
