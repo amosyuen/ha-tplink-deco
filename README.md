@@ -133,6 +133,57 @@ If you prefer new entities to be disabled by default:
 4. Click "System options"
 5. Disable "Enable newly added entities"
 
+### Notify on new entities
+
+You can get notified by new entities by listening to the `entity_registry_updated` event. Here's an example automation:
+
+```yaml
+- alias: Notify New Wifi Device
+  mode: parallel
+  max: 100
+  trigger:
+    - platform: event
+      event_type: entity_registry_updated
+      event_data:
+        action: create
+  variables:
+    id: "{{ trigger.event.data.entity_id }}"
+  condition:
+    - condition: template
+      value_template: "{{ id.split('.')[0] == 'device_tracker' }}"
+    - condition: template
+      value_template: "{{ id in integration_entities('tplink_deco') }}"
+  action:
+    - alias: Wait a little while to make sure the entity has updated with new state
+      wait_template: "{{ states(id) not in ['unknown', 'unavailable'] }}"
+      timeout:
+        minutes: 1
+    - service: notify.mobile_app_phone
+      data:
+        title: "{{ state_attr(id, 'friendly_name') or id }} connected to WiFi"
+        message: >-
+          {{ id }} connected to
+          {{ state_attr(id, 'interface') }}
+          {{
+            state_attr(id, 'connection_type')
+              | regex_replace('band', '')
+              | regex_replace('_', '.')
+              | regex_replace('$', 'G')
+          }}
+          through
+          {{ state_attr(id, 'deco_device') }}
+        data:
+          group: wifi-new-device
+          clickAction: "entityId:{{ id }}"
+```
+
+Resulting notification looks like:
+
+```yaml
+title: "Amos Phone connected to WiFi"
+message: "device_tracker.amos_phone_wifi connected to main 5G through Guest Room"
+```
+
 ## Tested Devices
 
 - Deco M4
