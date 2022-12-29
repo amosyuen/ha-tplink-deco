@@ -8,11 +8,16 @@ Check that:
 2. TP-Link Deco router firmware is up to date
 3. Enable debug logging in `configuration.yaml` by adding these lines:
 
-```yaml
-logger:
-  logs:
-    custom_components.tplink_deco: debug
-```
+   ```yaml
+   logger:
+   logs:
+     custom_components.tplink_deco: debug
+   ```
+
+4. Navigate to **Settings** -> **System** -> **Logs**
+5. Type `tplink_deco` into `Search logs` text box
+6. Click `LOAS FULL LOGS` button
+7. Copy logs into bug. Redact any sensitive information you see.
 
 ## Additional Debugging
 

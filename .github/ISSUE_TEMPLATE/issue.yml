@@ -1,0 +1,44 @@
+name: Report an issue with TP-Link Deco
+description: Report an issue with TP-Link Deco
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This issue form is for reporting bugs only!
+  - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: Problem
+      description: >-
+        Describe the issue you are experiencing here, to communicate to the
+        maintainers. Tell us what you were trying to do and what happened.
+
+        Provide a clear and concise description of what the problem is.
+  - type: markdown
+    attributes:
+      value: |
+        # Environment
+  - type: input
+    validations:
+      required: true
+    attributes:
+      label: TP-Link Deco Version
+      placeholder: e.g. v2.2.5
+  - type: input
+    validations:
+      required: true
+    attributes:
+      label: Router Model
+      placeholder: e.g. Deco x60
+  - type: markdown
+    attributes:
+      value: |
+        # Details
+  - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: Debugging Information
+      description: >-
+        Bugs **MUST** include debugging logs from general steps in https://github.com/amosyuen/ha-tplink-deco/blob/master/DEBUGGING.md.
