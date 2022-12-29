@@ -201,7 +201,7 @@ async def async_reload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
 
 async def update_listener(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
     """Update options."""
-    if config_entry.data == config_entry.options:
+    if not config_entry.options or config_entry.data == config_entry.options:
         _LOGGER.debug(
             "update_listener: No changes in options for %s", config_entry.entry_id
         )
@@ -212,7 +212,9 @@ async def update_listener(hass: HomeAssistant, config_entry: ConfigEntry) -> Non
     )
     hass.config_entries.async_update_entry(
         entry=config_entry,
-        data=config_entry.options.copy(),
+        title=config_entry.options.get(CONF_HOST),
+        data=config_entry.options,
+        options={},
     )
     await async_reload_entry(hass, config_entry)
 
