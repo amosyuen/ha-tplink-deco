@@ -38,6 +38,15 @@ def byte_len(n: int) -> int:
     return (int(math.log2(n)) + 8) >> 3
 
 
+def decode_name_with_fallback(name: str):
+    try:
+        name = base64.b64decode(name)
+        return name.decode()
+    except Exception as err:
+        _LOGGER.warning("Error decoding name %s: %s", name, err)
+        return f"<Error Decoding {name}>"
+
+
 def rsa_encrypt(n: int, e: int, plaintext: bytes) -> bytes:
     """
     RSA encrypts plaintext. TP-Link breaks the plaintext down into blocks and concatenates the output.
@@ -156,9 +165,9 @@ class TplinkDecoApi:
             for device in device_list:
                 custom_nickname = device.get("custom_nickname")
                 if custom_nickname is not None:
-                    device["custom_nickname"] = base64.b64decode(
+                    device["custom_nickname"] = decode_name_with_fallback(
                         custom_nickname
-                    ).decode()
+                    )
 
             return device_list
         except Exception as err:
@@ -208,7 +217,7 @@ class TplinkDecoApi:
             _LOGGER.debug("%s client_list=%s", context, client_list)
 
             for client in client_list:
-                client["name"] = base64.b64decode(client["name"]).decode()
+                client["name"] = decode_name_with_fallback(client["name"])
 
             return client_list
         except Exception as err:
