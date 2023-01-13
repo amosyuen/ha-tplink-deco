@@ -7,6 +7,13 @@
           "username": "Brukernavn",
           "password": "Passord"
         }
+      },
+      "reauth_confirm": {
+        "title": "TP-Link Deco",
+        "data": {
+          "username": "Brukernavn",
+          "password": "Passord"
+        }
       }
     },
     "error": {}

@@ -7,6 +7,13 @@
           "username": "Identifiant",
           "password": "Mot de Passe"
         }
+      },
+      "reauth_confirm": {
+        "title": "TP-Link Deco",
+        "data": {
+          "username": "Identifiant",
+          "password": "Mot de Passe"
+        }
       }
     },
     "error": {}

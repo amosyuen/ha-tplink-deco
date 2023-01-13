@@ -2,16 +2,26 @@
   "config": {
     "step": {
       "user": {
-        "description": "Use the credentials for the admin web portal. See https://github.com/amosyuen/ha-tplink-deco",
+        "description": "Use the credentials for the admin web portal. See https://github.com/amosyuen/ha-tplink-deco#configuration-important-please-read",
         "data": {
           "host": "Host",
           "username": "Username",
           "password": "Password",
           "interval_seconds": "Seconds between updates",
           "consider_home": "Seconds to wait till marking a device tracker as not home after not being seen.",
-          "verify_ssl": "Whether to verify SSL certificate is valid"
+          "verify_ssl": "Verify SSL certificate is valid"
+        }
+      },
+      "reauth_confirm": {
+        "description": "Problem with login credentials. See https://github.com/amosyuen/ha-tplink-deco#login-credentials",
+        "data": {
+          "username": "Username",
+          "password": "Password"
         }
       }
+    },
+    "abort": {
+      "reauth_successful": "Reauth successful"
     },
     "error": {
       "invalid_auth": "Invalid authentication",
@@ -22,14 +32,14 @@
   "options": {
     "step": {
       "init": {
-        "description": "Use the credentials for the admin web portal. See https://github.com/amosyuen/ha-tplink-deco",
+        "description": "Use the credentials for the admin web portal. See https://github.com/amosyuen/ha-tplink-deco#configuration-important-please-read",
         "data": {
           "host": "Host",
           "username": "Username",
           "password": "Password",
           "interval_seconds": "Seconds between updates",
           "consider_home": "Seconds to wait till marking a device tracker as not home after not being seen.",
-          "verify_ssl": "Whether to verify SSL certificate is valid"
+          "verify_ssl": "Verify SSL certificate is valid"
         }
       }
     },

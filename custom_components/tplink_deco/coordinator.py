@@ -7,10 +7,10 @@ from datetime import datetime
 from datetime import timedelta
 from typing import Any
 
-from custom_components.tplink_deco.exceptions import AuthException
 from homeassistant.core import callback
 from homeassistant.core import CALLBACK_TYPE
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
@@ -40,11 +40,14 @@ def snake_case_to_title_space(str):
     return " ".join([w.title() for w in str.split("_")])
 
 
-async def async_call_with_retry(func, args=[]):
+async def async_call_with_retry(api, func, args=[]):
     try:
         return await func(*args)
-    except (AuthException, asyncio.TimeoutError):
-        # Retry once on auth exception (probably expired token) and timeouts
+    except ConfigEntryAuthFailed:
+        api.clear_auth()
+        raise
+    except (asyncio.TimeoutError):
+        # Retry once for timeouts
         return await func(*args)
 
 
@@ -162,7 +165,7 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Update data via api."""
-        new_decos = await async_call_with_retry(self.api.async_list_devices)
+        new_decos = await async_call_with_retry(self.api, self.api.async_list_devices)
         old_decos = self.data.decos
         master_deco = None
         deco_added = False
@@ -241,7 +244,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         # Send list client requests in parallel for each deco
         deco_client_responses = await asyncio.gather(
             *[
-                async_call_with_retry(self.api.async_list_clients, [deco_mac])
+                async_call_with_retry(self.api, self.api.async_list_clients, [deco_mac])
                 for deco_mac in deco_macs
             ]
         )

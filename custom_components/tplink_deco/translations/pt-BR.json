@@ -3,13 +3,20 @@
     "step": {
       "user": {
         "title": "TP-Link Deco",
-        "description": "Use as credenciais para o portal da Web do administrador. Veja https://github.com/amosyuen/ha-tplink-deco",
+        "description": "Use as credenciais para o portal da Web do administrador. Veja https://github.com/amosyuen/ha-tplink-deco#configuration-important-please-read",
         "data": {
           "host": "Host",
           "username": "Nome de usuário",
           "password": "Senha",
           "interval_seconds": "Segundos entre atualizações",
           "consider_home": "Segundos de espera até marcar um rastreador de dispositivo reconhecercomo fora de casa depois de não ser visto."
+        }
+      },
+      "reauth_confirm": {
+        "title": "TP-Link Deco",
+        "data": {
+          "username": "Nome de usuário",
+          "password": "Senha"
         }
       }
     },
@@ -23,7 +30,7 @@
     "step": {
       "user": {
         "title": "TP-Link Deco",
-        "description": "Use as credenciais para o portal da Web do administrador. Veja https://github.com/amosyuen/ha-tplink-deco",
+        "description": "Use as credenciais para o portal da Web do administrador. Veja https://github.com/amosyuen/ha-tplink-deco#configuration-important-please-read",
         "data": {
           "host": "Host",
           "username": "Nome de usuário",

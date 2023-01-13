@@ -20,8 +20,7 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import algorithms
 from cryptography.hazmat.primitives.ciphers import Cipher
 from cryptography.hazmat.primitives.ciphers import modes
-
-from .exceptions import AuthException
+from homeassistant.exceptions import ConfigEntryAuthFailed
 
 TIMEOUT = 30
 
@@ -320,7 +319,7 @@ class TplinkDecoApi:
         result = data.get("result")
         if error_code == -5002:
             attempts = result.get("attemptsAllowed", "unknown")
-            raise AuthException(
+            raise ConfigEntryAuthFailed(
                 f"Invalid login credentials. {attempts} attempts remaining."
             )
         check_data_error_code(context, data)
@@ -391,16 +390,15 @@ class TplinkDecoApi:
                 err,
             )
             if err.status == 401:
-                self._clear_auth()
+                self.clear_auth()
                 raise err
             if err.status == 403:
-                self._clear_auth()
-                _LOGGER.warn(
-                    "%s 403 error: %s. Likely caused by logging in with admin account on another device.",
-                    context,
-                    err,
+                self.clear_auth()
+                message = (
+                    "%s 403 error: %s. Likely caused by logging in with admin account on another device. See https://github.com/amosyuen/ha-tplink-deco#login-credentials."
+                    % (context, err)
                 )
-                raise AuthException from err
+                raise ConfigEntryAuthFailed(message) from err
             raise err
         except (aiohttp.ClientError) as err:
             _LOGGER.error(
@@ -419,9 +417,8 @@ class TplinkDecoApi:
 
     def _encode_sign(self, data_len: int):
         if self._seq is None:
-            raise AuthException(
-                "_seq is None. Likely caused by logging in with admin account on another device."
-            )
+            message = "_seq is None. Likely caused by logging in with admin account on another device. See https://github.com/amosyuen/ha-tplink-deco#login-credentials."
+            raise ConfigEntryAuthFailed(message)
         seq_with_data_len = self._seq + data_len
         auth_hash = (
             hashlib.md5(f"{self._username}{self._password}".encode()).digest().hex()
@@ -441,17 +438,15 @@ class TplinkDecoApi:
         data = base64.b64encode(data_encrypted).decode()
         return data
 
-    def _clear_auth(self):
+    def clear_auth(self):
         self._seq = None
         self._stok = None
         self._cookie = None
 
     def _decrypt_data(self, context: str, data: str):
         if data == "":
-            self._clear_auth()
-            raise AuthException(
-                "Data empty. Likely caused by logging in with admin account on another device."
-            )
+            message = "Data empty. Likely caused by logging in with admin account on another device. See https://github.com/amosyuen/ha-tplink-deco#login-credentials."
+            raise ConfigEntryAuthFailed(message)
 
         try:
             data_decoded = base64.b64decode(data)

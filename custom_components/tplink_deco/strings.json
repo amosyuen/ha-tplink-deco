@@ -2,14 +2,21 @@
   "config": {
     "step": {
       "user": {
-        "description": "Use the credentials for the admin web portal. See https://github.com/amosyuen/ha-tplink-deco",
+        "description": "Use the credentials for the admin web portal. See https://github.com/amosyuen/ha-tplink-deco#configuration-important-please-read",
         "data": {
           "host": "[%key:common::config_flow::data::host%]",
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
           "interval_seconds": "Seconds between updates",
           "consider_home": "Seconds to wait till marking a device tracker as not home after not being seen.",
-          "verify_ssl": "Whether to verify SSL certificate is valid"
+          "verify_ssl": "Verify SSL certificate is valid"
+        }
+      },
+      "reauth_confirm": {
+        "description": "Problem with login credentials. See https://github.com/amosyuen/ha-tplink-deco#login-credentials",
+        "data": {
+          "username": "[%key:common::config_flow::data::username%]",
+          "password": "[%key:common::config_flow::data::password%]"
         }
       }
     },
@@ -22,16 +29,19 @@
   "options": {
     "step": {
       "init": {
-        "description": "Use the credentials for the admin web portal. See https://github.com/amosyuen/ha-tplink-deco",
+        "description": "Use the credentials for the admin web portal. See https://github.com/amosyuen/ha-tplink-deco#configuration-important-please-read",
         "data": {
           "host": "[%key:common::config_flow::data::host%]",
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
           "interval_seconds": "Seconds between updates",
           "consider_home": "Seconds to wait till marking a device tracker as not home after not being seen.",
-          "verify_ssl": "Whether to verify SSL certificate is valid"
+          "verify_ssl": "Verify SSL certificate is valid"
         }
       }
+    },
+    "abort": {
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
     },
     "error": {
       "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
