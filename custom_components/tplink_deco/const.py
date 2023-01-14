@@ -13,8 +13,24 @@ COORDINATOR_DECOS_KEY = "decos"
 DEFAULT_CONSIDER_HOME = DEFAULT_CONSIDER_HOME_SPAN.total_seconds()
 DEFAULT_SCAN_INTERVAL = 30
 
-DEVICE_CLASS_CLIENT = "client"
-DEVICE_CLASS_DECO = "deco"
+DEVICE_TYPE_CLIENT = "client"
+DEVICE_TYPE_DECO = "deco"
+
+# Attributes
+ATTR_BSSID_BAND2_4 = "bssid_band2_4"
+ATTR_BSSID_BAND5 = "bssid_band5"
+ATTR_CONNECTION_TYPE = "connection_type"
+ATTR_DECO_DEVICE = "deco_device"
+ATTR_DECO_MAC = "deco_mac"
+ATTR_DEVICE_MODEL = "device_model"
+ATTR_DEVICE_TYPE = "device_type"
+ATTR_DOWN_KILOBYTES_PER_S = "down_kilobytes_per_s"
+ATTR_INTERFACE = "interface"
+ATTR_INTERNET_ONLINE = "internet_online"
+ATTR_MASTER = "master"
+ATTR_SIGNAL_BAND2_4 = "signal_band2_4"
+ATTR_SIGNAL_BAND5 = "signal_band5"
+ATTR_UP_KILOBYTES_PER_S = "up_kilobytes_per_s"
 
 # Config
 CONFIG_VERIFY_SSL = "verify_ssl"

@@ -16,10 +16,24 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .const import ATTR_BSSID_BAND2_4
+from .const import ATTR_BSSID_BAND5
+from .const import ATTR_CONNECTION_TYPE
+from .const import ATTR_DECO_DEVICE
+from .const import ATTR_DECO_MAC
+from .const import ATTR_DEVICE_MODEL
+from .const import ATTR_DEVICE_TYPE
+from .const import ATTR_DOWN_KILOBYTES_PER_S
+from .const import ATTR_INTERFACE
+from .const import ATTR_INTERNET_ONLINE
+from .const import ATTR_MASTER
+from .const import ATTR_SIGNAL_BAND2_4
+from .const import ATTR_SIGNAL_BAND5
+from .const import ATTR_UP_KILOBYTES_PER_S
 from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
-from .const import DEVICE_CLASS_CLIENT
-from .const import DEVICE_CLASS_DECO
+from .const import DEVICE_TYPE_CLIENT
+from .const import DEVICE_TYPE_DECO
 from .const import DOMAIN
 from .const import SIGNAL_CLIENT_ADDED
 from .const import SIGNAL_DECO_ADDED
@@ -29,20 +43,6 @@ from .coordinator import TplinkDecoClientUpdateCoordinator
 from .coordinator import TplinkDecoUpdateCoordinator
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
-
-ATTR_BSSID_BAND2_4 = "bssid_band2_4"
-ATTR_BSSID_BAND5 = "bssid_band5"
-ATTR_CONNECTION_TYPE = "connection_type"
-ATTR_DECO_DEVICE = "deco_device"
-ATTR_DECO_MAC = "deco_mac"
-ATTR_DEVICE_MODEL = "device_model"
-ATTR_DOWN_KILOBYTES_PER_S = "down_kilobytes_per_s"
-ATTR_INTERFACE = "interface"
-ATTR_INTERNET_ONLINE = "internet_online"
-ATTR_MASTER = "master"
-ATTR_SIGNAL_BAND2_4 = "signal_band2_4"
-ATTR_SIGNAL_BAND5 = "signal_band5"
-ATTR_UP_KILOBYTES_PER_S = "up_kilobytes_per_s"
 
 
 async def async_setup_entry(
@@ -166,20 +166,20 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
         old_state = await self.async_get_last_state()
         if old_state is not None:
             if self._attr_hw_version is None:
-                self._attr_hw_version = self._deco.hw_version
+                self._attr_hw_version = old_state.attributes.get(ATTR_HW_VERSION)
             if self._attr_sw_version is None:
-                self._attr_sw_version = self._deco.sw_version
+                self._attr_sw_version = old_state.attributes.get(ATTR_SW_VERSION)
             if self._attr_device_model is None:
-                self._attr_device_model = self._deco.device_model
+                self._attr_device_model = old_state.attributes.get(ATTR_DEVICE_MODEL)
 
             if self._attr_ip_address is None:
-                self._attr_ip_address = self._deco.ip_address
-            if self._attr_name is None:
-                self._attr_name = self._deco.name
+                self._attr_ip_address = old_state.attributes.get(ATTR_IP)
             if self._attr_master is None:
-                self._attr_master = self._deco.master
+                self._attr_master = old_state.attributes.get(ATTR_MASTER)
             if self._attr_connection_type is None:
-                self._attr_connection_type = self._deco.connection_type
+                self._attr_connection_type = old_state.attributes.get(
+                    ATTR_CONNECTION_TYPE
+                )
 
             self.async_write_ha_state()
 
@@ -216,6 +216,7 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
             ATTR_BSSID_BAND5: self._deco.bssid_band5,
             ATTR_CONNECTION_TYPE: self._attr_connection_type,
             ATTR_DEVICE_MODEL: self._attr_device_model,
+            ATTR_DEVICE_TYPE: DEVICE_TYPE_DECO,
             ATTR_HW_VERSION: self._attr_hw_version,
             ATTR_INTERNET_ONLINE: self._deco.internet_online,
             ATTR_MASTER: self._attr_master,
@@ -223,11 +224,6 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
             ATTR_SIGNAL_BAND5: self._deco.signal_band5,
             ATTR_SW_VERSION: self._attr_sw_version,
         }
-
-    @property
-    def device_class(self) -> str:
-        """Return device class."""
-        return DEVICE_CLASS_DECO
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -345,17 +341,13 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
         deco = self._coordinator_decos.data.decos.get(self._attr_deco_mac)
         return {
             ATTR_CONNECTION_TYPE: self._attr_connection_type,
+            ATTR_DEVICE_TYPE: DEVICE_TYPE_CLIENT,
             ATTR_INTERFACE: self._attr_interface,
             ATTR_DOWN_KILOBYTES_PER_S: self._client.down_kilobytes_per_s,
             ATTR_UP_KILOBYTES_PER_S: self._client.up_kilobytes_per_s,
             ATTR_DECO_DEVICE: None if deco is None else deco.name,
             ATTR_DECO_MAC: self._attr_deco_mac,
         }
-
-    @property
-    def device_class(self) -> str:
-        """Return device class."""
-        return DEVICE_CLASS_CLIENT
 
     @property
     def device_info(self) -> DeviceInfo:

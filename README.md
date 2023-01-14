@@ -27,7 +27,7 @@ Device trackers are added for both decos and clients. The device tracker state m
 | --------------- | -------------------------------- |
 | mac             | 1A-B2-C3-4D-56-EF                |
 | ip_address      | 192.168.0.100                    |
-| device_class    | client, deco                     |
+| device_type     | client, deco                     |
 | connection_type | wired, band5, band2_4            |
 
 #### Client Attributes
@@ -67,9 +67,9 @@ Reboots the specified decos. Example yaml:
 ```yaml
 service: tplink_deco.reboot_deco
 target:
-  entity_id:
-    - device_tracker.guest_room_deco
-    - device_tracker.living_room_deco
+  device_id:
+    - ef41562be18e5e3057e232ffb26de9bb
+    - d7f96b1f312d83f195b35ecdfbb3b02b
 ```
 
 {% if not installed %}
