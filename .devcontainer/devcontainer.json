@@ -12,7 +12,8 @@
     "ms-python.python",
     "github.vscode-pull-request-github",
     "ryanluker.vscode-coverage-gutters",
-    "ms-python.vscode-pylance"
+    "ms-python.vscode-pylance",
+    "esbenp.prettier-vscode"
   ],
   "settings": {
     "files.eol": "\n",

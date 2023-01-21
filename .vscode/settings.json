@@ -4,5 +4,8 @@
   "python.pythonPath": "venv/bin/python",
   "files.associations": {
     "*.yaml": "home-assistant"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   }
 }
