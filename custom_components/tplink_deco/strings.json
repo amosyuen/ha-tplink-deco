@@ -13,7 +13,7 @@
         }
       },
       "reauth_confirm": {
-        "description": "Problem with login credentials. See https://github.com/amosyuen/ha-tplink-deco#login-credentials",
+        "description": "Problem with login credentials. Maybe caused by logging in on separate device. See https://github.com/amosyuen/ha-tplink-deco#login-credentials",
         "data": {
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]"

@@ -19,7 +19,6 @@ from .api import TplinkDecoApi
 from .const import DOMAIN
 from .const import SIGNAL_CLIENT_ADDED
 from .const import SIGNAL_DECO_ADDED
-from .exceptions import AuthException
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
@@ -41,16 +40,15 @@ def snake_case_to_title_space(str):
     return " ".join([w.title() for w in str.split("_")])
 
 
-async def async_call_with_retry(api, func, args=[]):
+async def async_call_with_retry(api, func, args):
+    if args is None:
+        args = []
     try:
-        return await func(*args)
-    except AuthException:
-        api.clear_auth()
-        # Retry for auth exception in case is a token expired case
         return await func(*args)
     except ConfigEntryAuthFailed:
         api.clear_auth()
-        raise
+        # Retry for auth exception in case is a token expired case
+        return await func(*args)
     except asyncio.TimeoutError:
         # Retry for timeouts
         return await func(*args)

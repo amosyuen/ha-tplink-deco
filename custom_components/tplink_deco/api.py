@@ -22,8 +22,6 @@ from cryptography.hazmat.primitives.ciphers import Cipher
 from cryptography.hazmat.primitives.ciphers import modes
 from homeassistant.exceptions import ConfigEntryAuthFailed
 
-from .exceptions import AuthException
-
 TIMEOUT = 30
 
 AES_KEY_BYTES = 16
@@ -400,7 +398,7 @@ class TplinkDecoApi:
                     "%s 403 error: %s. Likely caused by logging in with admin account on another device. See https://github.com/amosyuen/ha-tplink-deco#login-credentials."
                     % (context, err)
                 )
-                raise AuthException(message) from err
+                raise ConfigEntryAuthFailed(message) from err
             raise err
         except aiohttp.ClientError as err:
             _LOGGER.error(
