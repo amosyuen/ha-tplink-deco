@@ -385,7 +385,7 @@ class TplinkDecoApi:
                 context,
             )
             raise err
-        except (aiohttp.ClientResponseError) as err:
+        except aiohttp.ClientResponseError as err:
             _LOGGER.error(
                 "%s client response error: %s",
                 context,
@@ -402,7 +402,7 @@ class TplinkDecoApi:
                 )
                 raise AuthException(message) from err
             raise err
-        except (aiohttp.ClientError) as err:
+        except aiohttp.ClientError as err:
             _LOGGER.error(
                 "%s client error: %s",
                 context,

@@ -51,7 +51,7 @@ async def async_call_with_retry(api, func, args=[]):
     except ConfigEntryAuthFailed:
         api.clear_auth()
         raise
-    except (asyncio.TimeoutError):
+    except asyncio.TimeoutError:
         # Retry for timeouts
         return await func(*args)
 
