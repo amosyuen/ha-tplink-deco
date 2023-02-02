@@ -117,7 +117,16 @@ The login credentials **MUST** be the deco **owner** credentials and the usernam
 
 Also whenever the owner logs in, all other sessions for the owner will be logged out. So if you log in with the owner credentials in the mobile app, it will cause the integration to be logged out, sometimes resulting in 403 errors. Since the integration has built in retry on auth errors, the integration will re-login, but that will logout your mobile app login session.
 
-Recommend that you create a separate manager account with full permissions to manage the router manually in the mobile app and use the owner credentials only for this integration. If you need to use the owner account to do some manual management, recommend disabling this integration temporarily.
+Recommend that you create a separate manager account with full permissions to manage the router manually in the mobile app and use the owner credentials only for this integration. If you need to use the owner account to do some manual management, recommend disabling this integration temporarily. Steps to create a manager account:
+
+1. Log out of the deco app
+2. Sign up for a new account with a different email address
+3. Log out of the deco app
+4. Login to original admin account
+5. Go to the "More" section and look for "Managers"
+6. Add the email address of the new account
+7. Log out of the app
+8. Login using the new manager account you've just created
 
 ### Verify SSL Certificate
 
