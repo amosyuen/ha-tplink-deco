@@ -67,7 +67,7 @@ async def _async_test_credentials(hass: HomeAssistant, data: dict[str:Any]):
     except ConfigEntryAuthFailed as err:
         _LOGGER.warning("Error authenticating credentials: %s", err)
         return {"base": "invalid_auth"}
-    except Exception as err:  # pylint: disable=broad-except
+    except Exception as err:
         _LOGGER.warning("Error testing credentials: %s", err)
         return {"base": "unknown"}
 
