@@ -40,9 +40,7 @@ def snake_case_to_title_space(str):
     return " ".join([w.title() for w in str.split("_")])
 
 
-async def async_call_with_retry(api, func, args):
-    if args is None:
-        args = []
+async def async_call_with_retry(api, func, *args):
     try:
         return await func(*args)
     except ConfigEntryAuthFailed:
@@ -247,7 +245,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         # Send list client requests in parallel for each deco
         deco_client_responses = await asyncio.gather(
             *[
-                async_call_with_retry(self.api, self.api.async_list_clients, [deco_mac])
+                async_call_with_retry(self.api, self.api.async_list_clients, deco_mac)
                 for deco_mac in deco_macs
             ]
         )
