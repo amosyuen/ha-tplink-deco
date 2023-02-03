@@ -20,7 +20,7 @@ from .const import DOMAIN
 from .const import SIGNAL_CLIENT_ADDED
 from .const import SIGNAL_DECO_ADDED
 
-_LOGGER: logging.Logger = logging.getLogger(__package__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 def bytes_to_bits(bytes_count):
@@ -178,6 +178,7 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
                 deco_added = True
                 deco = TpLinkDeco(mac)
                 deco.update(new_deco)
+                _LOGGER.debug("_async_update_data: Found new deco mac=%s", deco.mac)
             else:
                 deco.update(new_deco)
             decos[mac] = deco
@@ -257,6 +258,9 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
                 if client is None:
                     client_added = True
                     client = TpLinkDecoClient(client_mac)
+                    _LOGGER.debug(
+                        "_async_update_data: Found new client mac=%s", client.mac
+                    )
                 client.update(deco_client, deco_mac, utc_point_in_time)
                 clients[client_mac] = client
 

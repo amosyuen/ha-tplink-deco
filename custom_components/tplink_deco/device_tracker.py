@@ -42,7 +42,7 @@ from .coordinator import TpLinkDecoClient
 from .coordinator import TplinkDecoClientUpdateCoordinator
 from .coordinator import TplinkDecoUpdateCoordinator
 
-_LOGGER: logging.Logger = logging.getLogger(__package__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -69,6 +69,7 @@ def _async_setup_decos(hass, async_add_entities, coordinator):
             if mac in tracked_decos:
                 continue
 
+            _LOGGER.debug("add_untracked_decos: Adding deco mac=%s", deco.mac)
             new_entities.append(TplinkDecoDeviceTracker(coordinator, deco))
             tracked_decos.add(mac)
 
@@ -95,6 +96,7 @@ def _async_setup_clients(
             if mac in tracked_clients:
                 continue
 
+            _LOGGER.debug("add_untracked_clients: Adding client mac=%s", client.mac)
             new_entities.append(
                 TplinkDecoClientDeviceTracker(
                     coordinator_decos, coordinator_clients, client

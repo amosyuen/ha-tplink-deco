@@ -21,7 +21,7 @@ from .const import DEFAULT_CONSIDER_HOME
 from .const import DEFAULT_SCAN_INTERVAL
 from .const import DOMAIN
 
-_LOGGER: logging.Logger = logging.getLogger(__package__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 def _get_auth_schema(data: dict[str:Any]):
