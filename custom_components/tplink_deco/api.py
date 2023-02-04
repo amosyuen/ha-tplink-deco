@@ -136,6 +136,7 @@ class TplinkDecoApi:
         self._sign_rsa_n = None
         self._sign_rsa_e = None
 
+        self._login_future = None
         self._seq = None
         self._stok = None
         self._cookie = None
@@ -291,6 +292,19 @@ class TplinkDecoApi:
             return await self.async_login()
 
     async def async_login(self):
+        if self._login_future is not None:
+            return await self._login_future
+
+        self._login_future = asyncio.get_running_loop().create_future()
+        try:
+            await self.async_login_internal()
+            self._login_future.set_result(True)
+        except Exception as err:
+            self._login_future.set_exception(err)
+        finally:
+            self._login_future = None
+
+    async def async_login_internal(self):
         if self._aes_key is None:
             self.generate_aes_key_and_iv()
         if self._password_rsa_n is None:
@@ -318,6 +332,7 @@ class TplinkDecoApi:
         error_code = data.get("error_code")
         result = data.get("result")
         if error_code == -5002:
+            self.clear_auth()
             attempts = result.get("attemptsAllowed", "unknown")
             raise ConfigEntryAuthFailed(
                 f"Invalid login credentials. {attempts} attempts remaining."
@@ -400,6 +415,15 @@ class TplinkDecoApi:
                 )
                 raise ConfigEntryAuthFailed(message) from err
             raise err
+        except (aiohttp.ClientConnectorError, aiohttp.ServerDisconnectedError) as err:
+            # Clear auth in case deco rebooted and auth is invalid
+            self.clear_auth()
+            _LOGGER.error(
+                "%s connection error: %s",
+                context,
+                err,
+            )
+            raise err
         except aiohttp.ClientError as err:
             _LOGGER.error(
                 "%s client error: %s",
@@ -417,6 +441,7 @@ class TplinkDecoApi:
 
     def _encode_sign(self, data_len: int):
         if self._seq is None:
+            self.clear_auth()
             message = "_seq is None. Likely caused by logging in with admin account on another device. See https://github.com/amosyuen/ha-tplink-deco#login-credentials."
             raise ConfigEntryAuthFailed(message)
         seq_with_data_len = self._seq + data_len
@@ -439,12 +464,14 @@ class TplinkDecoApi:
         return data
 
     def clear_auth(self):
+        _LOGGER.debug("clear_auth")
         self._seq = None
         self._stok = None
         self._cookie = None
 
     def _decrypt_data(self, context: str, data: str):
         if data == "":
+            self.clear_auth()
             message = "Data empty. Likely caused by logging in with admin account on another device. See https://github.com/amosyuen/ha-tplink-deco#login-credentials."
             raise ConfigEntryAuthFailed(message)
 

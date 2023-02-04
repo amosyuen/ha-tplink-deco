@@ -43,11 +43,12 @@ def snake_case_to_title_space(str):
 async def async_call_with_retry(api, func, *args):
     try:
         return await func(*args)
-    except ConfigEntryAuthFailed:
-        api.clear_auth()
+    except ConfigEntryAuthFailed as err:
+        _LOGGER.debug("Retrying auth error %s", err)
         # Retry for auth exception in case is a token expired case
         return await func(*args)
-    except asyncio.TimeoutError:
+    except asyncio.TimeoutError as err:
+        _LOGGER.debug("Retrying timeout error %s", err)
         # Retry for timeouts
         return await func(*args)
 
