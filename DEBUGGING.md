@@ -10,8 +10,8 @@ Check that:
 
    ```yaml
    logger:
-   logs:
-     custom_components.tplink_deco: debug
+     logs:
+       custom_components.tplink_deco: debug
    ```
 
 4. Navigate to **Settings** -> **System** -> **Logs**
