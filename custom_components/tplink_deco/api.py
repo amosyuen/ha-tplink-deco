@@ -301,7 +301,13 @@ class TplinkDecoApi:
             self._login_future.set_result(True)
         except Exception as err:
             self._login_future.set_exception(err)
+            raise err
         finally:
+            # Await future to suppress future exception was never retrieved error
+            try:
+                await self._login_future
+            except Exception:
+                pass
             self._login_future = None
 
     async def async_login_internal(self):
