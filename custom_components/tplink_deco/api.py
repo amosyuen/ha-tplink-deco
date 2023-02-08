@@ -20,7 +20,13 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import algorithms
 from cryptography.hazmat.primitives.ciphers import Cipher
 from cryptography.hazmat.primitives.ciphers import modes
-from homeassistant.exceptions import ConfigEntryAuthFailed
+
+from .exceptions import EmptyDataException
+from .exceptions import ForbiddenException
+from .exceptions import LoginForbiddenException
+from .exceptions import LoginInvalidException
+from .exceptions import TimeoutException
+from .exceptions import UnexpectedApiException
 
 TIMEOUT = 30
 
@@ -105,26 +111,29 @@ def check_data_error_code(context, data):
     error_code = data.get("error_code")
     if error_code:
         if error_code == "timeout":
-            raise asyncio.TimeoutError(f'{context} response error_code="timeout"')
+            raise TimeoutException(f'{context} response error_code="timeout"')
 
         _LOGGER.debug("%s error_code=%s, data=%s", context, error_code, data)
-        raise Exception(f"{context} error_code={error_code}")
+        raise UnexpectedApiException(f"{context} error_code={error_code}")
 
 
 class TplinkDecoApi:
     def __init__(
         self,
+        session: aiohttp.ClientSession,
         host: str,
         username: str,
         password: str,
         verify_ssl: bool,
-        session: aiohttp.ClientSession,
+        timeout_error_retries: int = 1,
     ) -> None:
-        self.host = host
+        self._host = host
         self._username = username
         self._password = password
         self._verify_ssl = verify_ssl
         self._session = session
+        self._timeout_error_retries = timeout_error_retries
+        self._auth_errors = 0
 
         self._aes_key = None
         self._aes_key_bytes = None
@@ -143,14 +152,16 @@ class TplinkDecoApi:
 
     # Return list of deco devices
     async def async_list_devices(self) -> dict:
+        return await self._async_call_with_retry(self._async_list_devices)
+
+    async def _async_list_devices(self) -> dict:
         await self.async_login_if_needed()
 
-        # First retrieve the list of devices
         context = "List Devices"
         device_list_payload = {"operation": "read"}
         response_json = await self._async_post(
             context,
-            f"http://{self.host}/cgi-bin/luci/;stok={self._stok}/admin/device",
+            f"http://{self._host}/cgi-bin/luci/;stok={self._stok}/admin/device",
             params={"form": "device_list"},
             data=self._encode_payload(device_list_payload),
         )
@@ -185,7 +196,7 @@ class TplinkDecoApi:
         }
         response_json = await self._async_post(
             context,
-            f"http://{self.host}/cgi-bin/luci/;stok={self._stok}/admin/device",
+            f"http://{self._host}/cgi-bin/luci/;stok={self._stok}/admin/device",
             params={"form": "system"},
             data=self._encode_payload(client_payload),
         )
@@ -196,13 +207,16 @@ class TplinkDecoApi:
 
     # Return list of clients. Default lists clients for all decos.
     async def async_list_clients(self, deco_mac="default") -> dict:
+        return await self._async_call_with_retry(self._async_list_clients, deco_mac)
+
+    async def _async_list_clients(self, deco_mac) -> dict:
         await self.async_login_if_needed()
 
         context = f"List Clients {deco_mac}"
         client_payload = {"operation": "read", "params": {"device_mac": deco_mac}}
         response_json = await self._async_post(
             context,
-            f"http://{self.host}/cgi-bin/luci/;stok={self._stok}/admin/client",
+            f"http://{self._host}/cgi-bin/luci/;stok={self._stok}/admin/client",
             params={"form": "client_list"},
             data=self._encode_payload(client_payload),
         )
@@ -224,7 +238,7 @@ class TplinkDecoApi:
             _LOGGER.error("%s parse response error=%s, data=%s", context, err, data)
             raise err
 
-    def generate_aes_key_and_iv(self):
+    def _generate_aes_key_and_iv(self):
         # TPLink requires key and IV to be a 16 digit number (no leading 0s)
         self._aes_key = secrets.randbelow(MAX_AES_KEY - MIN_AES_KEY) + MIN_AES_KEY
         self._aes_iv = secrets.randbelow(MAX_AES_KEY - MIN_AES_KEY) + MIN_AES_KEY
@@ -234,11 +248,11 @@ class TplinkDecoApi:
         _LOGGER.debug("aes_iv=%s", self._aes_iv)
 
     # Fetch password RSA keys
-    async def async_fetch_keys(self):
+    async def _async_fetch_keys(self):
         context = "Fetch keys"
         response_json = await self._async_post(
             context,
-            f"http://{self.host}/cgi-bin/luci/;stok=/login",
+            f"http://{self._host}/cgi-bin/luci/;stok=/login",
             params={"form": "keys"},
             data=json.dumps({"operation": "read"}),
         )
@@ -259,11 +273,11 @@ class TplinkDecoApi:
             raise err
 
     # Fetch sign RSA keys and seq no
-    async def async_fetch_auth(self):
+    async def _async_fetch_auth(self):
         context = "Fetch auth"
         response_json = await self._async_post(
             context,
-            f"http://{self.host}/cgi-bin/luci/;stok=/login",
+            f"http://{self._host}/cgi-bin/luci/;stok=/login",
             params={"form": "auth"},
             data=json.dumps({"operation": "read"}),
         )
@@ -289,15 +303,16 @@ class TplinkDecoApi:
 
     async def async_login_if_needed(self):
         if self._seq is None or self._stok is None or self._cookie is None:
-            return await self.async_login()
+            await self.async_login()
 
     async def async_login(self):
         if self._login_future is not None:
-            return await self._login_future
+            await self._login_future
+            return
 
         self._login_future = asyncio.get_running_loop().create_future()
         try:
-            await self.async_login_internal()
+            await self._async_login()
             self._login_future.set_result(True)
         except Exception as err:
             self._login_future.set_exception(err)
@@ -310,13 +325,13 @@ class TplinkDecoApi:
                 pass
             self._login_future = None
 
-    async def async_login_internal(self):
+    async def _async_login(self):
         if self._aes_key is None:
-            self.generate_aes_key_and_iv()
+            self._generate_aes_key_and_iv()
         if self._password_rsa_n is None:
-            await self.async_fetch_keys()
+            await self._async_fetch_keys()
         if self._seq is None:
-            await self.async_fetch_auth()
+            await self._async_fetch_auth()
 
         password_encrypted = rsa_encrypt(
             self._password_rsa_n, self._password_rsa_e, self._password.encode()
@@ -327,22 +342,30 @@ class TplinkDecoApi:
             "operation": "login",
         }
         context = "Login"
-        response_json = await self._async_post(
-            context,
-            f"http://{self.host}/cgi-bin/luci/;stok=/login",
-            params={"form": "login"},
-            data=self._encode_payload(login_payload),
-        )
+        try:
+            response_json = await self._async_post(
+                context,
+                f"http://{self._host}/cgi-bin/luci/;stok=/login",
+                params={"form": "login"},
+                data=self._encode_payload(login_payload),
+            )
+        except ForbiddenException as err:
+            raise LoginForbiddenException(
+                (
+                    "Login auth error. Likely caused by logging in with admin account on another device."
+                    " See https://github.com/amosyuen/ha-tplink-deco#manager-account."
+                )
+            ) from err
 
         data = self._decrypt_data(context, response_json["data"])
         error_code = data.get("error_code")
         result = data.get("result")
-        if error_code == -5002:
-            self.clear_auth()
-            attempts = result.get("attemptsAllowed", "unknown")
-            raise ConfigEntryAuthFailed(
-                f"Invalid login credentials. {attempts} attempts remaining."
-            )
+        if error_code != 0:
+            if error_code == -5002:
+                self.clear_auth()
+                attempts = result.get("attemptsAllowed", "unknown")
+                raise LoginInvalidException(attempts)
+            raise UnexpectedApiException(f"Login error data={data}")
         check_data_error_code(context, data)
 
         try:
@@ -350,10 +373,15 @@ class TplinkDecoApi:
             _LOGGER.debug("stok=%s", self._stok)
         except Exception as err:
             _LOGGER.error("%s parse response error=%s, data=%s", context, err, data)
-            raise err
+            raise UnexpectedApiException from err
 
         if self._cookie is None:
-            raise Exception("Login response did not have a Set-Cookie header")
+            raise UnexpectedApiException(
+                "Login response did not have a Set-Cookie header"
+            )
+
+        # Login success
+        self._auth_errors = 0
 
     async def _async_post(
         self,
@@ -395,7 +423,7 @@ class TplinkDecoApi:
                             error_code,
                             response_json,
                         )
-                        raise Exception(f"{context} error: {error_code}")
+                        raise UnexpectedApiException(f"{context} error: {error_code}")
 
                 return response_json
         except asyncio.TimeoutError as err:
@@ -403,7 +431,7 @@ class TplinkDecoApi:
                 "%s timed out",
                 context,
             )
-            raise err
+            raise TimeoutException from err
         except aiohttp.ClientResponseError as err:
             _LOGGER.error(
                 "%s client response error: %s",
@@ -415,11 +443,8 @@ class TplinkDecoApi:
                 raise err
             if err.status == 403:
                 self.clear_auth()
-                message = (
-                    "%s 403 error: %s. Likely caused by logging in with admin account on another device. See https://github.com/amosyuen/ha-tplink-deco#login-credentials."
-                    % (context, err)
-                )
-                raise ConfigEntryAuthFailed(message) from err
+                message = f"{context} Forbidden error: {err}"
+                raise ForbiddenException(message) from err
             raise err
         except (aiohttp.ClientConnectorError, aiohttp.ServerDisconnectedError) as err:
             # Clear auth in case deco rebooted and auth is invalid
@@ -448,8 +473,8 @@ class TplinkDecoApi:
     def _encode_sign(self, data_len: int):
         if self._seq is None:
             self.clear_auth()
-            message = "_seq is None. Likely caused by logging in with admin account on another device. See https://github.com/amosyuen/ha-tplink-deco#login-credentials."
-            raise ConfigEntryAuthFailed(message)
+            message = "_seq is None"
+            raise EmptyDataException(message)
         seq_with_data_len = self._seq + data_len
         auth_hash = (
             hashlib.md5(f"{self._username}{self._password}".encode()).digest().hex()
@@ -478,8 +503,8 @@ class TplinkDecoApi:
     def _decrypt_data(self, context: str, data: str):
         if data == "":
             self.clear_auth()
-            message = "Data empty. Likely caused by logging in with admin account on another device. See https://github.com/amosyuen/ha-tplink-deco#login-credentials."
-            raise ConfigEntryAuthFailed(message)
+            message = f"{context} data is empty"
+            raise EmptyDataException(message)
 
         try:
             data_decoded = base64.b64decode(data)
@@ -499,3 +524,30 @@ class TplinkDecoApi:
                 data,
             )
             raise err
+
+    async def _async_call_with_retry(self, func, *args):
+        relogin_retried = False
+        timeout_retries = 0
+        while True:
+            try:
+                return await func(*args)
+            except (EmptyDataException, ForbiddenException) as err:
+                if relogin_retried:
+                    # Reached max relogin retries
+                    raise err
+                relogin_retried = True
+                _LOGGER.debug(
+                    "Re-login and retry potential expired auth error: %s",
+                    err,
+                )
+            except TimeoutException as err:
+                if timeout_retries >= self._timeout_error_retries:
+                    # Reached max retries
+                    raise err
+                timeout_retries += 1
+                _LOGGER.debug(
+                    "Retry (%d of %d) timeout error: %s",
+                    timeout_retries,
+                    self._timeout_error_retries,
+                    err,
+                )

@@ -132,6 +132,10 @@ Recommend that you create a separate manager account with full permissions to ma
 
 Turn off this config option if your browser gives you a warning that the SSL certificate is self-signed when you visit the router host IP in your browser.
 
+### Timeout Error Retry Count
+
+How many times to retry timeout errors for one request. You can increase this if you get a lot of timeout errors from your router.
+
 ### Disable new entities
 
 If you prefer new entities to be disabled by default:
@@ -142,7 +146,7 @@ If you prefer new entities to be disabled by default:
 4. Click "System options"
 5. Disable "Enable newly added entities"
 
-### Notify on new entities
+## Notify on new entities
 
 You can get notified by new entities by listening to the `entity_registry_updated` event. Here's an example automation:
 
@@ -212,9 +216,18 @@ message: "device_tracker.amos_phone_wifi connected to main 5G through Guest Room
 
 - Deco S7 (1.3.0 Build 20220609 Rel. 64814)
 
+## Known Issues
+
+### Timeout Error
+
+Some routers give a lot of timeout errors like `Timeout fetching tplink_deco`, which cause the devices to be unavailable. This is a problem with the router. Potential mitigations:
+
+- Rebooting the router
+- Increasing [timeout error retry count](#timeout-error-retry-count) in integration config
+
 ## Contributions are welcome!
 
-If you want to contribute to this please read the [Contribution guidelines](https://github.com/amosyuen/ha-tplink-deco/blob/master/CONTRIBUTING.md)
+If you want to contribute to this please read the [Contribution guidelines](https://github.com/amosyuen/ha-tplink-deco/blob/main/CONTRIBUTING.md)
 
 ## Credits
 

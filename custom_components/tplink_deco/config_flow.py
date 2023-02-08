@@ -9,16 +9,20 @@ from homeassistant.components.device_tracker.const import CONF_CONSIDER_HOME
 from homeassistant.components.device_tracker.const import CONF_SCAN_INTERVAL
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST
-from homeassistant.const import CONF_PASSWORD
+from homeassistant.const import (
+    CONF_PASSWORD,
+)
 from homeassistant.const import CONF_USERNAME
 from homeassistant.core import callback
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 
 from .__init__ import async_create_and_refresh_coordinators
-from .const import CONFIG_VERIFY_SSL
+from .const import CONF_TIMEOUT_ERROR_RETRIES
+from .const import CONF_VERIFY_SSL
 from .const import DEFAULT_CONSIDER_HOME
 from .const import DEFAULT_SCAN_INTERVAL
+from .const import DEFAULT_TIMEOUT_ERROR_RETRIES
 from .const import DOMAIN
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -37,20 +41,27 @@ def _get_schema(data: dict[str:Any]):
     if data is None:
         data = {}
     schema = _get_auth_schema(data)
+    scan_interval = data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
     schema.update(
         {
             vol.Required(CONF_HOST, default=data.get(CONF_HOST, "192.168.0.1")): str,
             vol.Required(
                 CONF_SCAN_INTERVAL,
-                default=data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+                default=scan_interval,
             ): vol.All(vol.Coerce(int), vol.Range(min=1)),
             vol.Required(
                 CONF_CONSIDER_HOME,
                 default=data.get(CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME),
             ): vol.All(vol.Coerce(int), vol.Range(min=0)),
             vol.Required(
-                CONFIG_VERIFY_SSL,
-                default=data.get(CONFIG_VERIFY_SSL, True),
+                CONF_TIMEOUT_ERROR_RETRIES,
+                default=data.get(
+                    CONF_TIMEOUT_ERROR_RETRIES, DEFAULT_TIMEOUT_ERROR_RETRIES
+                ),
+            ): vol.All(vol.Coerce(int), vol.Range(min=0)),
+            vol.Required(
+                CONF_VERIFY_SSL,
+                default=data.get(CONF_VERIFY_SSL, True),
             ): bool,
         }
     )
@@ -75,7 +86,7 @@ async def _async_test_credentials(hass: HomeAssistant, data: dict[str:Any]):
 class TplinkDecoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for tplink_deco."""
 
-    VERSION = 2
+    VERSION = 3
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
     reauth_entry: ConfigEntry = None
 

@@ -126,7 +126,7 @@ def create_device_info(deco: TpLinkDeco, master_deco: TpLinkDeco) -> DeviceInfo:
         sw_version=deco.sw_version,
         hw_version=deco.hw_version,
     )
-    if deco != master_deco:
+    if master_deco is not None and deco != master_deco:
         device_info[ATTR_VIA_DEVICE] = (DOMAIN, master_deco.mac)
 
     return device_info

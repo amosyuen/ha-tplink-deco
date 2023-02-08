@@ -29,11 +29,11 @@ If the debug logs show that a call is failing because of one of the following re
 Follow the below steps to check that the router is behaving as expected.
 
 1. Disable the TPLink Deco integration if it is enabled (If it is enabled it will keep logging you out)
-2. Enable the browser developer console
+2. Enable the browser developer console and go to the network tab
 3. Login to the admin UI page
 4. Go to the page with the failing call (Example: Go to page that lists clients if the list clients call is failing)
    - For the List Clients call, make sure to select a specific deco to list clients for
-5. Find the call that is failing in the developer console network tab.
+5. Find the call that is failing.
    Call | Example URL
    ---|---
    Fetch Keys | http://192.168.0.1/cgi-bin/luci/;stok=/login?form=keys

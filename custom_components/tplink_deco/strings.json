@@ -2,13 +2,14 @@
   "config": {
     "step": {
       "user": {
-        "description": "Use the credentials for the admin web portal. See https://github.com/amosyuen/ha-tplink-deco#configuration-important-please-read",
+        "description": "Use the credentials for the admin web portal. Please follow instructions at https://github.com/amosyuen/ha-tplink-deco#configuration-important-please-read",
         "data": {
           "host": "[%key:common::config_flow::data::host%]",
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
           "interval_seconds": "Seconds between updates",
           "consider_home": "Seconds to wait till marking a device tracker as not home after not being seen.",
+          "timeout_error_retries": "Timeout error retry count",
           "verify_ssl": "Verify SSL certificate is valid"
         }
       },
@@ -29,13 +30,14 @@
   "options": {
     "step": {
       "init": {
-        "description": "Use the credentials for the admin web portal. See https://github.com/amosyuen/ha-tplink-deco#configuration-important-please-read",
+        "description": "Use the credentials for the admin web portal. Please follow instructions at https://github.com/amosyuen/ha-tplink-deco#configuration-important-please-read",
         "data": {
           "host": "[%key:common::config_flow::data::host%]",
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
           "interval_seconds": "Seconds between updates",
           "consider_home": "Seconds to wait till marking a device tracker as not home after not being seen.",
+          "timeout_error_retries": "Timeout error retry count",
           "verify_ssl": "Verify SSL certificate is valid"
         }
       }
