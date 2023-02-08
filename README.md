@@ -232,6 +232,10 @@ Some routers give a lot of timeout errors like `Timeout fetching tplink_deco`, w
 - Increasing [timeout seconds](#timeout-seconds) in integration config
 - Increasing [timeout error retry count](#timeout-error-retry-count) in integration config
 
+### Extra Devices
+
+You may see extra devices show up under the Tp-Link deco integration as per https://github.com/amosyuen/ha-tplink-deco/issues/73. This is expected because the entities use macs for their unique ID. If there is another integration that exposes the same device using their mac, Home Assistant will combine the info from devices that have the same unique ID. This is working as intended since they represent the same device.
+
 ## Contributions are welcome!
 
 If you want to contribute to this please read the [Contribution guidelines](https://github.com/amosyuen/ha-tplink-deco/blob/main/CONTRIBUTING.md)
