@@ -33,12 +33,14 @@ from homeassistant.helpers.restore_state import RestoreStateData
 from .api import TplinkDecoApi
 from .const import ATTR_DEVICE_TYPE
 from .const import CONF_TIMEOUT_ERROR_RETRIES
+from .const import CONF_TIMEOUT_SECONDS
 from .const import CONF_VERIFY_SSL
 from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
 from .const import DEFAULT_CONSIDER_HOME
 from .const import DEFAULT_SCAN_INTERVAL
 from .const import DEFAULT_TIMEOUT_ERROR_RETRIES
+from .const import DEFAULT_TIMEOUT_SECONDS
 from .const import DEVICE_TYPE_DECO
 from .const import DOMAIN
 from .const import PLATFORMS
@@ -64,6 +66,7 @@ async def async_create_and_refresh_coordinators(
     username = config_data.get(CONF_USERNAME)
     password = config_data.get(CONF_PASSWORD)
     timeout_error_retries = config_data.get(CONF_TIMEOUT_ERROR_RETRIES)
+    timeout_seconds = config_data.get(CONF_TIMEOUT_SECONDS)
     verify_ssl = config_data.get(CONF_VERIFY_SSL)
     session = async_get_clientsession(hass)
 
@@ -74,6 +77,7 @@ async def async_create_and_refresh_coordinators(
         password,
         verify_ssl,
         timeout_error_retries,
+        timeout_seconds,
     )
     deco_coordinator = TplinkDecoUpdateCoordinator(
         hass, api, update_interval, deco_data
@@ -257,6 +261,10 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
     if config_entry.version == 2:
         config_entry.version = 3
         new[CONF_TIMEOUT_ERROR_RETRIES] = DEFAULT_TIMEOUT_ERROR_RETRIES
+
+    if config_entry.version == 3:
+        config_entry.version = 4
+        new[CONF_TIMEOUT_SECONDS] = DEFAULT_TIMEOUT_SECONDS
 
     hass.config_entries.async_update_entry(config_entry, data=new)
 

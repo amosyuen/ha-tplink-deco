@@ -9,6 +9,7 @@
           "password": "[%key:common::config_flow::data::password%]",
           "interval_seconds": "Seconds between updates",
           "consider_home": "Seconds to wait till marking a device tracker as not home after not being seen.",
+          "timeout_seconds": "Timeout seconds",
           "timeout_error_retries": "Timeout error retry count",
           "verify_ssl": "Verify SSL certificate is valid"
         }
@@ -37,6 +38,7 @@
           "password": "[%key:common::config_flow::data::password%]",
           "interval_seconds": "Seconds between updates",
           "consider_home": "Seconds to wait till marking a device tracker as not home after not being seen.",
+          "timeout_seconds": "Timeout seconds",
           "timeout_error_retries": "Timeout error retry count",
           "verify_ssl": "Verify SSL certificate is valid"
         }

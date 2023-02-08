@@ -1,5 +1,4 @@
 """Adds config flow for TP-Link Deco."""
-import asyncio
 import logging
 from typing import Any
 
@@ -19,11 +18,14 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 
 from .__init__ import async_create_and_refresh_coordinators
 from .const import CONF_TIMEOUT_ERROR_RETRIES
+from .const import CONF_TIMEOUT_SECONDS
 from .const import CONF_VERIFY_SSL
 from .const import DEFAULT_CONSIDER_HOME
 from .const import DEFAULT_SCAN_INTERVAL
 from .const import DEFAULT_TIMEOUT_ERROR_RETRIES
+from .const import DEFAULT_TIMEOUT_SECONDS
 from .const import DOMAIN
+from .exceptions import TimeoutException
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -58,6 +60,10 @@ def _get_schema(data: dict[str:Any]):
                 default=data.get(
                     CONF_TIMEOUT_ERROR_RETRIES, DEFAULT_TIMEOUT_ERROR_RETRIES
                 ),
+            ): vol.All(vol.Coerce(int), vol.Range(min=5)),
+            vol.Required(
+                CONF_TIMEOUT_SECONDS,
+                default=data.get(CONF_TIMEOUT_SECONDS, DEFAULT_TIMEOUT_SECONDS),
             ): vol.All(vol.Coerce(int), vol.Range(min=0)),
             vol.Required(
                 CONF_VERIFY_SSL,
@@ -73,7 +79,7 @@ async def _async_test_credentials(hass: HomeAssistant, data: dict[str:Any]):
     try:
         await async_create_and_refresh_coordinators(hass, data, consider_home_seconds=1)
         return {}
-    except asyncio.TimeoutError:
+    except TimeoutException:
         return {"base": "timeout_connect"}
     except ConfigEntryAuthFailed as err:
         _LOGGER.warning("Error authenticating credentials: %s", err)
@@ -86,7 +92,7 @@ async def _async_test_credentials(hass: HomeAssistant, data: dict[str:Any]):
 class TplinkDecoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for tplink_deco."""
 
-    VERSION = 3
+    VERSION = 4
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
     reauth_entry: ConfigEntry = None
 

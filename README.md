@@ -132,6 +132,12 @@ Recommend that you create a separate manager account with full permissions to ma
 
 Turn off this config option if your browser gives you a warning that the SSL certificate is self-signed when you visit the router host IP in your browser.
 
+### Timeout Secounds
+
+How many seconds to wait until request times out. You can increase this if you get a lot of timeout errors from your router.
+
+Note: The router also has its own timeout so increasing this may not help.
+
 ### Timeout Error Retry Count
 
 How many times to retry timeout errors for one request. You can increase this if you get a lot of timeout errors from your router.
@@ -223,6 +229,7 @@ message: "device_tracker.amos_phone_wifi connected to main 5G through Guest Room
 Some routers give a lot of timeout errors like `Timeout fetching tplink_deco`, which cause the devices to be unavailable. This is a problem with the router. Potential mitigations:
 
 - Rebooting the router
+- Increasing [timeout seconds](#timeout-seconds) in integration config
 - Increasing [timeout error retry count](#timeout-error-retry-count) in integration config
 
 ## Contributions are welcome!

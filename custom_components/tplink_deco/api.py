@@ -21,14 +21,14 @@ from cryptography.hazmat.primitives.ciphers import algorithms
 from cryptography.hazmat.primitives.ciphers import Cipher
 from cryptography.hazmat.primitives.ciphers import modes
 
+from .const import DEFAULT_TIMEOUT_ERROR_RETRIES
+from .const import DEFAULT_TIMEOUT_SECONDS
 from .exceptions import EmptyDataException
 from .exceptions import ForbiddenException
 from .exceptions import LoginForbiddenException
 from .exceptions import LoginInvalidException
 from .exceptions import TimeoutException
 from .exceptions import UnexpectedApiException
-
-TIMEOUT = 30
 
 AES_KEY_BYTES = 16
 MIN_AES_KEY = 10 ** (AES_KEY_BYTES - 1)
@@ -125,7 +125,8 @@ class TplinkDecoApi:
         username: str,
         password: str,
         verify_ssl: bool,
-        timeout_error_retries: int = 1,
+        timeout_error_retries: int = DEFAULT_TIMEOUT_ERROR_RETRIES,
+        timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
     ) -> None:
         self._host = host
         self._username = username
@@ -133,6 +134,7 @@ class TplinkDecoApi:
         self._verify_ssl = verify_ssl
         self._session = session
         self._timeout_error_retries = timeout_error_retries
+        self._timeout_seconds = timeout_seconds
         self._auth_errors = 0
 
         self._aes_key = None
@@ -394,7 +396,7 @@ class TplinkDecoApi:
         if self._cookie is not None:
             headers[COOKIE] = self._cookie
         try:
-            async with async_timeout.timeout(TIMEOUT):
+            async with async_timeout.timeout(self._timeout_seconds):
                 response = await self._session.post(
                     url,
                     params=params,
