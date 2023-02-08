@@ -41,4 +41,4 @@ body:
     attributes:
       label: Debugging Information
       description: >-
-        Bugs **MUST** include debugging logs from general steps in https://github.com/amosyuen/ha-tplink-deco/blob/master/DEBUGGING.md.
+        Bugs **MUST** include debugging logs from general steps in https://github.com/amosyuen/ha-tplink-deco/blob/main/DEBUGGING.md.
