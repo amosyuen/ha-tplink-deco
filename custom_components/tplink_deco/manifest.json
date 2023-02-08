@@ -4,7 +4,7 @@
   "documentation": "https://github.com/amosyuen/ha-tplink-deco",
   "issue_tracker": "https://github.com/amosyuen/ha-tplink-deco/issues",
   "iot_class": "local_polling",
-  "version": "3.1.4",
+  "version": "3.2.0",
   "config_flow": true,
   "dependencies": [],
   "codeowners": ["@amosyuen"],
