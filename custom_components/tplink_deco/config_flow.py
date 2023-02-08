@@ -60,11 +60,11 @@ def _get_schema(data: dict[str:Any]):
                 default=data.get(
                     CONF_TIMEOUT_ERROR_RETRIES, DEFAULT_TIMEOUT_ERROR_RETRIES
                 ),
-            ): vol.All(vol.Coerce(int), vol.Range(min=5)),
+            ): vol.All(vol.Coerce(int), vol.Range(min=0)),
             vol.Required(
                 CONF_TIMEOUT_SECONDS,
                 default=data.get(CONF_TIMEOUT_SECONDS, DEFAULT_TIMEOUT_SECONDS),
-            ): vol.All(vol.Coerce(int), vol.Range(min=0)),
+            ): vol.All(vol.Coerce(int), vol.Range(min=5)),
             vol.Required(
                 CONF_VERIFY_SSL,
                 default=data.get(CONF_VERIFY_SSL, True),
