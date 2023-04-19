@@ -216,6 +216,7 @@ message: "device_tracker.amos_phone_wifi connected to main 5G through Guest Room
 - Deco X60
 - Deco X68
 - Deco X90
+- Mercusys Halo H70X
 - Mercusys Halo H80X
 
 ## Not Working Devices
