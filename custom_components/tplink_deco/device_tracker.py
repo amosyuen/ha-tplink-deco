@@ -213,7 +213,7 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
     @property
     def extra_state_attributes(self) -> dict[str:Any]:
         """Return extra state attributes."""
-        return {
+        attributes = {
             ATTR_BSSID_BAND2_4: self._deco.bssid_band2_4,
             ATTR_BSSID_BAND5: self._deco.bssid_band5,
             ATTR_CONNECTION_TYPE: self._attr_connection_type,
@@ -226,6 +226,12 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
             ATTR_SIGNAL_BAND5: self._deco.signal_band5,
             ATTR_SW_VERSION: self._attr_sw_version,
         }
+        master = self.coordinator.data.master_deco
+        if master and not self._deco.master:
+            attributes[ATTR_DECO_DEVICE] = master.name
+            attributes[ATTR_DECO_MAC] = master.mac
+
+        return attributes
 
     @property
     def device_info(self) -> DeviceInfo:
