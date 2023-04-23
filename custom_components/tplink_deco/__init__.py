@@ -32,12 +32,17 @@ from homeassistant.helpers.restore_state import RestoreStateData
 
 from .api import TplinkDecoApi
 from .const import ATTR_DEVICE_TYPE
+from .const import CONF_CLIENT_POSTFIX
+from .const import CONF_CLIENT_PREFIX
+from .const import CONF_DECO_POSTFIX
+from .const import CONF_DECO_PREFIX
 from .const import CONF_TIMEOUT_ERROR_RETRIES
 from .const import CONF_TIMEOUT_SECONDS
 from .const import CONF_VERIFY_SSL
 from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
 from .const import DEFAULT_CONSIDER_HOME
+from .const import DEFAULT_DECO_POSTFIX
 from .const import DEFAULT_SCAN_INTERVAL
 from .const import DEFAULT_TIMEOUT_ERROR_RETRIES
 from .const import DEFAULT_TIMEOUT_SECONDS
@@ -265,6 +270,13 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
     if config_entry.version == 3:
         config_entry.version = 4
         new[CONF_TIMEOUT_SECONDS] = DEFAULT_TIMEOUT_SECONDS
+
+    if config_entry.version == 4:
+        config_entry.version = 5
+        new[CONF_CLIENT_PREFIX] = ""
+        new[CONF_CLIENT_POSTFIX] = ""
+        new[CONF_DECO_PREFIX] = ""
+        new[CONF_DECO_POSTFIX] = DEFAULT_DECO_POSTFIX
 
     hass.config_entries.async_update_entry(config_entry, data=new)
 

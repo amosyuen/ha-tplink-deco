@@ -30,7 +30,13 @@ from .const import ATTR_MASTER
 from .const import ATTR_SIGNAL_BAND2_4
 from .const import ATTR_SIGNAL_BAND5
 from .const import ATTR_UP_KILOBYTES_PER_S
-from .const import COORDINATOR_CLIENTS_KEY
+from .const import CONF_CLIENT_POSTFIX
+from .const import CONF_CLIENT_PREFIX
+from .const import CONF_DECO_POSTFIX
+from .const import CONF_DECO_PREFIX
+from .const import (
+    COORDINATOR_CLIENTS_KEY,
+)
 from .const import COORDINATOR_DECOS_KEY
 from .const import DEVICE_TYPE_CLIENT
 from .const import DEVICE_TYPE_DECO
@@ -45,19 +51,46 @@ from .coordinator import TplinkDecoUpdateCoordinator
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
+def _generate_name(name: str, prefix: str, postfix: str):
+    parts = [name]
+    if prefix:
+        parts.insert(0, prefix)
+    if postfix:
+        parts.append(postfix)
+    return " ".join(parts)
+
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ):
     """Setup binary_sensor platform."""
-    coordinator_decos = hass.data[DOMAIN][entry.entry_id][COORDINATOR_DECOS_KEY]
-    coordinator_clients = hass.data[DOMAIN][entry.entry_id][COORDINATOR_CLIENTS_KEY]
-    _async_setup_decos(hass, async_add_entities, coordinator_decos)
+    data = hass.data[DOMAIN][entry.entry_id]
+    coordinator_decos = data[COORDINATOR_DECOS_KEY]
+    coordinator_clients = data[COORDINATOR_CLIENTS_KEY]
+    client_prefix = entry.data[CONF_CLIENT_PREFIX]
+    client_postfix = entry.data[CONF_CLIENT_POSTFIX]
+    deco_prefix = entry.data[CONF_DECO_PREFIX]
+    deco_postfix = entry.data[CONF_DECO_POSTFIX]
+    _async_setup_decos(
+        hass, async_add_entities, coordinator_decos, deco_prefix, deco_postfix
+    )
     _async_setup_clients(
-        hass, async_add_entities, coordinator_decos, coordinator_clients
+        hass,
+        async_add_entities,
+        coordinator_decos,
+        coordinator_clients,
+        client_prefix,
+        client_postfix,
     )
 
 
-def _async_setup_decos(hass, async_add_entities, coordinator):
+def _async_setup_decos(
+    hass: HomeAssistant,
+    async_add_entities,
+    coordinator: TplinkDecoUpdateCoordinator,
+    deco_prefix: str,
+    deco_postfix: str,
+):
     tracked_decos = set()
 
     @callback
@@ -70,7 +103,9 @@ def _async_setup_decos(hass, async_add_entities, coordinator):
                 continue
 
             _LOGGER.debug("add_untracked_decos: Adding deco mac=%s", deco.mac)
-            new_entities.append(TplinkDecoDeviceTracker(coordinator, deco))
+            new_entities.append(
+                TplinkDecoDeviceTracker(coordinator, deco, deco_prefix, deco_postfix)
+            )
             tracked_decos.add(mac)
 
         if new_entities:
@@ -83,7 +118,12 @@ def _async_setup_decos(hass, async_add_entities, coordinator):
 
 
 def _async_setup_clients(
-    hass, async_add_entities, coordinator_decos, coordinator_clients
+    hass: HomeAssistant,
+    async_add_entities,
+    coordinator_decos: TplinkDecoUpdateCoordinator,
+    coordinator_clients: TplinkDecoClientUpdateCoordinator,
+    client_prefix: str,
+    client_postfix: str,
 ):
     tracked_clients = set()
 
@@ -99,7 +139,11 @@ def _async_setup_clients(
             _LOGGER.debug("add_untracked_clients: Adding client mac=%s", client.mac)
             new_entities.append(
                 TplinkDecoClientDeviceTracker(
-                    coordinator_decos, coordinator_clients, client
+                    coordinator_decos,
+                    coordinator_clients,
+                    client,
+                    client_prefix,
+                    client_postfix,
                 )
             )
             tracked_clients.add(mac)
@@ -136,11 +180,17 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
     """TP Link Deco Entity."""
 
     def __init__(
-        self, coordinator: TplinkDecoUpdateCoordinator, deco: TpLinkDeco
+        self,
+        coordinator: TplinkDecoUpdateCoordinator,
+        deco: TpLinkDeco,
+        deco_prefix: str,
+        deco_postfix: str,
     ) -> None:
         """Initialize a TP-Link Deco device."""
         self._deco = deco
         self._mac_address = deco.mac
+        self._deco_prefix = deco_prefix
+        self._deco_postfix = deco_postfix
 
         self._attr_hw_version = None
         self._attr_sw_version = None
@@ -266,7 +316,9 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
             self._attr_ip_address = self._deco.ip_address
             changed = True
         if self._deco.name is not None:
-            self._attr_name = f"{self._deco.name} Deco"
+            self._attr_name = _generate_name(
+                self._deco.name, self._deco_prefix, self._deco_postfix
+            )
             changed = True
         if self._deco.master is not None:
             self._attr_master = self._deco.master
@@ -286,6 +338,8 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
         coordinator_decos: TplinkDecoUpdateCoordinator,
         coordinator_clients: TplinkDecoClientUpdateCoordinator,
         client: TpLinkDecoClient,
+        client_prefix: str,
+        client_postfix: str,
     ) -> None:
         """Initialize a TP-Link Deco device."""
         self._attr_connection_type = None
@@ -294,6 +348,8 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
         self._attr_ip_address = None
         self._attr_name = None
         self._client = client
+        self._client_postfix = client_postfix
+        self._client_prefix = client_prefix
         self._coordinator_decos = coordinator_decos
         self._mac_address = client.mac
         self._update_from_client()
@@ -390,6 +446,8 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
             self._attr_ip_address = self._client.ip_address
             changed = True
         if self._client.name is not None:
-            self._attr_name = self._client.name
+            self._attr_name = _generate_name(
+                self._client.name, self._client_prefix, self._client_postfix
+            )
             changed = True
         return changed

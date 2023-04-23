@@ -128,10 +128,6 @@ Recommend that you create a separate manager account with full permissions to ma
 7. Log out of the app
 8. Login using the new manager account you've just created
 
-### Verify SSL Certificate
-
-Turn off this config option if your browser gives you a warning that the SSL certificate is self-signed when you visit the router host IP in your browser.
-
 ### Timeout Secounds
 
 How many seconds to wait until request times out. You can increase this if you get a lot of timeout errors from your router.
@@ -141,6 +137,26 @@ Note: The router also has its own timeout so increasing this may not help.
 ### Timeout Error Retry Count
 
 How many times to retry timeout errors for one request. You can increase this if you get a lot of timeout errors from your router.
+
+### Verify SSL Certificate
+
+Turn off this config option if your browser gives you a warning that the SSL certificate is self-signed when you visit the router host IP in your browser.
+
+### Client Name Prefix
+
+Prefix to prepend to client name. Example: Value of "Client" for "Laptop" client will result in "Client Laptop".
+
+### Client Name Postfix
+
+Postfix to append to client name. Example: Value of "Client" for "Laptop" client will result in "Laptop Client".
+
+### Deco Name Prefix
+
+Prefix to prepend to deco name. Example: Value of "Deco" for "Living Room" deco will result in "Deco Living Room".
+
+### Deco Name Postfix
+
+Postfix to append to deco name. Example: Value of "Deco" for "Living Room" deco will result in "Living Room Deco".
 
 ### Disable new entities
 

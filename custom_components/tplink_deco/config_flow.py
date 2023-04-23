@@ -17,10 +17,15 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 
 from .__init__ import async_create_and_refresh_coordinators
+from .const import CONF_CLIENT_POSTFIX
+from .const import CONF_CLIENT_PREFIX
+from .const import CONF_DECO_POSTFIX
+from .const import CONF_DECO_PREFIX
 from .const import CONF_TIMEOUT_ERROR_RETRIES
 from .const import CONF_TIMEOUT_SECONDS
 from .const import CONF_VERIFY_SSL
 from .const import DEFAULT_CONSIDER_HOME
+from .const import DEFAULT_DECO_POSTFIX
 from .const import DEFAULT_SCAN_INTERVAL
 from .const import DEFAULT_TIMEOUT_ERROR_RETRIES
 from .const import DEFAULT_TIMEOUT_SECONDS
@@ -69,9 +74,39 @@ def _get_schema(data: dict[str:Any]):
                 CONF_VERIFY_SSL,
                 default=data.get(CONF_VERIFY_SSL, True),
             ): bool,
+            vol.Optional(
+                CONF_CLIENT_PREFIX,
+                description={"suggested_value": data.get(CONF_CLIENT_PREFIX, "")},
+            ): str,
+            vol.Optional(
+                CONF_CLIENT_POSTFIX,
+                description={"suggested_value": data.get(CONF_CLIENT_POSTFIX, "")},
+            ): str,
+            vol.Optional(
+                CONF_DECO_PREFIX,
+                description={"suggested_value": data.get(CONF_DECO_PREFIX, "")},
+            ): str,
+            vol.Optional(
+                CONF_DECO_POSTFIX,
+                description={
+                    "suggested_value": data.get(CONF_DECO_POSTFIX, DEFAULT_DECO_POSTFIX)
+                },
+            ): str,
         }
     )
     return schema
+
+
+# We need to make sure the optional keys are set so that they get updated in update_listener async_update_entry() call
+def _ensure_user_input_optionals(data: dict[str:Any]) -> None:
+    for key in [
+        CONF_CLIENT_PREFIX,
+        CONF_CLIENT_POSTFIX,
+        CONF_DECO_PREFIX,
+        CONF_DECO_POSTFIX,
+    ]:
+        if key not in data:
+            data[key] = ""
 
 
 async def _async_test_credentials(hass: HomeAssistant, data: dict[str:Any]):
@@ -92,7 +127,7 @@ async def _async_test_credentials(hass: HomeAssistant, data: dict[str:Any]):
 class TplinkDecoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for tplink_deco."""
 
-    VERSION = 4
+    VERSION = 5
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
     reauth_entry: ConfigEntry = None
 
@@ -129,8 +164,10 @@ class TplinkDecoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._errors = {}
 
         if user_input is not None:
+            _ensure_user_input_optionals(user_input)
             data = dict(self.reauth_entry.data)
             data.update(user_input)
+
             self._errors = await _async_test_credentials(self.hass, data)
             if len(self._errors) == 0:
                 self.hass.config_entries.async_update_entry(
@@ -164,6 +201,7 @@ class TplinkDecoOptionsFlowHandler(config_entries.OptionsFlow):
         self._errors = {}
 
         if user_input is not None:
+            _ensure_user_input_optionals(user_input)
             self.data.update(user_input)
 
             self._errors = await _async_test_credentials(self.hass, self.data)
