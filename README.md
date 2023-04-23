@@ -53,6 +53,10 @@ Device trackers are added for both decos and clients. The device tracker state m
 | bssid_band5     | A1:B2:C3:D4:E5:F6                |
 | signal_band2_4  | 3                                |
 | signal_band2_4  | 4                                |
+| deco_device     | living_room                      |
+| deco_mac        | 1A-B2-C3-4D-56-EF                |
+
+Note: `deco_device` and `deco_mac` will only be set for non-master decos.
 
 ### Devices
 
