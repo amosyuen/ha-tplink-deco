@@ -82,15 +82,7 @@ target:
 
 ### HACS
 
-1. Install [HACS](https://hacs.xyz/)
-2. Go to HACS "Integrations >" section
-3. In the lower right click "+ Explore & Download repositories"
-4. Search for "TP-Link Deco" and add it
-   - HA Restart is not needed since it is configured in UI config flow
-5. In the Home Assistant (HA) UI go to "Configuration"
-6. Click "Integrations"
-7. Click "+ Add Integration"
-8. Search for "TP-Link Deco"
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=amosyuen&repository=ha-tplink-deco&category=integration)
 
 ### Manual
 
@@ -100,16 +92,14 @@ target:
 4. Download _all_ the files from the `custom_components/tplink_deco/` directory (folder) in this repository.
 5. Place the files you downloaded in the new directory (folder) you created.
 6. Restart Home Assistant
-7. In the Home Assistant (HA) UI go to "Configuration"
-8. Click "Integrations"
-9. Click "+ Add Integration"
-10. Search for "TP-Link Deco"
 
 {% endif %}
 
 ## Configuration (Important! Please Read)
 
 Config is done in the HA integrations UI.
+
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=tplink_deco)
 
 ### Host
 
