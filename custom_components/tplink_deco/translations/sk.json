@@ -5,15 +5,21 @@
         "description": "Použite poverenia pre webový portál správcu. Pozri https://github.com/amosyuen/ha-tplink-deco#configuration-important-please-read",
         "data": {
           "host": "Host",
-          "username": "užívateľské meno",
-          "password": "Heslo",
+          "username": "Užívateľské meno",
+          "password": "Heslo"
           "interval_seconds": "Sekúnd medzi aktualizáciami",
           "consider_home": "Sekundy čakania, kým sa sledovač zariadenia označí ako neprítomný po tom, čo ho nikto nevidel.",
-          "verify_ssl": "Skontrolujte, či je certifikát SSL platný"
+          "timeout_seconds": "Timeout sekundy",
+          "timeout_error_retries": "Počet timeout chybných pokusov",
+          "verify_ssl": "Skontrolujte, či je certifikát SSL platný",
+          "client_prefix": "Prefix mena klienta",
+          "client_postfix": "Postfix mena klienta",
+          "deco_prefix": "Prefix názvu Deco",
+          "deco_postfix": "Postfix názvu Deco"
         }
       },
       "reauth_confirm": {
-        "description": "Problém s prihlasovacími údajmi. Pozri https://github.com/amosyuen/ha-tplink-deco#login-credentials",
+        "description": "Problém s prihlasovacími údajmi. Môže to byť spôsobené prihlásením na samostatnom zariadení. Pozri https://github.com/amosyuen/ha-tplink-deco#login-credentials",
         "data": {
           "username": "Užívateľské meno",
           "password": "Heslo"
@@ -39,7 +45,13 @@
           "password": "Heslo",
           "interval_seconds": "Sekúnd medzi aktualizáciami",
           "consider_home": "Sekundy čakania, kým sa sledovač zariadenia označí ako neprítomný po tom, čo ho nikto nevidel.",
-          "verify_ssl": "Skontrolujte, či je certifikát SSL platný"
+          "timeout_seconds": "Timeout sekundy",
+          "timeout_error_retries": "Počet timeout chybných pokusov",
+          "verify_ssl": "Skontrolujte, či je certifikát SSL platný",
+          "client_prefix": "Prefix mena klienta",
+          "client_postfix": "Postfix mena klienta",
+          "deco_prefix": "Prefix názvu Deco",
+          "deco_postfix": "Postfix názvu Deco"
         }
       }
     },
