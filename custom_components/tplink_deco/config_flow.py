@@ -142,6 +142,7 @@ class TplinkDecoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             self._errors = await _async_test_credentials(self.hass, user_input)
             if len(self._errors) == 0:
+                _ensure_user_input_optionals(user_input)
                 return self.async_create_entry(
                     title=user_input[CONF_HOST], data=user_input
                 )
