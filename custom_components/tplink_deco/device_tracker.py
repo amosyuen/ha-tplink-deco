@@ -162,7 +162,6 @@ def create_device_info(deco: TpLinkDeco, master_deco: TpLinkDeco) -> DeviceInfo:
     if deco is None:
         return None
     device_info = DeviceInfo(
-        id=deco.mac,
         identifiers={(DOMAIN, deco.mac)},
         name=f"{deco.name} Deco",
         manufacturer="TP-Link Deco",
