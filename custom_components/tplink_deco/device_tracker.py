@@ -8,7 +8,6 @@ from homeassistant.components.device_tracker.const import ATTR_IP
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_HW_VERSION
 from homeassistant.const import ATTR_SW_VERSION
-from homeassistant.const import ATTR_VIA_DEVICE
 from homeassistant.core import callback
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -47,6 +46,7 @@ from .coordinator import TpLinkDeco
 from .coordinator import TpLinkDecoClient
 from .coordinator import TplinkDecoClientUpdateCoordinator
 from .coordinator import TplinkDecoUpdateCoordinator
+from .device import create_device_info
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -155,24 +155,6 @@ def _async_setup_clients(
     coordinator_clients.on_close(
         async_dispatcher_connect(hass, SIGNAL_CLIENT_ADDED, add_untracked_clients)
     )
-
-
-def create_device_info(deco: TpLinkDeco, master_deco: TpLinkDeco) -> DeviceInfo:
-    """Return device info."""
-    if deco is None:
-        return None
-    device_info = DeviceInfo(
-        identifiers={(DOMAIN, deco.mac)},
-        name=f"{deco.name} Deco",
-        manufacturer="TP-Link Deco",
-        model=deco.device_model,
-        sw_version=deco.sw_version,
-        hw_version=deco.hw_version,
-    )
-    if master_deco is not None and deco != master_deco:
-        device_info[ATTR_VIA_DEVICE] = (DOMAIN, master_deco.mac)
-
-    return device_info
 
 
 class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):

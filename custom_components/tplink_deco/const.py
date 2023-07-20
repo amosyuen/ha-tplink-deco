@@ -3,6 +3,7 @@ from homeassistant.components.device_tracker import DOMAIN as DEVICE_TRACKER_DOM
 from homeassistant.components.device_tracker.const import (
     DEFAULT_CONSIDER_HOME as DEFAULT_CONSIDER_HOME_SPAN,
 )
+from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 
 # Base component constants
 DOMAIN = "tplink_deco"
@@ -52,4 +53,4 @@ SIGNAL_DECO_ADDED = f"{DOMAIN}-deco-added"
 SERVICE_REBOOT_DECO = "reboot_deco"
 
 # Platforms
-PLATFORMS = [DEVICE_TRACKER_DOMAIN]
+PLATFORMS = [DEVICE_TRACKER_DOMAIN, SENSOR_DOMAIN]
