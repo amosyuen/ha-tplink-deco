@@ -27,8 +27,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.core import ServiceCall
 from homeassistant.helpers import device_registry
 from homeassistant.helpers import entity_registry
+from homeassistant.helpers import restore_state
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.restore_state import RestoreStateData
 
 from .api import TplinkDecoApi
 from .const import ATTR_DEVICE_TYPE
@@ -123,7 +123,7 @@ async def async_create_config_data(hass: HomeAssistant, config_entry: ConfigEntr
 
     # Populate client list with existing entries so that we keep track of disconnected clients
     # since deco list_clients only returns connected clients.
-    last_states = (await RestoreStateData.async_get_instance(hass)).last_states
+    last_states = restore_state.async_get(hass).last_states
     for entry in existing_entries:
         if entry.domain != DEVICE_TRACKER_DOMAIN:
             continue
