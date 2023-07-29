@@ -9,6 +9,7 @@ import secrets
 from typing import Any
 from urllib.parse import quote_plus
 
+import ssl
 import aiohttp
 import async_timeout
 from aiohttp.hdrs import CONTENT_TYPE
@@ -151,6 +152,15 @@ class TplinkDecoApi:
         self._seq = None
         self._stok = None
         self._cookie = None
+
+        if self._verify_ssl:
+            self._ssl_context = None
+        else:
+            context = ssl.create_default_context()
+            context.set_ciphers("DEFAULT")
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            self._ssl_context = context
 
     # Return list of deco devices
     async def async_list_devices(self) -> dict:
@@ -402,7 +412,7 @@ class TplinkDecoApi:
                     params=params,
                     data=data,
                     headers=headers,
-                    verify_ssl=self._verify_ssl,
+                    ssl=self._ssl_context,
                 )
                 response.raise_for_status()
 
