@@ -132,7 +132,6 @@ class TplinkDecoApi:
         self._host = host
         self._username = username
         self._password = password
-        self._verify_ssl = verify_ssl
         self._session = session
         self._timeout_error_retries = timeout_error_retries
         self._timeout_seconds = timeout_seconds
@@ -153,7 +152,7 @@ class TplinkDecoApi:
         self._stok = None
         self._cookie = None
 
-        if self._verify_ssl:
+        if verify_ssl:
             self._ssl_context = None
         else:
             context = ssl.create_default_context()
