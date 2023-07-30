@@ -6,10 +6,10 @@ import logging
 import math
 import re
 import secrets
+import ssl
 from typing import Any
 from urllib.parse import quote_plus
 
-import ssl
 import aiohttp
 import async_timeout
 from aiohttp.hdrs import CONTENT_TYPE
