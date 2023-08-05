@@ -220,6 +220,7 @@ message: "device_tracker.amos_phone_wifi connected to main 5G through Guest Room
 - Deco M9 Plus
 - Deco P7
 - Deco P9
+- Deco PX50
 - Deco S4
 - Deco X20
 - Deco X50
