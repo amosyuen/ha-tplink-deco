@@ -109,7 +109,7 @@ def aes_decrypt(key: bytes, iv: bytes, plaintext: bytes) -> bytes:
 
 
 def check_data_error_code(context, data):
-    error_code = data.get("error_code")
+    error_code = data.get("error_code") or data.get("errorcode")
     if error_code:
         if error_code == "timeout":
             raise TimeoutException(f'{context} response error_code="timeout"')
