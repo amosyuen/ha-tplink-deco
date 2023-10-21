@@ -6,7 +6,5 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-pip3 install -r .github/workflows/constraints.txt
+pip3 install --requirement requirements.txt
 pre-commit install
-
-container install

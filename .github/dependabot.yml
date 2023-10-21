@@ -3,12 +3,11 @@ updates:
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
-      interval: daily
-  - package-ecosystem: pip
-    directory: "/.github/workflows"
-    schedule:
-      interval: daily
-  - package-ecosystem: pip
+      interval: weekly
+  - package-ecosystem: "pip"
     directory: "/"
     schedule:
-      interval: daily
+      interval: weekly
+    ignore:
+      # Dependabot should not update Home Assistant as that should match the homeassistant key in hacs.json
+      - dependency-name: "homeassistant"
