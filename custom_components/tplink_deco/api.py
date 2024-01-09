@@ -172,7 +172,7 @@ class TplinkDecoApi:
         device_list_payload = {"operation": "read"}
         response_json = await self._async_post(
             context,
-            f"http://{self._host}/cgi-bin/luci/;stok={self._stok}/admin/device",
+            f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/device",
             params={"form": "device_list"},
             data=self._encode_payload(device_list_payload),
         )
@@ -207,7 +207,7 @@ class TplinkDecoApi:
         }
         response_json = await self._async_post(
             context,
-            f"http://{self._host}/cgi-bin/luci/;stok={self._stok}/admin/device",
+            f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/device",
             params={"form": "system"},
             data=self._encode_payload(client_payload),
         )
@@ -227,7 +227,7 @@ class TplinkDecoApi:
         client_payload = {"operation": "read", "params": {"device_mac": deco_mac}}
         response_json = await self._async_post(
             context,
-            f"http://{self._host}/cgi-bin/luci/;stok={self._stok}/admin/client",
+            f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/client",
             params={"form": "client_list"},
             data=self._encode_payload(client_payload),
         )
@@ -263,7 +263,7 @@ class TplinkDecoApi:
         context = "Fetch keys"
         response_json = await self._async_post(
             context,
-            f"http://{self._host}/cgi-bin/luci/;stok=/login",
+            f"{self._host}/cgi-bin/luci/;stok=/login",
             params={"form": "keys"},
             data=json.dumps({"operation": "read"}),
         )
@@ -288,7 +288,7 @@ class TplinkDecoApi:
         context = "Fetch auth"
         response_json = await self._async_post(
             context,
-            f"http://{self._host}/cgi-bin/luci/;stok=/login",
+            f"{self._host}/cgi-bin/luci/;stok=/login",
             params={"form": "auth"},
             data=json.dumps({"operation": "read"}),
         )
@@ -356,7 +356,7 @@ class TplinkDecoApi:
         try:
             response_json = await self._async_post(
                 context,
-                f"http://{self._host}/cgi-bin/luci/;stok=/login",
+                f"{self._host}/cgi-bin/luci/;stok=/login",
                 params={"form": "login"},
                 data=self._encode_payload(login_payload),
             )

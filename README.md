@@ -103,7 +103,7 @@ Config is done in the HA integrations UI.
 
 ### Host
 
-The IP address of the main deco which you visit in the browser to see the web admin page. Example: `192.168.0.1`
+The IP address of the main deco which you visit in the browser to see the web admin page. Example: `http://192.168.0.1`. Some decos use https, so if you have trouble connection, try using `https` e.g. `https://192.168.0.1`.
 
 ### Login Credentials
 
