@@ -31,6 +31,7 @@
     },
     "error": {
       "invalid_auth": "Neplatné overenie",
+      "invalid_host": "Nedá sa pripojiť k hostiteľovi.",
       "timeout_connect": "Časový limit nadväzovania spojenia",
       "unknown": "Neočakávaná chyba"
     }
@@ -57,6 +58,7 @@
     },
     "error": {
       "invalid_auth": "Neplatné overenie",
+      "invalid_host": "Nedá sa pripojiť k hostiteľovi.",
       "timeout_connect": "Časový limit nadväzovania spojenia",
       "unknown": "Neočakávaná chyba"
     }
