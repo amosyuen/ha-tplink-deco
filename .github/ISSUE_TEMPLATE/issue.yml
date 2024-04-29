@@ -5,6 +5,14 @@ body:
     attributes:
       value: |
         This issue form is for reporting bugs only!
+
+        > [!CAUTION]
+        > This integration is in MAINTENANCE MODE.
+        >
+        > I no longer have a deco unit so I cannot test this integration properly.
+        > I will only implement simple critical fixes required to keep the integration running.
+        >
+        > If anybody is interested in taking over this repo and maintaining it, please let me know.
   - type: textarea
     validations:
       required: true

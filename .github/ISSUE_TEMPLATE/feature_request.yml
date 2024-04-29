@@ -1,0 +1,29 @@
+name: Feature request
+description: Suggest an idea for this project
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This issue form is for requestin feature requests only!
+
+        > [!CAUTION]
+        > This integration is in MAINTENANCE MODE.
+        >
+        > I no longer have a deco unit so I cannot test this integration properly.
+        > I will not implement any new feature requests, you are still free to request them and see if anybody else wants to implement them.
+        >
+        > If anybody is interested in taking over this repo and maintaining it, please let me know.
+  - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: Feature Request
+      description: >-
+        A clear and concise description of the problem and what you want to happen.
+  - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: Alternatives
+      description: >-
+        A clear and concise description of any alternative solutions or features you've considered.
