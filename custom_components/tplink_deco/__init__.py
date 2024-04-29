@@ -163,7 +163,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     deco_coordinator = data[COORDINATOR_DECOS_KEY]
 
     for platform in PLATFORMS:
-        hass.async_add_job(
+        config_entry.async_create_task(
             hass.config_entries.async_forward_entry_setup(config_entry, platform)
         )
 
