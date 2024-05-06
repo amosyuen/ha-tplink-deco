@@ -164,7 +164,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     for platform in PLATFORMS:
         config_entry.async_create_task(
-            hass.config_entries.async_forward_entry_setup(config_entry, platform)
+            hass, hass.config_entries.async_forward_entry_setup(config_entry, platform)
         )
 
     async def async_reboot_deco(service: ServiceCall) -> None:
