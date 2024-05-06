@@ -8,5 +8,5 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/amosyuen/ha-tplink-deco/issues",
   "requirements": ["pycryptodome>=3.12.0"],
-  "version": "3.6.1"
+  "version": "3.6.2"
 }
