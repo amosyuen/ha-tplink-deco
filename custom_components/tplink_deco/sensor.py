@@ -1,4 +1,5 @@
 """TP-Link Deco."""
+
 import logging
 
 from homeassistant.components.sensor import SensorEntity
@@ -6,15 +7,13 @@ from homeassistant.components.sensor.const import SensorDeviceClass
 from homeassistant.components.sensor.const import SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfDataRate
-from homeassistant.core import callback
 from homeassistant.core import HomeAssistant
+from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import (
-    COORDINATOR_CLIENTS_KEY,
-)
+from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
 from .const import DOMAIN
 from .const import SIGNAL_DECO_ADDED

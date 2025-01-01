@@ -1,4 +1,5 @@
 """Constants for TP-Link Deco."""
+
 from homeassistant.components.device_tracker import DOMAIN as DEVICE_TRACKER_DOMAIN
 from homeassistant.components.device_tracker.const import (
     DEFAULT_CONSIDER_HOME as DEFAULT_CONSIDER_HOME_SPAN,

@@ -4,19 +4,18 @@ Custom integration to integrate TP-Link Deco with Home Assistant.
 For more details about this integration, please refer to
 https://github.com/amosyuen/ha-tplink-deco
 """
+
 import asyncio
-import logging
 from datetime import timedelta
+import logging
 from typing import Any
 from typing import cast
 
-import homeassistant.helpers.config_validation as cv
-import voluptuous as vol
-from homeassistant.components.device_tracker.const import CONF_CONSIDER_HOME
-from homeassistant.components.device_tracker.const import CONF_SCAN_INTERVAL
 from homeassistant.components.device_tracker.const import (
     DOMAIN as DEVICE_TRACKER_DOMAIN,
 )
+from homeassistant.components.device_tracker.const import CONF_CONSIDER_HOME
+from homeassistant.components.device_tracker.const import CONF_SCAN_INTERVAL
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_DEVICE_ID
 from homeassistant.const import CONF_HOST
@@ -28,6 +27,8 @@ from homeassistant.helpers import device_registry
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers import restore_state
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 
 from .api import TplinkDecoApi
 from .const import ATTR_DEVICE_TYPE
@@ -51,8 +52,8 @@ from .const import PLATFORMS
 from .const import SERVICE_REBOOT_DECO
 from .coordinator import TpLinkDeco
 from .coordinator import TpLinkDecoClient
-from .coordinator import TplinkDecoClientUpdateCoordinator
 from .coordinator import TpLinkDecoData
+from .coordinator import TplinkDecoClientUpdateCoordinator
 from .coordinator import TplinkDecoUpdateCoordinator
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

@@ -1,15 +1,16 @@
 """TP-Link Deco Coordinator"""
+
 import asyncio
-import ipaddress
-import logging
 from collections.abc import Callable
 from datetime import datetime
 from datetime import timedelta
+import ipaddress
+import logging
 from typing import Any
 
-from homeassistant.core import callback
 from homeassistant.core import CALLBACK_TYPE
 from homeassistant.core import HomeAssistant
+from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator

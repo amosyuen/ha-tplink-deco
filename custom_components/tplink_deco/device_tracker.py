@@ -1,4 +1,5 @@
 """TP-Link Deco."""
+
 import logging
 from typing import Any
 
@@ -8,8 +9,8 @@ from homeassistant.components.device_tracker.const import SourceType
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_HW_VERSION
 from homeassistant.const import ATTR_SW_VERSION
-from homeassistant.core import callback
 from homeassistant.core import HomeAssistant
+from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
@@ -33,9 +34,7 @@ from .const import CONF_CLIENT_POSTFIX
 from .const import CONF_CLIENT_PREFIX
 from .const import CONF_DECO_POSTFIX
 from .const import CONF_DECO_PREFIX
-from .const import (
-    COORDINATOR_CLIENTS_KEY,
-)
+from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
 from .const import DEVICE_TYPE_CLIENT
 from .const import DEVICE_TYPE_DECO

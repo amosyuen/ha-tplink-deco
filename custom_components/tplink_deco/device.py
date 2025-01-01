@@ -1,4 +1,5 @@
 """TP-Link Deco."""
+
 from homeassistant.const import ATTR_VIA_DEVICE
 from homeassistant.helpers.entity import DeviceInfo
 

@@ -2,7 +2,7 @@ black==24.10.0
 colorlog==6.9.0
 flake8==7.1.1
 homeassistant==2023.6.0
+isort==5.13.2
 pip>=21.0,<24.4
 pre-commit==4.0.1
-reorder-python-imports==3.14.0
 ruff==0.8.4
