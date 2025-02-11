@@ -6,7 +6,6 @@ import logging
 import math
 import re
 import secrets
-import ssl
 from typing import Any
 from urllib.parse import quote_plus
 
@@ -21,6 +20,7 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher
 from cryptography.hazmat.primitives.ciphers import algorithms
 from cryptography.hazmat.primitives.ciphers import modes
+import homeassistant.util.ssl as ssl
 
 from .const import DEFAULT_TIMEOUT_ERROR_RETRIES
 from .const import DEFAULT_TIMEOUT_SECONDS
@@ -155,10 +155,7 @@ class TplinkDecoApi:
         if verify_ssl:
             self._ssl_context = None
         else:
-            context = ssl.create_default_context()
-            context.set_ciphers("DEFAULT")
-            context.check_hostname = False
-            context.verify_mode = ssl.CERT_NONE
+            context = ssl.get_default_no_verify_context()
             self._ssl_context = context
 
     # Return list of deco devices
