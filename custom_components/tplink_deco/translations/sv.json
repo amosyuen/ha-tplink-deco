@@ -1,0 +1,66 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Använd användaruppgifterna för webbportalen. Följ instruktioner enligt sidan https://github.com/amosyuen/ha-tplink-deco#configuration-important-please-read",
+        "data": {
+          "host": "Värd",
+          "username": "Användarnamn",
+          "password": "Lösenord",
+          "interval_seconds": "Sekunder mellan uppdateringar",
+          "consider_home": "Sekunder att vänta tills att en enhet markeras som inte hemma efter inkativitet.",
+          "timeout_seconds": "Timeout sekunder",
+          "timeout_error_retries": "Timeout error retry count",
+          "verify_ssl": "Verifiera att SSL certifikatet är giltigt",
+          "client_prefix": "Klientnamn prefix",
+          "client_postfix": "Klientnamn suffix",
+          "deco_prefix": "Deconamn prefix",
+          "deco_postfix": "Deconamn suffix"
+        }
+      },
+      "reauth_confirm": {
+        "description": "Problem med användaruppgifterna. En möjlig orsak är inloggning på en separat enhet. Läs https://github.com/amosyuen/ha-tplink-deco#login-credentials",
+        "data": {
+          "username": "Användarnamn",
+          "password": "Lösenord"
+        }
+      }
+    },
+    "abort": {
+      "reauth_successful": "återautentisering lyckades"
+    },
+    "error": {
+      "invalid_auth": "Ogiltig autentisering",
+      "invalid_host": "Kunde inte ansluta till värd.",
+      "timeout_connect": "Det tog för lång tid att etablera anslutning",
+      "unknown": "Oväntat fel"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Använd användaruppgifterna för webbportalen. Följ instruktioner enligt sidan https://github.com/amosyuen/ha-tplink-deco#configuration-important-please-read",
+        "data": {
+          "host": "Värd",
+          "username": "Användarnamn",
+          "password": "Lösenord",
+          "interval_seconds": "Sekunder mellan uppdateringar",
+          "consider_home": "Sekunder att vänta tills att en enhet markeras som inte hemma efter inkativitet.",
+          "timeout_seconds": "Timeout sekunder",
+          "timeout_error_retries": "Timeout error retry count",
+          "verify_ssl": "Verifiera att SSL certifikatet är giltigt",
+          "client_prefix": "Klientnamn prefix",
+          "client_postfix": "Klientnamn suffix",
+          "deco_prefix": "Deconamn prefix",
+          "deco_postfix": "Deconamn suffix"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Ogiltig autentisering",
+      "invalid_host": "Kunde inte ansluta till värd.",
+      "timeout_connect": "Det tog för lång tid att etablera anslutning",
+      "unknown": "Oväntat fel"
+    }
+  }
+}
