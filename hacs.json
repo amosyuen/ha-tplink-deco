@@ -1,6 +1,6 @@
 {
   "name": "TP-Link Deco",
-  "hacs": "1.6.0",
+  "hacs": "1.7.0",
   "homeassistant": "2025.1.0",
   "render_readme": true
 }
