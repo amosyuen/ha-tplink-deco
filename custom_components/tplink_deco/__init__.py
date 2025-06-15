@@ -62,7 +62,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 async def async_create_and_refresh_coordinators(
     hass: HomeAssistant,
     config_data: dict[str:Any],
-    consider_home_seconds,
+    config_entry: ConfigEntry = None,
+    consider_home_seconds=1,
     update_interval: timedelta = None,
     deco_data: TpLinkDecoData = None,
     client_data: dict[str:TpLinkDecoClient] = None,
@@ -85,18 +86,25 @@ async def async_create_and_refresh_coordinators(
         timeout_seconds,
     )
     deco_coordinator = TplinkDecoUpdateCoordinator(
-        hass, api, update_interval, deco_data
+        hass, api, config_entry, update_interval, deco_data
     )
-    await deco_coordinator.async_config_entry_first_refresh()
+    if config_entry is None:
+        await deco_coordinator._async_update_data()
+    else:
+        await deco_coordinator.async_config_entry_first_refresh()
     clients_coordinator = TplinkDecoClientUpdateCoordinator(
         hass,
         api,
+        config_entry,
         deco_coordinator,
         consider_home_seconds,
         update_interval,
         client_data,
     )
-    await clients_coordinator.async_config_entry_first_refresh()
+    if config_entry is None:
+        await deco_coordinator._async_update_data()
+    else:
+        await clients_coordinator.async_config_entry_first_refresh()
 
     return {
         COORDINATOR_DECOS_KEY: deco_coordinator,
@@ -145,6 +153,7 @@ async def async_create_config_data(hass: HomeAssistant, config_entry: ConfigEntr
     return await async_create_and_refresh_coordinators(
         hass,
         config_entry.data,
+        config_entry,
         consider_home_seconds,
         update_interval,
         deco_data,
