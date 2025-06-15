@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "description": "Use the credentials for the admin web portal. Please follow instructions at https://github.com/amosyuen/ha-tplink-deco#configuration-important-please-read",
+        "description": "Use the credentials for the admin web portal. Please follow the instructions at https://github.com/amosyuen/ha-tplink-deco#configuration-important-please-read",
         "data": {
           "host": "[%key:common::config_flow::data::host%]",
           "username": "[%key:common::config_flow::data::username%]",
@@ -19,7 +19,7 @@
         }
       },
       "reauth_confirm": {
-        "description": "Problem with login credentials. Maybe caused by logging in on separate device. See https://github.com/amosyuen/ha-tplink-deco#login-credentials",
+        "description": "Problem with login credentials. Maybe caused by logging in on a separate device. See https://github.com/amosyuen/ha-tplink-deco#login-credentials",
         "data": {
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]"
@@ -36,7 +36,7 @@
   "options": {
     "step": {
       "init": {
-        "description": "Use the credentials for the admin web portal. Please follow instructions at https://github.com/amosyuen/ha-tplink-deco#configuration-important-please-read",
+        "description": "Use the credentials for the admin web portal. Please follow the instructions at https://github.com/amosyuen/ha-tplink-deco#configuration-important-please-read",
         "data": {
           "host": "[%key:common::config_flow::data::host%]",
           "username": "[%key:common::config_flow::data::username%]",
