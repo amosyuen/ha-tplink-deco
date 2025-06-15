@@ -118,7 +118,8 @@ async def _async_test_credentials(hass: HomeAssistant, data: dict[str:Any]):
     """Return true if credentials is valid."""
     try:
         coordinators = await async_create_and_refresh_coordinators(
-            hass, data, consider_home_seconds=1
+            hass,
+            data,
         )
         await asyncio.gather(
             coordinators[COORDINATOR_DECOS_KEY].async_shutdown(),

@@ -92,6 +92,19 @@ def _async_setup_decos(
 ):
     tracked_decos = set()
 
+    # Add master deco first because via_device checks that the providing device (master) exists.
+    master_deco = coordinator.data.master_deco
+    if master_deco is not None:
+        _LOGGER.debug("_async_setup_decos: Adding master deco mac=%s", master_deco.mac)
+        tracked_decos.add(master_deco.mac)
+        async_add_entities(
+            [
+                TplinkDecoDeviceTracker(
+                    coordinator, master_deco, deco_prefix, deco_postfix
+                )
+            ]
+        )
+
     @callback
     def add_untracked_decos():
         """Add new tracker entities for clients."""
