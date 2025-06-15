@@ -1,7 +1,7 @@
 // See https://aka.ms/vscode-remote/devcontainer.json for format details.
 {
   "name": "TP-Link Deco integration development",
-  "image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12-bookworm",
   "postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}",
   "postAttachCommand": ".devcontainer/setup.sh",
   "forwardPorts": [8123],
