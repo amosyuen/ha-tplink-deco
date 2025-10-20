@@ -1,5 +1,5 @@
 black==25.9.0
-colorlog==6.9.0
+colorlog==6.10.1
 flake8==7.3.0
 homeassistant==2025.1.0
 isort==6.1.0
