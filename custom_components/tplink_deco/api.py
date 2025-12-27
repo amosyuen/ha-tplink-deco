@@ -559,3 +559,33 @@ class TplinkDecoApi:
                     self._timeout_error_retries,
                     err,
                 )
+    async def async_get_internet_stats(self) -> dict:
+        """
+        Fetches internet usage / performance data from the Deco admin UI.
+        """
+        await self.async_login_if_needed()
+
+        context = "Internet Stats"
+        payload = {"operation": "read"}
+        response_json = await self._async_post(
+            context,
+            f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/network",
+            params={"form": "internet"},
+            data=self._encode_payload(payload),
+        )
+
+        # Décryptage via l’existant
+        data = self._decrypt_data(context, response_json["data"])
+        check_data_error_code(context, data)
+
+        _LOGGER.debug("Internet Stats decoded: %s", data)
+
+        try:
+            # On renvoie tout, on nettoiera après
+            result = data.get("result", {})
+            mobile_cpe = result.get("mobile_cpe", {})
+            return mobile_cpe
+        except Exception as err:
+            _LOGGER.error("%s parse error=%s, data=%s", context, err, data)
+            raise err
+                
