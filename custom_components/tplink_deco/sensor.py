@@ -25,43 +25,50 @@ from .device import create_device_info
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
-):
-    """Setup sensor platform."""
+async def async_setup_entry(hass, entry, async_add_entities):
     data = hass.data[DOMAIN][entry.entry_id]
     coordinator_decos = data[COORDINATOR_DECOS_KEY]
     coordinator_clients = data[COORDINATOR_CLIENTS_KEY]
 
-    def add_sensors_for_deco(
-        deco: TpLinkDeco | None,
-    ):
+    entities = []
+
+    # 🔥 Sensor Internet Stats
+    entities.append(TplinkInternetStatsSensor(coordinator_decos))
+
+    # 🔥 Sensors existants (débits)
+    def add_sensors_for_deco(deco):
         name_prefix = "Total" if deco is None else deco.name
         unique_id_prefix = (
             f"{coordinator_decos.data.master_deco.mac}_total"
-            if deco is None
-            else deco.mac
+            if deco is None else deco.mac
         )
-        async_add_entities(
-            [
-                TplinkTotalClientDataRateSensor(
-                    coordinator_decos,
-                    coordinator_clients,
-                    f"{name_prefix} Down",
-                    f"{unique_id_prefix}_down",
-                    "down_kilobytes_per_s",
-                    deco,
-                ),
-                TplinkTotalClientDataRateSensor(
-                    coordinator_decos,
-                    coordinator_clients,
-                    f"{name_prefix} Up",
-                    f"{unique_id_prefix}_up",
-                    "up_kilobytes_per_s",
-                    deco,
-                ),
-            ]
-        )
+        entities.extend([
+            TplinkTotalClientDataRateSensor(
+                coordinator_decos,
+                coordinator_clients,
+                f"{name_prefix} Down",
+                f"{unique_id_prefix}_down",
+                "down_kilobytes_per_s",
+                deco,
+            ),
+            TplinkTotalClientDataRateSensor(
+                coordinator_decos,
+                coordinator_clients,
+                f"{name_prefix} Up",
+                f"{unique_id_prefix}_up",
+                "up_kilobytes_per_s",
+                deco,
+            ),
+        ])
+
+    # Total
+    add_sensors_for_deco(None)
+
+    # Par Deco
+    for deco in coordinator_decos.data.decos.values():
+        add_sensors_for_deco(deco)
+
+    async_add_entities(entities)
 
     tracked_decos = set()
 
@@ -89,7 +96,6 @@ async def async_setup_entry(
     coordinator_decos.on_close(
         async_dispatcher_connect(hass, SIGNAL_DECO_ADDED, add_untracked_deco_sensors)
     )
-
 
 class TplinkTotalClientDataRateSensor(CoordinatorEntity, SensorEntity):
     """TP Link Total Client Data Rate Sensor Entity."""
@@ -139,3 +145,28 @@ class TplinkTotalClientDataRateSensor(CoordinatorEntity, SensorEntity):
             if self._deco is None or client.deco_mac == self._deco.mac:
                 state += getattr(client, self._client_attribute)
         self._attr_native_value = state
+        
+class TplinkInternetStatsSensor(CoordinatorEntity, SensorEntity):
+    """Sensor regroupant toutes les stats internet du Deco."""
+
+    def __init__(self, coordinator):
+        super().__init__(coordinator)
+        self._attr_name = "Internet Stats"
+        self._attr_unique_id = "internet_stats"
+
+    @property
+    def device_info(self):
+        master = self.coordinator.data.master_deco
+        return create_device_info(master, master)
+
+    @property
+    def native_value(self):
+        # Valeur principale (tu peux choisir ce que tu veux)
+        stats = self.coordinator.data.internet_stats
+        return stats.get("download_speed")  # ou None
+
+    @property
+    def extra_state_attributes(self):
+        # 🔥 Toutes les valeurs renvoyées par async_get_internet_stats()
+        return self.coordinator.data.internet_stats
+        
