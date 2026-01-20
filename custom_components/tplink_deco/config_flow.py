@@ -210,7 +210,6 @@ class TplinkDecoOptionsFlowHandler(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: ConfigEntry):
         """Initialize HACS options flow."""
-        self.config_entry = config_entry
         self.data = dict(config_entry.data)
         self._errors = {}
 
