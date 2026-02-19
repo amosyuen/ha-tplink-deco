@@ -3,23 +3,25 @@
 import logging
 
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.components.sensor.const import SensorDeviceClass
-from homeassistant.components.sensor.const import SensorStateClass
+from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfDataRate
-from homeassistant.core import HomeAssistant
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import COORDINATOR_CLIENTS_KEY
-from .const import COORDINATOR_DECOS_KEY
-from .const import DOMAIN
-from .const import SIGNAL_DECO_ADDED
-from .coordinator import TpLinkDeco
-from .coordinator import TplinkDecoClientUpdateCoordinator
-from .coordinator import TplinkDecoUpdateCoordinator
+from .const import (
+    COORDINATOR_CLIENTS_KEY,
+    COORDINATOR_DECOS_KEY,
+    DOMAIN,
+    SIGNAL_DECO_ADDED,
+)
+from .coordinator import (
+    TpLinkDeco,
+    TplinkDecoClientUpdateCoordinator,
+    TplinkDecoUpdateCoordinator,
+)
 from .device import create_device_info
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -37,11 +39,15 @@ async def async_setup_entry(
         deco: TpLinkDeco | None,
     ):
         name_prefix = "Total" if deco is None else deco.name
-        unique_id_prefix = (
-            f"{coordinator_decos.data.master_deco.mac}_total"
-            if deco is None
-            else deco.mac
-        )
+        if deco is None:
+            # Controleer of master_deco bestaat
+            if coordinator_decos.data.master_deco is None:
+                _LOGGER.warning("Master Deco not found, skipping total sensor creation")
+                return
+            unique_id_prefix = f"{coordinator_decos.data.master_deco.mac}_total"
+        else:
+            unique_id_prefix = deco.mac
+
         async_add_entities(
             [
                 TplinkTotalClientDataRateSensor(
