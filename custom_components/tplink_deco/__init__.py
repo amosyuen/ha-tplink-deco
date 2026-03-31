@@ -204,6 +204,17 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         ),
     )
 
+    async def async_get_internet_stats(service: ServiceCall) -> None:
+        stats = await deco_coordinator.api.async_get_internet_stats()
+        _LOGGER.info("Internet stats: %s", stats)
+        hass.bus.async_fire("tplink_deco_internet_stats", stats)  # event si besoin
+
+    hass.services.async_register(
+        DOMAIN,
+        "get_internet_stats",
+        async_get_internet_stats,
+    )
+
     config_entry.async_on_unload(config_entry.add_update_listener(update_listener))
 
     return True
@@ -281,3 +292,34 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
     _LOGGER.info("Migration to version %s successful", config_entry.version)
 
     return True
+
+async def async_get_config_entry_diagnostics(hass: HomeAssistant, config_entry: ConfigEntry):
+    """Return diagnostics for TP-Link Deco integration (Internet stats only)."""
+    diagnostics = {}
+
+    data = hass.data.get(DOMAIN, {}).get(config_entry.entry_id)
+    if not data:
+        diagnostics["error"] = "Integration data not found"
+        return diagnostics
+
+    deco_coordinator = data.get(COORDINATOR_DECOS_KEY)
+    if not deco_coordinator:
+        diagnostics["error"] = "Deco coordinator not found"
+        return diagnostics
+
+    try:
+        master_deco = deco_coordinator.data.master_deco
+        internet_stats_raw = await master_deco.async_get_internet_stats()
+        mobile = internet_stats_raw.get("mobile_cpe", {})
+        diagnostics["internet_stats"] = {
+            "status": mobile.get("inet_status"),
+            "downlink_rate_kbps": mobile.get("downlink_rate"),
+            "uplink_rate_kbps": mobile.get("uplink_rate"),
+            "data_usage_bytes": mobile.get("data_usage"),
+            "signal_strength": mobile.get("signal_strength"),
+            "network_type": mobile.get("network_type"),
+        }
+    except Exception as err:
+        diagnostics["internet_stats_error"] = str(err)
+
+    return diagnostics

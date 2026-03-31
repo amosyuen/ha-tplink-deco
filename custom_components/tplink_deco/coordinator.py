@@ -129,15 +129,15 @@ class TpLinkDecoClient:
 
 
 class TpLinkDecoData:
-    """Class for coordinator data."""
-
     def __init__(
         self,
         master_deco: TpLinkDeco = None,
         decos: dict[str:TpLinkDeco] = None,
+        internet_stats: dict[str:Any] = None,
     ) -> None:
         self.master_deco = master_deco
         self.decos = {} if decos is None else decos
+        self.internet_stats = internet_stats or {}
 
 
 class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
@@ -167,30 +167,48 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Update data via api."""
+    
+        # 1. Récupération des decos
         new_decos = await async_call_and_propagate_config_error(
             self.api.async_list_devices
         )
-
+    
+        # 2. Récupération des stats internet (🔥 toujours AVANT le return)
+        internet_stats = await async_call_and_propagate_config_error(
+            self.api.async_get_internet_stats
+        )
+    
         old_decos = self.data.decos
         master_deco = None
         deco_added = False
         decos = {}
+    
         for new_deco in new_decos:
             mac = new_deco["mac"]
             deco = old_decos.get(mac)
             if deco is None:
                 deco_added = True
                 deco = TpLinkDeco(mac)
-                _LOGGER.debug("_async_update_data: Found new deco mac=%s", deco.mac)
+    
             deco.update(new_deco)
             decos[mac] = deco
+    
             if deco.master:
                 master_deco = deco
-
+    
         if deco_added:
             async_dispatcher_send(self.hass, SIGNAL_DECO_ADDED)
+    
+        # 3. 🔥 On renvoie un objet TpLinkDecoData étendu
+        return TpLinkDecoData(
+            master_deco=master_deco,
+            decos=decos,
+            internet_stats=internet_stats,
+        )
 
-        return TpLinkDecoData(master_deco, decos)
+        #Stats internet mobile
+        internet_stats = await async_call_and_propagate_config_error( self.api.async_get_internet_stats )
+        return { "master_deco": master_deco, "decos": decos, "internet_stats": internet_stats, }
 
     @callback
     def on_close(self, func: CALLBACK_TYPE) -> None:
