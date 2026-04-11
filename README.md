@@ -9,13 +9,13 @@ This fork resolves compatibility issues and adds additional functionality.
 
 ## Added / Fixed in this fork
 
-* ✅ Fix for Home Assistant 2026.4 compatibility
-* ✅ Diagnostic entities (including backhaul speed and max speed)
-* ✅ Polling control:
+- ✅ Fix for Home Assistant 2026.4 compatibility
+- ✅ Diagnostic entities (including backhaul speed and max speed)
+- ✅ Polling control:
 
-  * pause/resume services
-  * switch entity to control polling from the UI
-* ✅ Improved stability when accessing the Deco web interface
+  - pause/resume services
+ - switch entity to control polling from the UI
+- ✅ Improved stability when accessing the Deco web interface
 
 👉 Use this fork if the original integration no longer works or if you need extended diagnostics and control.
 
@@ -25,12 +25,12 @@ This fork resolves compatibility issues and adds additional functionality.
 
 Available services in Home Assistant:
 
-* `tplink_deco.pause_polling`
-* `tplink_deco.resume_polling`
+- `tplink_deco.pause_polling`
+- `tplink_deco.resume_polling`
 
 Available entity:
 
-* `switch.deco_polling`
+- `switch.deco_polling`
 
 ---
 
@@ -40,11 +40,11 @@ Pause or resume polling to the Deco API.
 
 ### Benefits
 
-* Reduces load on the Deco API by limiting continuous polling
-* Decreases network traffic and processing overhead
-* Improves debugging by allowing polling to be temporarily disabled
-* Helps prevent issues with limited concurrent sessions in the Deco web interface
-* Provides more control over integration behavior for advanced users
+- Reduces load on the Deco API by limiting continuous polling
+- Decreases network traffic and processing overhead
+- Improves debugging by allowing polling to be temporarily disabled
+- Helps prevent issues with limited concurrent sessions in the Deco web interface
+- Provides more control over integration behavior for advanced users
 
 This is especially useful when accessing the Deco web interface, as the API allows only a limited number of concurrent sessions.
 
