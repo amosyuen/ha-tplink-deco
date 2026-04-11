@@ -416,7 +416,7 @@ class TplinkDecoApi:
                     params=params,
                     data=data,
                     headers=headers,
-                    cookies=request_cookies, # Gebruik de cookies parameter
+                    cookies=request_cookies,  # Gebruik de cookies parameter
                     ssl=self._ssl_context,
                 )
                 response.raise_for_status()
