@@ -47,9 +47,9 @@
           "timeout_error_retries": "Timeout error retry count",
           "verify_ssl": "Verify SSL certificate is valid",
           "client_prefix": "Client name prefix",
-          "client_postfix": "Client name postfix"
+          "client_postfix": "Client name postfix",
           "deco_prefix": "Deco name prefix",
-          "deco_postfix": "Deco name postfix",
+          "deco_postfix": "Deco name postfix"
         }
       }
     },
