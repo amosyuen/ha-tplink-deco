@@ -72,6 +72,8 @@ class TpLinkDeco:
         self.bssid_band5 = None
         self.signal_band2_4 = None
         self.signal_band5 = None
+        self.backhaul_speed = None
+        self.backhaul_max_speed = None
 
     def update(
         self,
@@ -92,7 +94,7 @@ class TpLinkDeco:
         elif isinstance(inet, str):
             self.internet_online = inet.lower() in ("online", "connected", "up")
         else:
-            self.internet_online = bool(inet)    
+            self.internet_online = bool(inet)
         self.master = data.get("role") == "master"
         self.connection_type = data.get("connection_type")
         self.bssid_band2_4 = data.get("bssid_2g")
@@ -100,6 +102,8 @@ class TpLinkDeco:
         signal_level = data.get("signal_level", {})
         self.signal_band2_4 = signal_level.get("band2_4")
         self.signal_band5 = signal_level.get("band5")
+        self.backhaul_speed = data.get("backhual_speed")
+        self.backhaul_max_speed = data.get("backhual_max_speed")
 
 
 class TpLinkDecoClient:
@@ -171,8 +175,14 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
         # Must happen after super().__init__
         self.data = TpLinkDecoData() if data is None else data
 
+        self.paused = False
+
     async def _async_update_data(self):
         """Update data via api."""
+        if self.paused:
+            _LOGGER.debug("Deco polling is paused")
+            return self.data
+
         new_decos = await async_call_and_propagate_config_error(
             self.api.async_list_devices
         )
@@ -244,6 +254,10 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Update data via api."""
+        if self._deco_update_coordinator.paused:
+            _LOGGER.debug("Deo client polling is paused")
+            return self.data
+
         if len(self._deco_update_coordinator.data.decos) == 0:
             return
 

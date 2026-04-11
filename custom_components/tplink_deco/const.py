@@ -53,6 +53,7 @@ SIGNAL_DECO_ADDED = f"{DOMAIN}-deco-added"
 
 # Services
 SERVICE_REBOOT_DECO = "reboot_deco"
-
+SERVICE_PAUSE_POLLING = "pause_polling"
+SERVICE_RESUME_POLLING = "resume_polling"
 # Platforms
-PLATFORMS = [DEVICE_TRACKER_DOMAIN, SENSOR_DOMAIN, BINARY_SENSOR_DOMAIN]
+PLATFORMS = ["device_tracker", "sensor", "binary_sensor", "switch"]

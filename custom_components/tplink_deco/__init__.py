@@ -50,6 +50,8 @@ from .const import DEVICE_TYPE_DECO
 from .const import DOMAIN
 from .const import PLATFORMS
 from .const import SERVICE_REBOOT_DECO
+from .const import SERVICE_PAUSE_POLLING
+from .const import SERVICE_RESUME_POLLING
 from .coordinator import TpLinkDeco
 from .coordinator import TpLinkDecoClient
 from .coordinator import TpLinkDecoData
@@ -161,6 +163,30 @@ async def async_create_config_data(hass: HomeAssistant, config_entry: ConfigEntr
     )
 
 
+async def async_pause_polling(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+    """Pause Deco polling."""
+    coordinator_decos = hass.data[DOMAIN][config_entry.entry_id][COORDINATOR_DECOS_KEY]
+
+    if coordinator_decos.paused:
+        _LOGGER.info("TP-Link Deco polling is already paused")
+        return
+
+    coordinator_decos.paused = True
+    _LOGGER.info("TP-Link Deco polling paused")
+
+
+async def async_resume_polling(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+    """Resume Deco polling."""
+    coordinator_decos = hass.data[DOMAIN][config_entry.entry_id][COORDINATOR_DECOS_KEY]
+
+    if not coordinator_decos.paused:
+        _LOGGER.info("TP-Link Deco polling is already running")
+        return
+
+    coordinator_decos.paused = False
+    _LOGGER.info("TP-Link Deco polling resumed")
+    await coordinator_decos.async_request_refresh()
+
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Set up this integration using UI."""
     _LOGGER.debug("async_setup_entry: Config entry %s", config_entry.entry_id)
@@ -204,6 +230,26 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         ),
     )
 
+    async def handle_pause_polling(service: ServiceCall) -> None:
+        """Handle pause polling service."""
+        await async_pause_polling(hass, config_entry)
+
+    async def handle_resume_polling(service: ServiceCall) -> None:
+        """Handle resume polling service."""
+        await async_resume_polling(hass, config_entry)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_PAUSE_POLLING,
+        handle_pause_polling,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_RESUME_POLLING,
+        handle_resume_polling,
+    )
+
     config_entry.async_on_unload(config_entry.add_update_listener(update_listener))
 
     return True
@@ -230,7 +276,8 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     )
     if unloaded:
         hass.data[DOMAIN].pop(config_entry.entry_id)
-
+        hass.services.async_remove(DOMAIN, SERVICE_PAUSE_POLLING)
+        hass.services.async_remove(DOMAIN, SERVICE_RESUME_POLLING)
     return unloaded
 
 
