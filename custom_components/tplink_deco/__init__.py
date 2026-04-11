@@ -49,8 +49,8 @@ from .const import DEFAULT_TIMEOUT_SECONDS
 from .const import DEVICE_TYPE_DECO
 from .const import DOMAIN
 from .const import PLATFORMS
-from .const import SERVICE_REBOOT_DECO
 from .const import SERVICE_PAUSE_POLLING
+from .const import SERVICE_REBOOT_DECO
 from .const import SERVICE_RESUME_POLLING
 from .coordinator import TpLinkDeco
 from .coordinator import TpLinkDecoClient
