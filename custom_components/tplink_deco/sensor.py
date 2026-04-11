@@ -1,7 +1,7 @@
 """TP-Link Deco."""
 
-import logging
 from dataclasses import dataclass
+import logging
 from typing import Any
 from typing import Callable
 
