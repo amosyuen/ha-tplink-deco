@@ -13,7 +13,6 @@ from Crypto.Cipher import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 import aiohttp
 from aiohttp.hdrs import CONTENT_TYPE
-from aiohttp.hdrs import COOKIE
 from aiohttp.hdrs import SET_COOKIE
 import async_timeout
 from cryptography.hazmat.primitives import padding
@@ -399,11 +398,10 @@ class TplinkDecoApi:
         data: Any,
     ) -> dict:
         headers = {CONTENT_TYPE: "application/json"}
-        # Gebruik een dictionary voor cookies in plaats van een string in headers
         request_cookies = {}
         if self._cookie is not None:
             try:
-                # Split 'sysauth=abc' naar {'sysauth': 'abc'}
+                # Split 'sysauth=abc' into {'sysauth': 'abc'}
                 cookie_parts = self._cookie.split("=", 1)
                 if len(cookie_parts) == 2:
                     request_cookies[cookie_parts[0]] = cookie_parts[1]
@@ -416,7 +414,7 @@ class TplinkDecoApi:
                     params=params,
                     data=data,
                     headers=headers,
-                    cookies=request_cookies, # Gebruik de cookies parameter
+                    cookies=request_cookies,
                     ssl=self._ssl_context,
                 )
                 response.raise_for_status()
