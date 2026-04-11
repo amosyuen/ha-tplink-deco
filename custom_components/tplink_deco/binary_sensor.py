@@ -33,6 +33,7 @@ async def async_setup_entry(
                 ),
                 TplinkDecoOnlineBinarySensor(
                     coordinator_decos,
+                    
                     deco.mac,    
                 ),
             ]
