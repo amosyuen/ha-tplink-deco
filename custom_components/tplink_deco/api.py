@@ -13,6 +13,7 @@ from Crypto.Cipher import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 import aiohttp
 from aiohttp.hdrs import CONTENT_TYPE
+from aiohttp.hdrs import COOKIE
 from aiohttp.hdrs import SET_COOKIE
 import async_timeout
 from cryptography.hazmat.primitives import padding
@@ -212,6 +213,84 @@ class TplinkDecoApi:
         check_data_error_code(context, data)
         _LOGGER.debug("Rebooted decos %s", deco_macs)
 
+    async def async_set_led(self, mode: str) -> dict:
+        await self.async_login_if_needed()
+
+        context = f"Set LED {mode}"
+
+        # mogelijke modes: on / off / schedule
+        payload = {
+            "operation": "set_led",
+            "params": {
+             "mode": mode
+            }
+        }
+
+        response_json = await self._async_post(
+            context,
+             f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/device",
+            params={"form": "system"},
+            data=self._encode_payload(payload),
+        )
+
+        data = self._decrypt_data(context, response_json["data"])
+        check_data_error_code(context, data)
+
+        return data
+
+    async def async_test_led_combinations(self):
+        await self.async_login_if_needed()
+
+        forms = ["system", "led", "device_led", "wireless"]
+        operations = ["set_led", "set_led_status", "set_led_mode"]
+        modes = ["on", "off", "always_on", "always_off", "night_mode", "auto"]
+
+        for form in forms:
+            for operation in operations:
+                for mode in modes:
+                    try:
+                        payload = {
+                            "operation": operation,
+                            "params": {
+                                "mode": mode,
+                            },
+                        }
+
+                        context = f"TEST LED form={form} operation={operation} mode={mode}"
+
+                        _LOGGER.warning(
+                            "TEST -> form=%s operation=%s mode=%s",
+                            form,
+                            operation,
+                            mode,
+                        )
+
+                        response_json = await self._async_post(
+                            context,
+                            f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/device",
+                            params={"form": form},
+                            data=self._encode_payload(payload),
+                        )
+
+                        data = self._decrypt_data(context, response_json["data"])
+
+                        _LOGGER.warning(
+                            "RESULT -> form=%s operation=%s mode=%s data=%s",
+                            form,
+                            operation,
+                            mode,
+                            data,
+                        )
+
+                    except Exception as e:
+                        _LOGGER.error(
+                            "ERROR -> form=%s operation=%s mode=%s error=%s",
+                            form,
+                            operation,
+                            mode,
+                            e,
+                        )
+
     # Return list of clients. Default lists clients for all decos.
     async def async_list_clients(self, deco_mac="default") -> dict:
         return await self._async_call_with_retry(self._async_list_clients, deco_mac)
@@ -398,10 +477,11 @@ class TplinkDecoApi:
         data: Any,
     ) -> dict:
         headers = {CONTENT_TYPE: "application/json"}
+        # Gebruik een dictionary voor cookies in plaats van een string in headers
         request_cookies = {}
         if self._cookie is not None:
             try:
-                # Split 'sysauth=abc' into {'sysauth': 'abc'}
+                # Split 'sysauth=abc' naar {'sysauth': 'abc'}
                 cookie_parts = self._cookie.split("=", 1)
                 if len(cookie_parts) == 2:
                     request_cookies[cookie_parts[0]] = cookie_parts[1]
@@ -414,7 +494,7 @@ class TplinkDecoApi:
                     params=params,
                     data=data,
                     headers=headers,
-                    cookies=request_cookies,
+                    cookies=request_cookies, # Gebruik de cookies parameter
                     ssl=self._ssl_context,
                 )
                 response.raise_for_status()
