@@ -14,7 +14,8 @@ This fork resolves compatibility issues and adds additional functionality.
 - ✅ Polling control:
 
   - pause/resume services
- - switch entity to control polling from the UI
+
+- switch entity to control polling from the UI
 - ✅ Improved stability when accessing the Deco web interface
 
 👉 Use this fork if the original integration no longer works or if you need extended diagnostics and control.
@@ -47,7 +48,6 @@ Pause or resume polling to the Deco API.
 - Provides more control over integration behavior for advanced users
 
 This is especially useful when accessing the Deco web interface, as the API allows only a limited number of concurrent sessions.
-
 
 # TP-Link Deco
 

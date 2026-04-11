@@ -68,7 +68,7 @@ DIAGNOSTIC_SENSOR_DESCRIPTIONS: tuple[TplinkDecoDiagnosticSensorDescription, ...
             deco.connection_type[0]
             if isinstance(deco.connection_type, list) and deco.connection_type
             else deco.connection_type
-        ),    
+        ),
     ),
     TplinkDecoDiagnosticSensorDescription(
         key="backhaul_speed",
@@ -86,9 +86,9 @@ DIAGNOSTIC_SENSOR_DESCRIPTIONS: tuple[TplinkDecoDiagnosticSensorDescription, ...
         native_unit_of_measurement=UnitOfDataRate.MEGABITS_PER_SECOND,
         value_fn=lambda deco: deco.backhaul_max_speed,
     ),
-)   
-    
-        
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ):
@@ -125,7 +125,6 @@ async def async_setup_entry(
                 deco,
             ),
         ]
-
 
         if deco is not None:
             entities.append(
@@ -224,6 +223,7 @@ class TplinkTotalClientDataRateSensor(CoordinatorEntity, SensorEntity):
                 state += getattr(client, self._client_attribute)
         self._attr_native_value = state
 
+
 class TplinkDecoClientCountSensor(CoordinatorEntity, SensorEntity):
     """TP-Link Deco connected client count sensor."""
 
@@ -301,5 +301,4 @@ class TplinkDecoDiagnosticSensor(CoordinatorEntity, SensorEntity):
         value = self.entity_description.value_fn(self._deco)
         if value is None or value == "" or value == []:
             return None
-        return value    
-        
+        return value

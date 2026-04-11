@@ -187,6 +187,7 @@ async def async_resume_polling(hass: HomeAssistant, config_entry: ConfigEntry) -
     _LOGGER.info("TP-Link Deco polling resumed")
     await coordinator_decos.async_request_refresh()
 
+
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Set up this integration using UI."""
     _LOGGER.debug("async_setup_entry: Config entry %s", config_entry.entry_id)

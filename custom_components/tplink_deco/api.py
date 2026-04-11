@@ -13,7 +13,6 @@ from Crypto.Cipher import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 import aiohttp
 from aiohttp.hdrs import CONTENT_TYPE
-from aiohttp.hdrs import COOKIE
 from aiohttp.hdrs import SET_COOKIE
 import async_timeout
 from cryptography.hazmat.primitives import padding

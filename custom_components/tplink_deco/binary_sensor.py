@@ -33,8 +33,7 @@ async def async_setup_entry(
                 ),
                 TplinkDecoOnlineBinarySensor(
                     coordinator_decos,
-                    
-                    deco.mac,    
+                    deco.mac,
                 ),
             ]
         )
@@ -85,13 +84,12 @@ class TplinkDecoInternetOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity
 
         if isinstance(value, str):
             return value.lower() in ("online", "true", "1", "yes")
-        
+
         return bool(value)
-    
+
     @property
     def available(self) -> bool:
         return self._deco is not None and self._deco.internet_online is not None
-
 
     @property
     def device_info(self):
@@ -100,6 +98,7 @@ class TplinkDecoInternetOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity
             self._deco,
             self.coordinator.data.master_deco,
         )
+
 
 class TplinkDecoOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """TP-Link Deco online (mesh/backhaul) status."""
