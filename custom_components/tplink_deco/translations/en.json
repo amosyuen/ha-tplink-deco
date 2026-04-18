@@ -2,13 +2,13 @@
   "config": {
     "step": {
       "user": {
-        "description": "Use the credentials for the admin web portal. See documentation for more information",
+        "description": "Use the credentials for the admin web portal. See the documentation for setup details.",
         "data": {
           "host": "Host",
           "username": "Username",
           "password": "Password",
-          "interval_seconds": "Seconds between updates",
-          "consider_home": "Seconds to wait till marking a device tracker as not home after not being seen.",
+          "scan_interval": "Seconds between updates",
+          "consider_home": "Seconds to wait before marking a device tracker as not home after it is no longer seen.",
           "timeout_seconds": "Timeout seconds",
           "timeout_error_retries": "Timeout error retry count",
           "verify_ssl": "Verify SSL certificate is valid",
@@ -19,7 +19,7 @@
         }
       },
       "reauth_confirm": {
-        "description": "Problem with login credentials. Maybe caused by logging in on a separate device. See documentation for more information.",
+        "description": "Problem with login credentials. This may be caused by logging in on a separate device. See the documentation for login requirements.",
         "data": {
           "username": "Username",
           "password": "Password"
@@ -27,7 +27,7 @@
       }
     },
     "abort": {
-      "reauth_successful": "Reauth successful"
+      "reauth_successful": "Reauthentication successful"
     },
     "error": {
       "invalid_auth": "Invalid authentication",
@@ -39,13 +39,13 @@
   "options": {
     "step": {
       "init": {
-        "description": "Use the credentials for the admin web portal. See documentation for more information",
+        "description": "Use the credentials for the admin web portal. See the documentation for setup details.",
         "data": {
           "host": "Host",
           "username": "Username",
           "password": "Password",
-          "interval_seconds": "Seconds between updates",
-          "consider_home": "Seconds to wait till marking a device tracker as not home after not being seen.",
+          "scan_interval": "Seconds between updates",
+          "consider_home": "Seconds to wait before marking a device tracker as not home after it is no longer seen.",
           "timeout_seconds": "Timeout seconds",
           "timeout_error_retries": "Timeout error retry count",
           "verify_ssl": "Verify SSL certificate is valid",
@@ -55,6 +55,9 @@
           "deco_postfix": "Deco name postfix"
         }
       }
+    },
+    "abort": {
+      "reauth_successful": "Reauthentication successful"
     },
     "error": {
       "invalid_auth": "Invalid authentication",

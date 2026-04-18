@@ -73,14 +73,18 @@ class TplinkDecoInternetOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity
         self._attr_unique_id = f"{deco_mac}_internet_online"
 
     @property
-    def _deco(self) -> TpLinkDeco:
+    def _deco(self) -> TpLinkDeco | None:
         """Return current deco object."""
-        return self.coordinator.data.decos[self._deco_mac]
+        return self.coordinator.data.decos.get(self._deco_mac)
 
     @property
     def is_on(self) -> bool:
         """Return true if internet is online."""
-        value = self._deco.internet_online
+        deco = self._deco
+        if deco is None:
+            return False
+
+        value = deco.internet_online
 
         if isinstance(value, str):
             return value.lower() in ("online", "true", "1", "yes")
@@ -89,13 +93,17 @@ class TplinkDecoInternetOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity
 
     @property
     def available(self) -> bool:
-        return self._deco is not None and self._deco.internet_online is not None
+        return True
 
     @property
     def device_info(self):
         """Return device info."""
+        deco = self._deco
+        if deco is None:
+            return None
+
         return create_device_info(
-            self._deco,
+            deco,
             self.coordinator.data.master_deco,
         )
 
@@ -114,19 +122,26 @@ class TplinkDecoOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
     @property
     def _deco(self):
-        return self.coordinator.data.decos[self._deco_mac]
+        return self.coordinator.data.decos.get(self._deco_mac)
 
     @property
     def is_on(self):
-        return bool(self._deco.online)
+        deco = self._deco
+        if deco is None:
+            return False
+        return bool(deco.online)
 
     @property
     def available(self):
-        return self._deco is not None
+        return True
 
     @property
     def device_info(self):
+        deco = self._deco
+        if deco is None:
+            return None
+
         return create_device_info(
-            self._deco,
+            deco,
             self.coordinator.data.master_deco,
         )

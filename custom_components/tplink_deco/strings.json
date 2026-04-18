@@ -2,13 +2,13 @@
   "config": {
     "step": {
       "user": {
-        "description": "Use the credentials for the admin web portal. See documentation for more information",
+        "description": "Use the credentials for the admin web portal. See the documentation for setup details.",
         "data": {
           "host": "[%key:common::config_flow::data::host%]",
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
-          "interval_seconds": "Seconds between updates",
-          "consider_home": "Seconds to wait till marking a device tracker as not home after not being seen.",
+          "scan_interval": "Seconds between updates",
+          "consider_home": "Seconds to wait before marking a device tracker as not home after it is no longer seen.",
           "timeout_seconds": "Timeout seconds",
           "timeout_error_retries": "Timeout error retry count",
           "verify_ssl": "Verify SSL certificate is valid",
@@ -19,7 +19,7 @@
         }
       },
       "reauth_confirm": {
-        "description": "Problem with login credentials. Maybe caused by logging in on a separate device. See documentation for more information",
+        "description": "Problem with login credentials. This may be caused by logging in on a separate device. See the documentation for login requirements.",
         "data": {
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]"
@@ -31,18 +31,21 @@
       "invalid_host": "[%key:common::config_flow::error::invalid_host%]",
       "timeout_connect": "[%key:common::config_flow::error::timeout_connect%]",
       "unknown": "[%key:common::config_flow::error::unknown%]"
+    },
+    "abort": {
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
     }
   },
   "options": {
     "step": {
       "init": {
-        "description": "Use the credentials for the admin web portal. See documentation for more information",
+        "description": "Use the credentials for the admin web portal. See the documentation for setup details.",
         "data": {
           "host": "[%key:common::config_flow::data::host%]",
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
-          "interval_seconds": "Seconds between updates",
-          "consider_home": "Seconds to wait till marking a device tracker as not home after not being seen.",
+          "scan_interval": "Seconds between updates",
+          "consider_home": "Seconds to wait before marking a device tracker as not home after it is no longer seen.",
           "timeout_seconds": "Timeout seconds",
           "timeout_error_retries": "Timeout error retry count",
           "verify_ssl": "Verify SSL certificate is valid",

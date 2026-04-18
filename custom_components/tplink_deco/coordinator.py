@@ -211,6 +211,16 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
             if deco.master:
                 master_deco = deco
 
+        for mac, old_deco in old_decos.items():
+            if mac not in decos:
+                _LOGGER.debug(
+                    "_async_update_data: Deco mac=%s not returned by API, marking offline",
+                    mac,
+                )
+                old_deco.online = False
+                old_deco.internet_online = False
+                decos[mac] = old_deco
+
         # Zet globale performance data op de master Deco
         result = performance_data.get("result", {})
         if master_deco is not None:
