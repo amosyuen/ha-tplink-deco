@@ -34,6 +34,7 @@ ATTR_MASTER = "master"
 ATTR_SIGNAL_BAND2_4 = "signal_band2_4"
 ATTR_SIGNAL_BAND5 = "signal_band5"
 ATTR_UP_KILOBYTES_PER_S = "up_kilobytes_per_s"
+ATTR_UI_DEVICE_NAME = "ui_device_name"
 
 # Config
 CONF_CLIENT_PREFIX = "client_prefix"

@@ -35,10 +35,12 @@ Two types of sensors are available:
 - **Smoothed** → averaged values over time (stable, ideal for dashboards)
 
 **Use raw for:**
+
 - debugging
 - real-time monitoring
 
 **Use smoothed for:**
+
 - dashboards
 - automations
 - trend analysis
@@ -50,6 +52,7 @@ Two types of sensors are available:
 #### Runtime control
 
 - Pause / resume polling:
+
   - `tplink_deco.pause_polling`
   - `tplink_deco.resume_polling`
 
@@ -68,6 +71,7 @@ Adjustable polling interval:
 - 120 sec
 
 Configurable:
+
 - during setup
 - via Home Assistant UI (select entity)
 

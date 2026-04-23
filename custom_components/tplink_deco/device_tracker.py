@@ -29,6 +29,7 @@ from .const import ATTR_INTERNET_ONLINE
 from .const import ATTR_MASTER
 from .const import ATTR_SIGNAL_BAND2_4
 from .const import ATTR_SIGNAL_BAND5
+from .const import ATTR_UI_DEVICE_NAME
 from .const import ATTR_UP_KILOBYTES_PER_S
 from .const import CONF_CLIENT_POSTFIX
 from .const import CONF_CLIENT_PREFIX
@@ -404,6 +405,7 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
             ATTR_UP_KILOBYTES_PER_S: self._client.up_kilobytes_per_s,
             ATTR_DECO_DEVICE: None if deco is None else deco.name,
             ATTR_DECO_MAC: self._attr_deco_mac,
+            ATTR_UI_DEVICE_NAME: self._attr_name,
         }
 
     @property
