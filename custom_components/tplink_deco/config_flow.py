@@ -52,6 +52,10 @@ def _get_schema(data: dict[str:Any]):
         data = {}
     schema = _get_auth_schema(data)
     scan_interval = data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+
+    if scan_interval not in [10, 30, 60, 120]:
+        scan_interval = DEFAULT_SCAN_INTERVAL
+
     schema.update(
         {
             vol.Required(
@@ -60,7 +64,7 @@ def _get_schema(data: dict[str:Any]):
             vol.Required(
                 CONF_SCAN_INTERVAL,
                 default=scan_interval,
-            ): vol.All(vol.Coerce(int), vol.Range(min=1)),
+            ): vol.In([10, 30, 60, 120]),
             vol.Required(
                 CONF_CONSIDER_HOME,
                 default=data.get(CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME),

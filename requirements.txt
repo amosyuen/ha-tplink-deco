@@ -1,8 +1,8 @@
-black==26.1.0
+black==26.3.1
 colorlog==6.10.1
 flake8==7.3.0
 homeassistant==2025.1.0
 isort==7.0.0
-pip>=21.0,<25.4
-pre-commit==4.5.1
-ruff==0.14.13
+pip>=26.1,<26.2
+pre-commit==4.6.0
+ruff==0.15.12

@@ -1,10 +1,8 @@
 """Constants for TP-Link Deco."""
 
-from homeassistant.components.device_tracker import DOMAIN as DEVICE_TRACKER_DOMAIN
 from homeassistant.components.device_tracker.const import (
     DEFAULT_CONSIDER_HOME as DEFAULT_CONSIDER_HOME_SPAN,
 )
-from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 
 # Base component constants
 DOMAIN = "tplink_deco"
@@ -36,6 +34,7 @@ ATTR_MASTER = "master"
 ATTR_SIGNAL_BAND2_4 = "signal_band2_4"
 ATTR_SIGNAL_BAND5 = "signal_band5"
 ATTR_UP_KILOBYTES_PER_S = "up_kilobytes_per_s"
+ATTR_UI_DEVICE_NAME = "ui_device_name"
 
 # Config
 CONF_CLIENT_PREFIX = "client_prefix"
@@ -52,6 +51,7 @@ SIGNAL_DECO_ADDED = f"{DOMAIN}-deco-added"
 
 # Services
 SERVICE_REBOOT_DECO = "reboot_deco"
-
+SERVICE_PAUSE_POLLING = "pause_polling"
+SERVICE_RESUME_POLLING = "resume_polling"
 # Platforms
-PLATFORMS = [DEVICE_TRACKER_DOMAIN, SENSOR_DOMAIN]
+PLATFORMS = ["device_tracker", "sensor", "binary_sensor", "switch", "select"]

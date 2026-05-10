@@ -72,10 +72,16 @@ class TpLinkDeco:
         self.bssid_band5 = None
         self.signal_band2_4 = None
         self.signal_band5 = None
+        self.backhaul_speed = None
+        self.backhaul_max_speed = None
+        self.cpu_usage = None
+        self.cpu_usage_raw = None
+        self.mem_usage = None
+        self.mem_usage_raw = None
 
     def update(
         self,
-        data: dict[str:Any],
+        data: dict[str, Any],
     ) -> None:
         self.hw_version = data.get("hardware_ver")
         self.sw_version = data.get("software_ver")
@@ -86,7 +92,13 @@ class TpLinkDeco:
             self.name = snake_case_to_title_space(data.get("nickname"))
         self.ip_address = filter_invalid_ip(data.get("device_ip"))
         self.online = data.get("group_status") == "connected"
-        self.internet_online = data.get("inet_status") == "online"
+        inet = data.get("inet_status")
+        if inet is None:
+            self.internet_online = None
+        elif isinstance(inet, str):
+            self.internet_online = inet.lower() in ("online", "connected", "up")
+        else:
+            self.internet_online = bool(inet)
         self.master = data.get("role") == "master"
         self.connection_type = data.get("connection_type")
         self.bssid_band2_4 = data.get("bssid_2g")
@@ -94,6 +106,8 @@ class TpLinkDeco:
         signal_level = data.get("signal_level", {})
         self.signal_band2_4 = signal_level.get("band2_4")
         self.signal_band5 = signal_level.get("band5")
+        self.backhaul_speed = data.get("backhual_speed")
+        self.backhaul_max_speed = data.get("backhual_max_speed")
 
 
 class TpLinkDecoClient:
@@ -165,10 +179,20 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
         # Must happen after super().__init__
         self.data = TpLinkDecoData() if data is None else data
 
+        self.paused = False
+
     async def _async_update_data(self):
         """Update data via api."""
+        if self.paused:
+            _LOGGER.debug("Deco polling is paused")
+            return self.data
+
         new_decos = await async_call_and_propagate_config_error(
             self.api.async_list_devices
+        )
+
+        performance_data = await async_call_and_propagate_config_error(
+            self.api.async_get_performance
         )
 
         old_decos = self.data.decos
@@ -186,6 +210,44 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
             decos[mac] = deco
             if deco.master:
                 master_deco = deco
+
+        for mac, old_deco in old_decos.items():
+            if mac not in decos:
+                _LOGGER.debug(
+                    "_async_update_data: Deco mac=%s not returned by API, marking offline",
+                    mac,
+                )
+                old_deco.online = False
+                old_deco.internet_online = False
+                decos[mac] = old_deco
+
+        # Zet globale performance data op de master Deco
+        result = performance_data.get("result", {})
+        if master_deco is not None:
+            cpu_raw = result.get("cpu_usage")
+            mem_raw = result.get("mem_usage")
+
+            if cpu_raw is not None:
+                cpu_percent = cpu_raw * 100
+                master_deco.cpu_usage_raw = round(cpu_percent, 1)
+
+                if master_deco.cpu_usage is not None:
+                    master_deco.cpu_usage = round(
+                        (master_deco.cpu_usage * 0.7) + (cpu_percent * 0.3), 1
+                    )
+                else:
+                    master_deco.cpu_usage = round(cpu_percent, 1)
+
+            if mem_raw is not None:
+                mem_percent = mem_raw * 100
+                master_deco.mem_usage_raw = round(mem_percent, 1)
+
+                if master_deco.mem_usage is not None:
+                    master_deco.mem_usage = round(
+                        (master_deco.mem_usage * 0.7) + (mem_percent * 0.3), 1
+                    )
+                else:
+                    master_deco.mem_usage = round(mem_percent, 1)
 
         if deco_added:
             async_dispatcher_send(self.hass, SIGNAL_DECO_ADDED)
@@ -238,6 +300,10 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Update data via api."""
+        if self._deco_update_coordinator.paused:
+            _LOGGER.debug("Deo client polling is paused")
+            return self.data
+
         if len(self._deco_update_coordinator.data.decos) == 0:
             return
 

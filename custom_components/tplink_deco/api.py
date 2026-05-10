@@ -13,7 +13,6 @@ from Crypto.Cipher import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 import aiohttp
 from aiohttp.hdrs import CONTENT_TYPE
-from aiohttp.hdrs import COOKIE
 from aiohttp.hdrs import SET_COOKIE
 import async_timeout
 from cryptography.hazmat.primitives import padding
@@ -213,6 +212,27 @@ class TplinkDecoApi:
         check_data_error_code(context, data)
         _LOGGER.debug("Rebooted decos %s", deco_macs)
 
+    # Return performance data (CPU / memory)
+    async def async_get_performance(self) -> dict:
+        return await self._async_call_with_retry(self._async_get_performance)
+
+    async def _async_get_performance(self) -> dict:
+        await self.async_login_if_needed()
+
+        context = "Get Performance"
+        performance_payload = {"operation": "read"}
+
+        response_json = await self._async_post(
+            context,
+            f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/network",
+            params={"form": "performance"},
+            data=self._encode_payload(performance_payload),
+        )
+
+        data = self._decrypt_data(context, response_json["data"])
+        check_data_error_code(context, data)
+        return data
+
     # Return list of clients. Default lists clients for all decos.
     async def async_list_clients(self, deco_mac="default") -> dict:
         return await self._async_call_with_retry(self._async_list_clients, deco_mac)
@@ -399,8 +419,16 @@ class TplinkDecoApi:
         data: Any,
     ) -> dict:
         headers = {CONTENT_TYPE: "application/json"}
+        # Gebruik een dictionary voor cookies in plaats van een string in headers
+        request_cookies = {}
         if self._cookie is not None:
-            headers[COOKIE] = self._cookie
+            try:
+                # Split 'sysauth=abc' naar {'sysauth': 'abc'}
+                cookie_parts = self._cookie.split("=", 1)
+                if len(cookie_parts) == 2:
+                    request_cookies[cookie_parts[0]] = cookie_parts[1]
+            except Exception:
+                _LOGGER.warning("Could not parse cookie: %s", self._cookie)
         try:
             async with async_timeout.timeout(self._timeout_seconds):
                 response = await self._session.post(
@@ -408,22 +436,23 @@ class TplinkDecoApi:
                     params=params,
                     data=data,
                     headers=headers,
+                    cookies=request_cookies,  # Gebruik de cookies parameter
                     ssl=self._ssl_context,
                 )
                 response.raise_for_status()
 
-                cookie = response.headers.get(SET_COOKIE)
-                if cookie is not None:
-                    match = re.search(r"(sysauth=[a-f0-9]+)", cookie)
+                # Verbeterde extractie: loop door alle Set-Cookie headers
+                for cookie_header in response.headers.getall(SET_COOKIE, []):
+                    match = re.search(r"(sysauth=[a-f0-9]+)", cookie_header)
                     if match:
                         self._cookie = match.group(1)
-                        _LOGGER.debug("cookie=%s", self._cookie)
+                        _LOGGER.debug("Found new cookie: %s", self._cookie)
+                        break
 
-                # Sometimes server responses with incorrect content type, so disable the check
+                # Soms antwoordt de server met de verkeerde content-type
                 response_json = await response.json(content_type=None)
                 if "error_code" in response_json:
                     error_code = response_json.get("error_code")
-
                     if error_code != 0 and error_code != "":
                         _LOGGER.debug(
                             "%s error_code=%s, response_json=%s",
