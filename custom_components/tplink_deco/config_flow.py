@@ -38,7 +38,7 @@ from .exceptions import TimeoutException
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-def _get_auth_schema(data: dict[str:Any]):
+def _get_auth_schema(data: dict[str, Any]):
     if data is None:
         data = {}
     return {
@@ -47,7 +47,7 @@ def _get_auth_schema(data: dict[str:Any]):
     }
 
 
-def _get_schema(data: dict[str:Any]):
+def _get_schema(data: dict[str, Any]):
     if data is None:
         data = {}
     schema = _get_auth_schema(data)
@@ -107,7 +107,7 @@ def _get_schema(data: dict[str:Any]):
 
 
 # We need to make sure the optional keys are set so that they get updated in update_listener async_update_entry() call
-def _ensure_user_input_optionals(data: dict[str:Any]) -> None:
+def _ensure_user_input_optionals(data: dict[str, Any]) -> None:
     for key in [
         CONF_CLIENT_PREFIX,
         CONF_CLIENT_POSTFIX,
@@ -118,7 +118,7 @@ def _ensure_user_input_optionals(data: dict[str:Any]) -> None:
             data[key] = ""
 
 
-async def _async_test_credentials(hass: HomeAssistant, data: dict[str:Any]):
+async def _async_test_credentials(hass: HomeAssistant, data: dict[str, Any]):
     """Return true if credentials is valid."""
     try:
         coordinators = await async_create_and_refresh_coordinators(
@@ -217,7 +217,7 @@ class TplinkDecoOptionsFlowHandler(config_entries.OptionsFlow):
         self.data = dict(config_entry.data)
         self._errors = {}
 
-    async def async_step_init(self, user_input: dict[str:Any] = None):
+    async def async_step_init(self, user_input: dict[str, Any] = None):
         """Handle a flow initialized by the user."""
         self._errors = {}
 
