@@ -482,6 +482,14 @@ class TplinkDecoApi:
                 self.clear_auth()
                 message = f"{context} Forbidden error: {err}"
                 raise ForbiddenException(message) from err
+            if err.status >= 500:
+                # Server error (502 Bad Gateway, etc.) — clear auth and retry
+                self.clear_auth()
+                _LOGGER.warning(
+                    "%s server error %s, clearing auth for retry",
+                    context,
+                    err.status,
+                )
             raise err
         except (aiohttp.ClientConnectorError, aiohttp.ServerDisconnectedError) as err:
             # Clear auth in case deco rebooted and auth is invalid
