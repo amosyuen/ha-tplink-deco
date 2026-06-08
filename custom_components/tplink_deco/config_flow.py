@@ -64,7 +64,10 @@ def _get_schema(data: dict[str:Any]):
             vol.Required(
                 CONF_SCAN_INTERVAL,
                 default=scan_interval,
-            ): vol.In([10, 30, 60, 120]),
+            ): vol.All(
+                vol.Coerce(int),
+                vol.In({10, 30, 60, 120}),
+            ),
             vol.Required(
                 CONF_CONSIDER_HOME,
                 default=data.get(CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME),

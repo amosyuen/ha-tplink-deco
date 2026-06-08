@@ -44,12 +44,15 @@ def byte_len(n: int) -> int:
 
 
 def decode_name_with_fallback(name: str):
+    """Decode base64 encoded names and fall back to the raw name."""
+    if not name:
+        return name
+
     try:
-        name = base64.b64decode(name)
-        return name.decode()
-    except Exception as err:
-        _LOGGER.warning("Error decoding name %s: %s", name, err)
-        return f"<Error Decoding {name}>"
+        decoded = base64.b64decode(name, validate=True)
+        return decoded.decode("utf-8")
+    except Exception:
+        return name
 
 
 def rsa_encrypt(n: int, e: int, plaintext: bytes) -> bytes:
