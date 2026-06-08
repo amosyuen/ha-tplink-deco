@@ -154,6 +154,10 @@ class TplinkDecoApi:
         self._stok = None
         self._cookie = None
 
+        # Lock to serialize all requests to the Deco management API.
+        # The Deco firmware cannot handle concurrent admin requests reliably.
+        self._request_lock = asyncio.Lock()
+
         if verify_ssl:
             self._ssl_context = None
         else:
@@ -197,6 +201,12 @@ class TplinkDecoApi:
 
     # Reboot decos.
     async def async_reboot_decos(self, deco_macs) -> dict:
+        """Reboot specified Deco nodes (serialized through the request lock)."""
+        return await self._async_call_with_retry(
+            self._async_reboot_decos_inner, deco_macs
+        )
+
+    async def _async_reboot_decos_inner(self, deco_macs) -> dict:
         await self.async_login_if_needed()
 
         context = f"Reboot Decos {deco_macs}"
@@ -487,10 +497,11 @@ class TplinkDecoApi:
                 raise ForbiddenException(message) from err
             raise err
         except (aiohttp.ClientConnectorError, aiohttp.ServerDisconnectedError) as err:
-            # Clear auth in case deco rebooted and auth is invalid
-            self.clear_auth()
-            _LOGGER.error(
-                "%s connection error: %s",
+            # Do NOT clear auth here — a transient network error does not mean
+            # the session is invalid. Clearing auth causes a re-login which creates
+            # a new session on the Deco, leading to session table exhaustion.
+            _LOGGER.warning(
+                "%s connection error (keeping session): %s",
                 context,
                 err,
             )
@@ -512,8 +523,8 @@ class TplinkDecoApi:
 
     def _encode_sign(self, data_len: int):
         if self._seq is None:
-            self.clear_auth()
-            message = "_seq is None"
+            # Session not initialized — need to login first
+            message = "_seq is None, login required"
             raise EmptyDataException(message)
         seq_with_data_len = self._seq + data_len
         auth_hash = (
@@ -540,9 +551,36 @@ class TplinkDecoApi:
         self._stok = None
         self._cookie = None
 
+    async def async_logout(self):
+        """Logout from the Deco to release the admin session."""
+        async with self._request_lock:
+            await self._async_logout_inner()
+
+    async def _async_logout_inner(self):
+        """Inner logout logic, must be called under _request_lock."""
+        if self._stok is None or self._cookie is None:
+            self.clear_auth()
+            return
+        try:
+            _LOGGER.debug("Logging out from Deco")
+            logout_payload = {"operation": "logout"}
+            await self._async_post(
+                "Logout",
+                f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/system",
+                params={"form": "logout"},
+                data=json.dumps(logout_payload),
+            )
+        except Exception as err:
+            _LOGGER.debug("Logout failed (best effort): %s", err)
+        finally:
+            self.clear_auth()
+
     def _decrypt_data(self, context: str, data: str):
         if data == "":
-            self.clear_auth()
+            # Do NOT clear auth here — an empty response typically means the Deco
+            # is temporarily overloaded, not that the session is invalid.
+            # Clearing auth would trigger a re-login, creating a new session and
+            # potentially exhausting the Deco's limited session table.
             message = f"{context} data is empty"
             raise EmptyDataException(message)
 
@@ -566,6 +604,11 @@ class TplinkDecoApi:
             raise err
 
     async def _async_call_with_retry(self, func, *args):
+        """Call API function with retry logic and request serialization."""
+        async with self._request_lock:
+            return await self._async_call_with_retry_inner(func, *args)
+
+    async def _async_call_with_retry_inner(self, func, *args):
         relogin_retried = False
         timeout_retries = 0
         while True:
@@ -576,6 +619,12 @@ class TplinkDecoApi:
                     # Reached max relogin retries
                     raise err
                 relogin_retried = True
+                # Now clear auth and re-login for the retry attempt.
+                # We don't clear auth on the first occurrence (in _decrypt_data
+                # or connection error handlers) to avoid churning sessions on
+                # transient errors. But if we reach here, it may be a real
+                # session expiration, so we force a re-login for the 2nd try.
+                self.clear_auth()
                 _LOGGER.debug(
                     "Re-login and retry potential expired auth error: %s",
                     err,

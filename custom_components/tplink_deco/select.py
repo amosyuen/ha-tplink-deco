@@ -9,7 +9,7 @@ from .const import COORDINATOR_DECOS_KEY
 from .const import DOMAIN
 from .device import create_device_info
 
-POLLING_INTERVAL_OPTIONS = ["10", "30", "60", "120"]
+POLLING_INTERVAL_OPTIONS = ["10", "30", "60", "120", "180", "240", "300"]
 
 
 async def async_setup_entry(

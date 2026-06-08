@@ -273,10 +273,15 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     deco_coordinator = data.get(COORDINATOR_DECOS_KEY)
     clients_coordinator = data.get(COORDINATOR_CLIENTS_KEY)
 
+    # Cancel any in-flight refresh before logout to avoid lock contention
     if deco_coordinator is not None:
-        await deco_coordinator.async_close()
+        await deco_coordinator.async_shutdown()
     if clients_coordinator is not None:
-        await clients_coordinator.async_close()
+        await clients_coordinator.async_shutdown()
+
+    # Logout from the Deco to free the admin session
+    if deco_coordinator is not None:
+        await deco_coordinator.api.async_logout()
 
     unloaded = all(
         await asyncio.gather(

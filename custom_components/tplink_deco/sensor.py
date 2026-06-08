@@ -133,6 +133,13 @@ async def async_setup_entry(
     coordinator_decos = data[COORDINATOR_DECOS_KEY]
     coordinator_clients = data[COORDINATOR_CLIENTS_KEY]
 
+    master = coordinator_decos.data.master_deco
+    if master is None:
+        _LOGGER.warning(
+            "Master Deco not found; skipping sensor setup until next refresh"
+        )
+        return
+
     def add_sensors_for_deco(
         deco: TpLinkDeco | None,
     ):
