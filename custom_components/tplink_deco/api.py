@@ -418,7 +418,7 @@ class TplinkDecoApi:
         self,
         context: str,
         url: str,
-        params: dict[str:Any],
+        params: dict[str, Any],
         data: Any,
     ) -> dict:
         headers = {CONTENT_TYPE: "application/json"}
@@ -446,7 +446,7 @@ class TplinkDecoApi:
 
                 # Verbeterde extractie: loop door alle Set-Cookie headers
                 for cookie_header in response.headers.getall(SET_COOKIE, []):
-                    match = re.search(r"(sysauth=[a-f0-9]+)", cookie_header)
+                    match = re.search(r"(sysauth=[a-zA-Z0-9_.-]+)", cookie_header)
                     if match:
                         self._cookie = match.group(1)
                         _LOGGER.debug("Found new cookie: %s", self._cookie)
@@ -485,6 +485,14 @@ class TplinkDecoApi:
                 self.clear_auth()
                 message = f"{context} Forbidden error: {err}"
                 raise ForbiddenException(message) from err
+            if err.status >= 500:
+                # Server error (502 Bad Gateway, etc.) — clear auth and retry
+                self.clear_auth()
+                _LOGGER.warning(
+                    "%s server error %s, clearing auth for retry",
+                    context,
+                    err.status,
+                )
             raise err
         except (aiohttp.ClientConnectorError, aiohttp.ServerDisconnectedError) as err:
             # Clear auth in case deco rebooted and auth is invalid

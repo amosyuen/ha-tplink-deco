@@ -89,7 +89,8 @@ class TpLinkDeco:
 
         self.name = data.get("custom_nickname")  # Only set if custom value
         if self.name is None:
-            self.name = snake_case_to_title_space(data.get("nickname"))
+            nickname = data.get("nickname")
+            self.name = snake_case_to_title_space(nickname) if nickname else self.mac
         self.ip_address = filter_invalid_ip(data.get("device_ip"))
         self.online = data.get("group_status") == "connected"
         inet = data.get("inet_status")
@@ -127,7 +128,7 @@ class TpLinkDecoClient:
 
     def update(
         self,
-        data: dict[str:Any],
+        data: dict[str, Any],
         deco_mac: str,
         utc_point_in_time: datetime,
     ) -> None:
@@ -148,7 +149,7 @@ class TpLinkDecoData:
     def __init__(
         self,
         master_deco: TpLinkDeco = None,
-        decos: dict[str:TpLinkDeco] = None,
+        decos: dict[str, TpLinkDeco] = None,
     ) -> None:
         self.master_deco = master_deco
         self.decos = {} if decos is None else decos
@@ -280,7 +281,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         deco_update_coordinator: TplinkDecoUpdateCoordinator,
         consider_home_seconds: int,
         update_interval: timedelta = None,
-        data: dict[str:TpLinkDecoClient] = None,
+        data: dict[str, TpLinkDecoClient] = None,
     ) -> None:
         """Initialize."""
         self.api = api
@@ -305,7 +306,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             return self.data
 
         if len(self._deco_update_coordinator.data.decos) == 0:
-            return
+            return self.data if self.data else {}
 
         old_clients = self.data
         clients = {}

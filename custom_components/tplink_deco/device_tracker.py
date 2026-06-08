@@ -255,7 +255,7 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
         return self._deco.online
 
     @property
-    def extra_state_attributes(self) -> dict[str:Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return extra state attributes."""
         attributes = {
             ATTR_BSSID_BAND2_4: self._deco.bssid_band2_4,
@@ -394,7 +394,7 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
         return self._client.online
 
     @property
-    def extra_state_attributes(self) -> dict[str:Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return extra state attributes."""
         deco = self._coordinator_decos.data.decos.get(self._attr_deco_mac)
         return {
