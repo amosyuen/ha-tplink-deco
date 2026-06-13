@@ -8,6 +8,8 @@ import ipaddress
 import logging
 from typing import Any
 
+import aiohttp
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import CALLBACK_TYPE
 from homeassistant.core import HomeAssistant
@@ -315,14 +317,31 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         utc_point_in_time = dt_util.utcnow()
         # Send list client requests in parallel for each deco
 
-        deco_client_responses = await asyncio.gather(
-            *[
-                async_call_and_propagate_config_error(
-                    self.api.async_list_clients, deco_mac
-                )
-                for deco_mac in deco_macs
+        try:
+            deco_client_responses = await asyncio.gather(
+                *[
+                    async_call_and_propagate_config_error(
+                        self.api.async_list_clients, deco_mac
+                    )
+                    for deco_mac in deco_macs
+                ]
+            )
+        except aiohttp.ClientResponseError as err:
+            if err.status < 500:
+                raise
+            # Some Deco firmware (e.g. XE75 1.3.x) returns a 5xx (502 observed)
+            # for the per-node client_list query. Fall back to a single global
+            # query and attribute every client to the master Deco, so its
+            # client-count sensor reflects the whole mesh (satellites report 0).
+            _LOGGER.debug(
+                "Per-node client_list failed (%s); falling back to global query",
+                err,
+            )
+            master_deco = self._deco_update_coordinator.data.master_deco
+            deco_macs = [master_deco.mac if master_deco is not None else "default"]
+            deco_client_responses = [
+                await async_call_and_propagate_config_error(self.api.async_list_clients)
             ]
-        )
 
         if len(deco_client_responses) > 0:
             # deco_macs is not subscriptable, must be iterated
