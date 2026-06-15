@@ -15,6 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import selector
 import voluptuous as vol
 
 from .__init__ import async_create_and_refresh_coordinators
@@ -36,6 +37,26 @@ from .const import DOMAIN
 from .exceptions import TimeoutException
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+SCAN_INTERVAL_OPTIONS = [10, 30, 60, 120]
+SCAN_INTERVAL_SELECTOR_OPTIONS = [str(value) for value in SCAN_INTERVAL_OPTIONS]
+
+
+def _get_scan_interval(data: dict[str:Any]) -> str:
+    scan_interval = data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+    try:
+        scan_interval = int(scan_interval)
+    except (TypeError, ValueError):
+        scan_interval = DEFAULT_SCAN_INTERVAL
+
+    if scan_interval not in SCAN_INTERVAL_OPTIONS:
+        scan_interval = DEFAULT_SCAN_INTERVAL
+
+    return str(scan_interval)
+
+
+def _normalize_scan_interval(data: dict[str:Any]) -> None:
+    if CONF_SCAN_INTERVAL in data:
+        data[CONF_SCAN_INTERVAL] = int(data[CONF_SCAN_INTERVAL])
 
 
 def _get_auth_schema(data: dict[str:Any]):
@@ -51,10 +72,7 @@ def _get_schema(data: dict[str:Any]):
     if data is None:
         data = {}
     schema = _get_auth_schema(data)
-    scan_interval = data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-
-    if scan_interval not in [10, 30, 60, 120]:
-        scan_interval = DEFAULT_SCAN_INTERVAL
+    scan_interval = _get_scan_interval(data)
 
     schema.update(
         {
@@ -64,9 +82,11 @@ def _get_schema(data: dict[str:Any]):
             vol.Required(
                 CONF_SCAN_INTERVAL,
                 default=scan_interval,
-            ): vol.All(
-                vol.Coerce(int),
-                vol.In({10, 30, 60, 120}),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=SCAN_INTERVAL_SELECTOR_OPTIONS,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
             ),
             vol.Required(
                 CONF_CONSIDER_HOME,
@@ -163,6 +183,7 @@ class TplinkDecoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._errors = {}
 
         if user_input is not None:
+            _normalize_scan_interval(user_input)
             self._errors = await _async_test_credentials(self.hass, user_input)
             if len(self._errors) == 0:
                 _ensure_user_input_optionals(user_input)
@@ -226,6 +247,7 @@ class TplinkDecoOptionsFlowHandler(config_entries.OptionsFlow):
 
         if user_input is not None:
             _ensure_user_input_optionals(user_input)
+            _normalize_scan_interval(user_input)
             self.data.update(user_input)
 
             self._errors = await _async_test_credentials(self.hass, self.data)

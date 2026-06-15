@@ -31,6 +31,7 @@ import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 
 from .api import TplinkDecoApi
+from .api import normalize_name
 from .const import ATTR_DEVICE_TYPE
 from .const import CONF_CLIENT_POSTFIX
 from .const import CONF_CLIENT_PREFIX
@@ -145,11 +146,11 @@ async def async_create_config_data(hass: HomeAssistant, config_entry: ConfigEntr
             continue
         if device_type == DEVICE_TYPE_DECO:
             deco = TpLinkDeco(entry.unique_id)
-            deco.name = entry.original_name
+            deco.name = normalize_name(entry.original_name)
             deco_data.decos[entry.unique_id] = deco
         else:
             client = TpLinkDecoClient(entry.unique_id)
-            client.name = entry.original_name
+            client.name = normalize_name(entry.original_name)
             client_data[entry.unique_id] = client
 
     return await async_create_and_refresh_coordinators(

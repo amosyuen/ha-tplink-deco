@@ -19,6 +19,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
 from .api import TplinkDecoApi
+from .api import normalize_name
 from .const import DOMAIN
 from .const import SIGNAL_CLIENT_ADDED
 from .const import SIGNAL_DECO_ADDED
@@ -88,9 +89,11 @@ class TpLinkDeco:
         self.sw_version = data.get("software_ver")
         self.device_model = data.get("device_model")
 
-        self.name = data.get("custom_nickname")  # Only set if custom value
+        self.name = normalize_name(
+            data.get("custom_nickname")
+        )  # Only set if custom value
         if self.name is None:
-            self.name = snake_case_to_title_space(data.get("nickname"))
+            self.name = normalize_name(snake_case_to_title_space(data.get("nickname")))
         self.ip_address = filter_invalid_ip(data.get("device_ip"))
         self.online = data.get("group_status") == "connected"
         inet = data.get("inet_status")
@@ -133,7 +136,7 @@ class TpLinkDecoClient:
         utc_point_in_time: datetime,
     ) -> None:
         self.deco_mac = deco_mac
-        self.name = data.get("name")
+        self.name = normalize_name(data.get("name"))
         self.ip_address = filter_invalid_ip(data.get("ip"))
         self.online = data.get("online")
         self.connection_type = data.get("connection_type")
