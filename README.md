@@ -86,26 +86,6 @@ Configurable:
 
 ---
 
-## 📝 Changelog
-
-### v3.7.4
-
-- Added CPU usage sensors (raw and smoothed)
-- Added memory usage sensors (raw and smoothed)
-- Added configurable polling interval (10 / 30 / 60 / 120 seconds)
-- Added select entity for runtime polling control
-
----
-
-### v3.7.3
-
-- Fix for Home Assistant 2026.4 compatibility
-- Added diagnostic entities (backhaul speed, max speed)
-- Added polling control services and switch
-- Improved API stability
-
----
-
 ## 🔧 Services
 
 - `tplink_deco.pause_polling`
