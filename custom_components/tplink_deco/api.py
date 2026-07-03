@@ -457,6 +457,26 @@ class TplinkDecoApi:
                 )
                 response.raise_for_status()
 
+                # Some Deco firmwares 307-redirect every http:// request to
+                # https:// on the same host. aiohttp >= 3.14 (HA 2026.7+)
+                # correctly drops per-request cookies on such cross-origin
+                # (scheme-change) redirects per RFC 6265, so the sysauth
+                # cookie never reaches the router and authenticated calls
+                # return empty data. Permanently switch the base URL to
+                # https so subsequent requests skip the redirect entirely.
+                if (
+                    response.history
+                    and response.url.scheme == "https"
+                    and self._host.startswith("http://")
+                    and response.url.host == response.history[0].url.host
+                ):
+                    self._host = "https://" + self._host[len("http://") :]
+                    _LOGGER.warning(
+                        "%s: Router redirected to HTTPS, switching host to %s",
+                        context,
+                        self._host,
+                    )
+
                 # Verbeterde extractie: loop door alle Set-Cookie headers
                 for cookie_header in response.headers.getall(SET_COOKIE, []):
                     match = re.search(r"(sysauth=[a-f0-9]+)", cookie_header)
