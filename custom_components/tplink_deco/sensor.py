@@ -188,10 +188,20 @@ async def async_setup_entry(
         async_add_entities(entities)
 
     tracked_decos = set()
+    total_added = False
 
     @callback
     def add_untracked_deco_sensors():
-        """Add new tracker entities for decos."""
+        """Add new tracker entities for decos (and the total sensors)."""
+        nonlocal total_added
+
+        # The "Total" sensors need the master Deco for their unique id / device.
+        # It may not be known on the first refresh (e.g. a satellite-only entry),
+        # so (re)try adding them whenever decos are discovered.
+        if not total_added and coordinator_decos.data.master_deco is not None:
+            add_sensors_for_deco(None)  # Total sensors
+            total_added = True
+
         for mac, deco in coordinator_decos.data.decos.items():
             if mac in tracked_decos:
                 continue
@@ -202,7 +212,6 @@ async def async_setup_entry(
             add_sensors_for_deco(deco)
             tracked_decos.add(mac)
 
-    add_sensors_for_deco(None)  # Total sensors
     add_untracked_deco_sensors()
 
     coordinator_decos.on_close(

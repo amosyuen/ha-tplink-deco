@@ -200,9 +200,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     hass.data[DOMAIN][config_entry.entry_id] = data
     deco_coordinator = data[COORDINATOR_DECOS_KEY]
 
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
-    )
+    await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
 
     async def async_reboot_deco(service: ServiceCall) -> None:
         dr = device_registry.async_get(hass=hass)
