@@ -133,6 +133,82 @@ def check_data_error_code(context, data):
         raise UnexpectedApiException(f"{context} error_code={error_code}")
 
 
+def _normalize_enable(value) -> bool:
+    """Interpret a Deco enable flag (bool or "on"/"off" string) as a bool."""
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in ("on", "true", "1", "enable", "enabled")
+
+
+def _match_key(pattern: str, key: str) -> bool:
+    """Match a config key against a path segment (trailing '*' is a wildcard)."""
+    if pattern.endswith("*"):
+        return str(key).startswith(pattern[:-1])
+    return pattern == key
+
+
+def _resolve_sections(config, paths) -> list:
+    """Return the section dicts reached by following any of the given paths.
+
+    A path is a list of key patterns, e.g. ["band*", "host"] resolves to
+    band2_4.host and band5_1.host. Returned dicts are live references into
+    config, so mutating them mutates config.
+    """
+    sections = []
+    for path in paths:
+        nodes = [config]
+        for pattern in path:
+            next_nodes = []
+            for node in nodes:
+                if isinstance(node, dict):
+                    for key, value in node.items():
+                        if _match_key(pattern, key):
+                            next_nodes.append(value)
+            nodes = next_nodes
+        sections.extend(node for node in nodes if isinstance(node, dict))
+    return sections
+
+
+def wireless_is_enabled(config, paths) -> bool | None:
+    """Return True if any targeted section of a wireless config is enabled.
+
+    Returns None if none of the paths resolve to a section with an "enable"
+    flag (i.e. the network is not present on this Deco model / firmware).
+    """
+    enables = [
+        _normalize_enable(section["enable"])
+        for section in _resolve_sections(config, paths)
+        if "enable" in section
+    ]
+    if not enables:
+        return None
+    return any(enables)
+
+
+# Keys whose values are secrets (SSID / passwords) and must not be logged.
+_WIRELESS_SECRET_KEY_HINTS = ("ssid", "key", "password", "passwd", "psk", "secret")
+
+
+def redact_wireless(config):
+    """Return a deep copy of a wireless config with secret values masked.
+
+    Keeps structure and enable flags so the shape can be shared safely.
+    """
+    if isinstance(config, dict):
+        redacted = {}
+        for key, value in config.items():
+            if isinstance(value, (dict, list)):
+                redacted[key] = redact_wireless(value)
+            elif any(hint in key.lower() for hint in _WIRELESS_SECRET_KEY_HINTS):
+                redacted[key] = "***"
+            else:
+                redacted[key] = value
+        return redacted
+    if isinstance(config, list):
+        return [redact_wireless(item) for item in config]
+    return config
+
+
 class TplinkDecoApi:
     def __init__(
         self,
@@ -163,6 +239,7 @@ class TplinkDecoApi:
         self._sign_rsa_e = None
 
         self._login_future = None
+        self._wireless_read_futures = {}
         self._seq = None
         self._stok = None
         self._cookie = None
@@ -227,6 +304,50 @@ class TplinkDecoApi:
         data = self._decrypt_data(context, response_json["data"])
         check_data_error_code(context, data)
         _LOGGER.debug("Rebooted decos %s", deco_macs)
+
+    # Read the wireless config for a given form (e.g. wlan).
+    # Returns the raw "result" dict as sent by the Deco. Concurrent reads of the
+    # same form (e.g. all WiFi status sensors polling at once) share one request.
+    async def async_get_wireless(self, form: str) -> dict:
+        future = self._wireless_read_futures.get(form)
+        if future is not None:
+            return await future
+
+        future = asyncio.get_running_loop().create_future()
+        self._wireless_read_futures[form] = future
+        try:
+            result = await self._async_call_with_retry(self._async_get_wireless, form)
+            future.set_result(result)
+            return result
+        except Exception as err:
+            future.set_exception(err)
+            raise
+        finally:
+            # Await future to suppress "exception was never retrieved" when no
+            # concurrent caller consumed it.
+            try:
+                await future
+            except Exception:
+                pass
+            self._wireless_read_futures.pop(form, None)
+
+    async def _async_get_wireless(self, form: str) -> dict:
+        await self.async_login_if_needed()
+
+        context = f"Get Wireless {form}"
+        response_json = await self._async_post(
+            context,
+            f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/wireless",
+            params={"form": form},
+            data=self._encode_payload({"operation": "read"}),
+        )
+
+        data = self._decrypt_data(context, response_json["data"])
+        check_data_error_code(context, data)
+        result = data.get("result", {})
+        # Log the (redacted) structure without leaking SSID/passwords.
+        _LOGGER.debug("%s result=%s", context, redact_wireless(result))
+        return result
 
     # Return performance data (CPU / memory)
     async def async_get_performance(self) -> dict:
