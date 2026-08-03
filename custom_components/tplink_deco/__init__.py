@@ -23,6 +23,7 @@ from homeassistant.const import CONF_PASSWORD
 from homeassistant.const import CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.core import ServiceCall
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers import restore_state
@@ -107,7 +108,16 @@ async def async_create_and_refresh_coordinators(
     if config_entry is None:
         await deco_coordinator._async_update_data()
     else:
-        await clients_coordinator.async_config_entry_first_refresh()
+        try:
+            await clients_coordinator.async_config_entry_first_refresh()
+        except ConfigEntryNotReady as err:
+            # Client-list endpoints are unreliable on some Deco firmware. Keep
+            # the integration available and let the coordinator retry later.
+            _LOGGER.warning(
+                "Client data unavailable during setup; continuing without a "
+                "client refresh: %s",
+                err,
+            )
 
     return {
         COORDINATOR_DECOS_KEY: deco_coordinator,

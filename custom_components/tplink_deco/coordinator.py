@@ -25,8 +25,10 @@ from .const import SIGNAL_CLIENT_ADDED
 from .const import SIGNAL_DECO_ADDED
 from .exceptions import LoginForbiddenException
 from .exceptions import LoginInvalidException
+from .exceptions import TimeoutException
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+MAX_CONCURRENT_CLIENT_REQUESTS = 2
 
 
 def bytes_to_bits(bytes_count):
@@ -46,9 +48,9 @@ def snake_case_to_title_space(str):
     return " ".join([w.title() for w in str.split("_")])
 
 
-async def async_call_and_propagate_config_error(func, *args):
+async def async_call_and_propagate_config_error(func, *args, **kwargs):
     try:
-        return await func(*args)
+        return await func(*args, **kwargs)
     except (LoginForbiddenException, LoginInvalidException) as err:
         raise ConfigEntryAuthFailed from err
 
@@ -302,6 +304,28 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         # Must happen after super().__init__
         self.data = {} if data is None else data
 
+    async def _async_list_clients_per_deco(self, deco_macs: list[str]):
+        """List clients with bounded concurrency and no per-node timeout retries."""
+        semaphore = asyncio.Semaphore(MAX_CONCURRENT_CLIENT_REQUESTS)
+
+        async def async_list_clients(deco_mac: str):
+            async with semaphore:
+                return await async_call_and_propagate_config_error(
+                    self.api.async_list_clients,
+                    deco_mac,
+                    timeout_error_retries=0,
+                )
+
+        tasks = [asyncio.create_task(async_list_clients(mac)) for mac in deco_macs]
+        try:
+            return await asyncio.gather(*tasks)
+        except (Exception, asyncio.CancelledError):
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
+
     async def _async_update_data(self):
         """Update data via api."""
         if self._deco_update_coordinator.paused:
@@ -315,26 +339,16 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         clients = {}
         client_added = False
         # List clients for all decos if _deco_update_coordinator is not provided
-        deco_macs = self._deco_update_coordinator.data.decos.keys()
+        deco_macs = list(self._deco_update_coordinator.data.decos)
         utc_point_in_time = dt_util.utcnow()
-        # Send list client requests in parallel for each deco
 
         try:
-            deco_client_responses = await asyncio.gather(
-                *[
-                    async_call_and_propagate_config_error(
-                        self.api.async_list_clients, deco_mac
-                    )
-                    for deco_mac in deco_macs
-                ]
-            )
-        except aiohttp.ClientResponseError as err:
-            if err.status < 500:
+            deco_client_responses = await self._async_list_clients_per_deco(deco_macs)
+        except (aiohttp.ClientResponseError, TimeoutException) as err:
+            if isinstance(err, aiohttp.ClientResponseError) and err.status < 500:
                 raise
-            # Some Deco firmware (e.g. XE75 1.3.x) returns a 5xx (502 observed)
-            # for the per-node client_list query. Fall back to a single global
-            # query and attribute every client to the master Deco, so its
-            # client-count sensor reflects the whole mesh (satellites report 0).
+            # Some Deco firmware times out or returns 5xx for per-node client
+            # queries. Fall back to one global query to avoid a retry storm.
             _LOGGER.debug(
                 "Per-node client_list failed (%s); falling back to global query",
                 err,
