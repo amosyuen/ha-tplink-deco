@@ -23,7 +23,6 @@ from homeassistant.const import CONF_PASSWORD
 from homeassistant.const import CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.core import ServiceCall
-from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers import restore_state
@@ -105,20 +104,6 @@ async def async_create_and_refresh_coordinators(
         update_interval,
         client_data,
     )
-    if config_entry is None:
-        await deco_coordinator._async_update_data()
-    else:
-        try:
-            await clients_coordinator.async_config_entry_first_refresh()
-        except ConfigEntryNotReady as err:
-            # Client-list endpoints are unreliable on some Deco firmware. Keep
-            # the integration available and let the coordinator retry later.
-            _LOGGER.warning(
-                "Client data unavailable during setup; continuing without a "
-                "client refresh: %s",
-                err,
-            )
-
     return {
         COORDINATOR_DECOS_KEY: deco_coordinator,
         COORDINATOR_CLIENTS_KEY: clients_coordinator,
@@ -209,8 +194,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     data = await async_create_config_data(hass, config_entry)
     hass.data[DOMAIN][config_entry.entry_id] = data
     deco_coordinator = data[COORDINATOR_DECOS_KEY]
+    clients_coordinator = data[COORDINATOR_CLIENTS_KEY]
 
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
+
+    config_entry.async_create_background_task(
+        hass,
+        clients_coordinator.async_request_refresh(),
+        name="tplink_deco initial client refresh",
+    )
 
     async def async_reboot_deco(service: ServiceCall) -> None:
         dr = device_registry.async_get(hass=hass)

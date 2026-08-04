@@ -303,6 +303,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         )
         # Must happen after super().__init__
         self.data = {} if data is None else data
+        self._use_global_client_query = False
 
     async def _async_list_clients_per_deco(self, deco_macs: list[str]):
         """List clients with bounded concurrency and no per-node timeout retries."""
@@ -326,6 +327,18 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             await asyncio.gather(*tasks, return_exceptions=True)
             raise
 
+    async def _async_list_clients_global(self):
+        """List all clients once without timeout retries."""
+        master_deco = self._deco_update_coordinator.data.master_deco
+        deco_macs = [master_deco.mac if master_deco is not None else "default"]
+        responses = [
+            await async_call_and_propagate_config_error(
+                self.api.async_list_clients,
+                timeout_error_retries=0,
+            )
+        ]
+        return deco_macs, responses
+
     async def _async_update_data(self):
         """Update data via api."""
         if self._deco_update_coordinator.paused:
@@ -342,22 +355,26 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         deco_macs = list(self._deco_update_coordinator.data.decos)
         utc_point_in_time = dt_util.utcnow()
 
-        try:
-            deco_client_responses = await self._async_list_clients_per_deco(deco_macs)
-        except (aiohttp.ClientResponseError, TimeoutException) as err:
-            if isinstance(err, aiohttp.ClientResponseError) and err.status < 500:
-                raise
-            # Some Deco firmware times out or returns 5xx for per-node client
-            # queries. Fall back to one global query to avoid a retry storm.
-            _LOGGER.debug(
-                "Per-node client_list failed (%s); falling back to global query",
-                err,
-            )
-            master_deco = self._deco_update_coordinator.data.master_deco
-            deco_macs = [master_deco.mac if master_deco is not None else "default"]
-            deco_client_responses = [
-                await async_call_and_propagate_config_error(self.api.async_list_clients)
-            ]
+        if self._use_global_client_query:
+            deco_macs, deco_client_responses = await self._async_list_clients_global()
+        else:
+            try:
+                deco_client_responses = await self._async_list_clients_per_deco(
+                    deco_macs
+                )
+            except (aiohttp.ClientResponseError, TimeoutException) as err:
+                if isinstance(err, aiohttp.ClientResponseError) and err.status < 500:
+                    raise
+                # Some Deco firmware times out or returns 5xx for per-node
+                # client queries. Use one global query for subsequent updates.
+                self._use_global_client_query = True
+                _LOGGER.debug(
+                    "Per-node client_list failed (%s); switching to global query",
+                    err,
+                )
+                deco_macs, deco_client_responses = (
+                    await self._async_list_clients_global()
+                )
 
         if len(deco_client_responses) > 0:
             # deco_macs is not subscriptable, must be iterated
