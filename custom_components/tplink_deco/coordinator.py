@@ -328,6 +328,18 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         ]
         return deco_macs, responses
 
+    async def _async_list_clients_global(self):
+        """List all clients once without timeout retries."""
+        master_deco = self._deco_update_coordinator.data.master_deco
+        deco_macs = [master_deco.mac if master_deco is not None else "default"]
+        responses = [
+            await async_call_and_propagate_config_error(
+                self.api.async_list_clients,
+                timeout_error_retries=0,
+            )
+        ]
+        return deco_macs, responses
+
     async def _async_update_data(self):
         """Update data via api."""
         if self._deco_update_coordinator.paused:
