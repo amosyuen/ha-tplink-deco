@@ -1,6 +1,5 @@
 """TP-Link Deco Coordinator"""
 
-import asyncio
 from collections.abc import Callable
 from datetime import datetime
 from datetime import timedelta
@@ -28,7 +27,6 @@ from .exceptions import LoginInvalidException
 from .exceptions import TimeoutException
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-MAX_CONCURRENT_CLIENT_REQUESTS = 2
 
 
 def bytes_to_bits(bytes_count):
@@ -306,26 +304,17 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         self._use_global_client_query = False
 
     async def _async_list_clients_per_deco(self, deco_macs: list[str]):
-        """List clients with bounded concurrency and no per-node timeout retries."""
-        semaphore = asyncio.Semaphore(MAX_CONCURRENT_CLIENT_REQUESTS)
-
-        async def async_list_clients(deco_mac: str):
-            async with semaphore:
-                return await async_call_and_propagate_config_error(
+        """List clients sequentially without per-node timeout retries."""
+        responses = []
+        for deco_mac in deco_macs:
+            responses.append(
+                await async_call_and_propagate_config_error(
                     self.api.async_list_clients,
                     deco_mac,
                     timeout_error_retries=0,
                 )
-
-        tasks = [asyncio.create_task(async_list_clients(mac)) for mac in deco_macs]
-        try:
-            return await asyncio.gather(*tasks)
-        except (Exception, asyncio.CancelledError):
-            for task in tasks:
-                if not task.done():
-                    task.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
-            raise
+            )
+        return responses
 
     async def _async_list_clients_global(self):
         """List all clients once without timeout retries."""
