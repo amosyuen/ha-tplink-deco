@@ -307,32 +307,33 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
     _LOGGER.debug("Migrating from version %s", config_entry.version)
 
     new = {**config_entry.data}
+    version = config_entry.version
 
-    if config_entry.version == 1:
-        config_entry.version = 2
+    if version == 1:
+        version = 2
         new[CONF_VERIFY_SSL] = True
 
-    if config_entry.version == 2:
-        config_entry.version = 3
+    if version == 2:
+        version = 3
         new[CONF_TIMEOUT_ERROR_RETRIES] = DEFAULT_TIMEOUT_ERROR_RETRIES
 
-    if config_entry.version == 3:
-        config_entry.version = 4
+    if version == 3:
+        version = 4
         new[CONF_TIMEOUT_SECONDS] = DEFAULT_TIMEOUT_SECONDS
 
-    if config_entry.version == 4:
-        config_entry.version = 5
+    if version == 4:
+        version = 5
         new[CONF_CLIENT_PREFIX] = ""
         new[CONF_CLIENT_POSTFIX] = ""
         new[CONF_DECO_PREFIX] = ""
         new[CONF_DECO_POSTFIX] = DEFAULT_DECO_POSTFIX
 
-    if config_entry.version == 5:
-        config_entry.version = 6
+    if version == 5:
+        version = 6
         new[CONF_HOST] = f"http://{new[CONF_HOST]}"
 
-    hass.config_entries.async_update_entry(config_entry, data=new)
+    hass.config_entries.async_update_entry(config_entry, data=new, version=version)
 
-    _LOGGER.info("Migration to version %s successful", config_entry.version)
+    _LOGGER.info("Migration to version %s successful", version)
 
     return True
