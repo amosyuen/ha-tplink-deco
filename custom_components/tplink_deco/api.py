@@ -148,6 +148,7 @@ class TplinkDecoApi:
         self._username = username
         self._password = password
         self._session = session
+        self._operation_lock = asyncio.Lock()
         self._timeout_error_retries = timeout_error_retries
         self._timeout_seconds = timeout_seconds
         self._auth_errors = 0
@@ -175,7 +176,8 @@ class TplinkDecoApi:
 
     # Return list of deco devices
     async def async_list_devices(self) -> dict:
-        return await self._async_call_with_retry(self._async_list_devices)
+        async with self._operation_lock:
+            return await self._async_call_with_retry(self._async_list_devices)
 
     async def _async_list_devices(self) -> dict:
         await self.async_login_if_needed()
@@ -209,6 +211,10 @@ class TplinkDecoApi:
 
     # Reboot decos.
     async def async_reboot_decos(self, deco_macs) -> dict:
+        async with self._operation_lock:
+            return await self._async_reboot_decos(deco_macs)
+
+    async def _async_reboot_decos(self, deco_macs) -> dict:
         await self.async_login_if_needed()
 
         context = f"Reboot Decos {deco_macs}"
@@ -229,7 +235,8 @@ class TplinkDecoApi:
 
     # Return performance data (CPU / memory)
     async def async_get_performance(self) -> dict:
-        return await self._async_call_with_retry(self._async_get_performance)
+        async with self._operation_lock:
+            return await self._async_call_with_retry(self._async_get_performance)
 
     async def _async_get_performance(self) -> dict:
         await self.async_login_if_needed()
@@ -252,11 +259,12 @@ class TplinkDecoApi:
     async def async_list_clients(
         self, deco_mac="default", timeout_error_retries: int | None = None
     ) -> dict:
-        return await self._async_call_with_retry(
-            self._async_list_clients,
-            deco_mac,
-            timeout_error_retries=timeout_error_retries,
-        )
+        async with self._operation_lock:
+            return await self._async_call_with_retry(
+                self._async_list_clients,
+                deco_mac,
+                timeout_error_retries=timeout_error_retries,
+            )
 
     async def _async_list_clients(self, deco_mac) -> dict:
         await self.async_login_if_needed()
