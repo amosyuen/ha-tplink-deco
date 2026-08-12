@@ -310,6 +310,11 @@ class TplinkDecoClientCountSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator_clients)
         self._update_state()
 
+    async def async_added_to_hass(self) -> None:
+        """Update state after the coordinator listener is registered."""
+        await super().async_added_to_hass()
+        self._update_state()
+
     @property
     def _deco(self) -> TpLinkDeco:
         """Return current deco object."""
