@@ -163,14 +163,6 @@ async def async_setup_entry(
         ]
 
         if deco is not None:
-            entities.append(
-                TplinkDecoClientCountSensor(
-                    coordinator_decos,
-                    coordinator_clients,
-                    deco.mac,
-                )
-            )
-
             for description in DIAGNOSTIC_SENSOR_DESCRIPTIONS:
                 value = description.value_fn(deco)
 
@@ -188,6 +180,7 @@ async def async_setup_entry(
         async_add_entities(entities)
 
     tracked_decos = set()
+    client_count_tracked_decos = set()
     total_added = False
 
     @callback
@@ -213,6 +206,34 @@ async def async_setup_entry(
             tracked_decos.add(mac)
 
     add_untracked_deco_sensors()
+
+    @callback
+    def add_untracked_client_count_sensors():
+        """Add client count sensors after the first successful client refresh."""
+        if not coordinator_clients.has_successful_refresh:
+            return
+
+        entities = []
+        for mac in coordinator_decos.data.decos:
+            if mac in client_count_tracked_decos:
+                continue
+
+            entities.append(
+                TplinkDecoClientCountSensor(
+                    coordinator_decos,
+                    coordinator_clients,
+                    mac,
+                )
+            )
+            client_count_tracked_decos.add(mac)
+
+        if entities:
+            async_add_entities(entities)
+
+    coordinator_clients.on_close(
+        coordinator_clients.async_add_listener(add_untracked_client_count_sensors)
+    )
+    add_untracked_client_count_sensors()
 
     coordinator_decos.on_close(
         async_dispatcher_connect(hass, SIGNAL_DECO_ADDED, add_untracked_deco_sensors)

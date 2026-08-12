@@ -301,6 +301,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         )
         # Must happen after super().__init__
         self.data = {} if data is None else data
+        self.has_successful_refresh = False
         self._use_global_client_query = False
 
     async def _async_list_clients_per_deco(self, deco_macs: list[str]):
@@ -395,6 +396,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         if client_added:
             async_dispatcher_send(self.hass, SIGNAL_CLIENT_ADDED)
 
+        self.has_successful_refresh = True
         return clients
 
     @callback
