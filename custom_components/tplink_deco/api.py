@@ -433,16 +433,8 @@ class TplinkDecoApi:
         data: Any,
     ) -> dict:
         headers = {CONTENT_TYPE: "application/json"}
-        # Gebruik een dictionary voor cookies in plaats van een string in headers
-        request_cookies = {}
         if self._cookie is not None:
-            try:
-                # Split 'sysauth=abc' naar {'sysauth': 'abc'}
-                cookie_parts = self._cookie.split("=", 1)
-                if len(cookie_parts) == 2:
-                    request_cookies[cookie_parts[0]] = cookie_parts[1]
-            except Exception:
-                _LOGGER.warning("Could not parse session cookie")
+            headers["Cookie"] = self._cookie
         try:
             async with async_timeout.timeout(self._timeout_seconds):
                 response = await self._session.post(
@@ -450,7 +442,6 @@ class TplinkDecoApi:
                     params=params,
                     data=data,
                     headers=headers,
-                    cookies=request_cookies,  # Gebruik de cookies parameter
                     ssl=self._ssl_context,
                 )
                 response.raise_for_status()
