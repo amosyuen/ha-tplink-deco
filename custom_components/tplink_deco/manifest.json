@@ -1,4 +1,4 @@
-{
+﻿{
   "domain": "tplink_deco",
   "name": "TP-Link Deco",
   "codeowners": ["@amosyuen"],
@@ -10,5 +10,5 @@
   "issue_tracker": "https://github.com/amosyuen/ha-tplink-deco/issues",
   "loggers": ["tplink_deco"],
   "requirements": ["pycryptodome>=3.12.0"],
-  "version": "3.9.10"
+  "version": "3.10.0"
 }

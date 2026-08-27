@@ -1,10 +1,12 @@
 """TP-Link Deco Coordinator"""
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from datetime import timedelta
 import ipaddress
 import logging
+from time import monotonic
 from typing import Any
 
 import aiohttp
@@ -27,6 +29,31 @@ from .exceptions import LoginInvalidException
 from .exceptions import TimeoutException
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+@dataclass
+class CoordinatorHealth:
+    """Runtime health details for a coordinator."""
+
+    last_successful_update: datetime | None = None
+    response_time_ms: int | None = None
+    timeout_count: int = 0
+    consecutive_failures: int = 0
+    last_error: str = "0"
+
+    def record_success(self, started: float) -> None:
+        """Record a successful coordinator update."""
+        self.last_successful_update = dt_util.utcnow()
+        self.response_time_ms = round((monotonic() - started) * 1000)
+        self.consecutive_failures = 0
+
+    def record_failure(self, started: float, err: Exception) -> None:
+        """Record a failed coordinator update without exposing response data."""
+        self.response_time_ms = round((monotonic() - started) * 1000)
+        self.consecutive_failures += 1
+        self.last_error = type(err).__name__
+        if isinstance(err, TimeoutException):
+            self.timeout_count += 1
 
 
 def bytes_to_bits(bytes_count):
@@ -184,12 +211,26 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
         self.data = TpLinkDecoData() if data is None else data
 
         self.paused = False
+        self.health = CoordinatorHealth()
 
     async def _async_update_data(self):
         """Update data via api."""
         if self.paused:
             _LOGGER.debug("Deco polling is paused")
             return self.data
+
+        started = monotonic()
+        try:
+            data = await self._async_update_data_internal()
+        except Exception as err:
+            self.health.record_failure(started, err)
+            raise
+
+        self.health.record_success(started)
+        return data
+
+    async def _async_update_data_internal(self):
+        """Fetch and process Deco data."""
 
         new_decos = await async_call_and_propagate_config_error(
             self.api.async_list_devices
@@ -303,6 +344,12 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         self.data = {} if data is None else data
         self.has_successful_refresh = False
         self._use_global_client_query = False
+        self.health = CoordinatorHealth()
+
+    @property
+    def client_query_mode(self) -> str:
+        """Return the client query strategy currently in use."""
+        return "global_fallback" if self._use_global_client_query else "per_node"
 
     async def _async_list_clients_per_deco(self, deco_macs: list[str]):
         """List clients sequentially without per-node timeout retries."""
@@ -336,7 +383,20 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             return self.data
 
         if len(self._deco_update_coordinator.data.decos) == 0:
-            return
+            return self.data
+
+        started = monotonic()
+        try:
+            data = await self._async_update_data_internal()
+        except Exception as err:
+            self.health.record_failure(started, err)
+            raise
+
+        self.health.record_success(started)
+        return data
+
+    async def _async_update_data_internal(self):
+        """Fetch and process client data."""
 
         old_clients = self.data
         clients = {}
@@ -355,6 +415,8 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             except (aiohttp.ClientResponseError, TimeoutException) as err:
                 if isinstance(err, aiohttp.ClientResponseError) and err.status < 500:
                     raise
+                if isinstance(err, TimeoutException):
+                    self.health.timeout_count += 1
                 # Some Deco firmware times out or returns 5xx for per-node
                 # client queries. Use one global query for subsequent updates.
                 self._use_global_client_query = True

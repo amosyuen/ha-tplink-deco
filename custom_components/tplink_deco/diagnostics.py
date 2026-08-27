@@ -36,8 +36,18 @@ TO_REDACT = {
 def _coordinator_diagnostics(coordinator) -> dict[str, Any]:
     """Return non-sensitive coordinator state."""
     update_interval = coordinator.update_interval
+    health = coordinator.health
     return {
         "last_update_success": coordinator.last_update_success,
+        "last_successful_update": (
+            health.last_successful_update.isoformat()
+            if health.last_successful_update is not None
+            else None
+        ),
+        "response_time_ms": health.response_time_ms,
+        "timeout_count": health.timeout_count,
+        "consecutive_failures": health.consecutive_failures,
+        "last_error": health.last_error,
         "update_interval_seconds": (
             update_interval.total_seconds() if update_interval is not None else None
         ),
@@ -119,6 +129,7 @@ async def async_get_config_entry_diagnostics(
         },
         "client_coordinator": {
             **_coordinator_diagnostics(client_coordinator),
+            "query_mode": client_coordinator.client_query_mode,
             "clients": [
                 _client_diagnostics(client, f"client_{index}", deco_ids)
                 for index, (_, client) in enumerate(clients, 1)

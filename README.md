@@ -26,6 +26,8 @@ This integration provides local polling control and diagnostics for TP-Link Deco
 - CPU usage (raw + smoothed)
 - Memory usage (raw + smoothed)
 - Backhaul and network diagnostics
+- Coordinator health (last successful update, response time, timeouts, query mode,
+  and last error)
 
 ### CPU / Memory sensors
 
