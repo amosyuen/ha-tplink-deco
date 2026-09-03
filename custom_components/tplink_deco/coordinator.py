@@ -46,6 +46,7 @@ class CoordinatorHealth:
         self.last_successful_update = dt_util.utcnow()
         self.response_time_ms = round((monotonic() - started) * 1000)
         self.consecutive_failures = 0
+        self.last_error = "0"
 
     def record_failure(self, started: float, err: Exception) -> None:
         """Record a failed coordinator update without exposing response data."""
@@ -352,26 +353,24 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         return "global_fallback" if self._use_global_client_query else "per_node"
 
     async def _async_list_clients_per_deco(self, deco_macs: list[str]):
-        """List clients sequentially without per-node timeout retries."""
+        """List clients sequentially, using the API's configured retries."""
         responses = []
         for deco_mac in deco_macs:
             responses.append(
                 await async_call_and_propagate_config_error(
                     self.api.async_list_clients,
                     deco_mac,
-                    timeout_error_retries=0,
                 )
             )
         return responses
 
     async def _async_list_clients_global(self):
-        """List all clients once without timeout retries."""
+        """List all clients using the API's configured timeout retries."""
         master_deco = self._deco_update_coordinator.data.master_deco
         deco_macs = [master_deco.mac if master_deco is not None else "default"]
         responses = [
             await async_call_and_propagate_config_error(
                 self.api.async_list_clients,
-                timeout_error_retries=0,
             )
         ]
         return deco_macs, responses
@@ -390,6 +389,16 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             data = await self._async_update_data_internal()
         except Exception as err:
             self.health.record_failure(started, err)
+            if self.has_successful_refresh and not isinstance(
+                err, ConfigEntryAuthFailed
+            ):
+                # A failed response is not evidence that clients are offline. Keep
+                # their last activity timestamps so consider_home is not applied.
+                _LOGGER.warning(
+                    "Client refresh failed; retaining last successful client data: %s",
+                    type(err).__name__,
+                )
+                return self.data
             raise
 
         self.health.record_success(started)

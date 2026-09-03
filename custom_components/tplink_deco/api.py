@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import math
+import random
 import re
 import secrets
 from typing import Any
@@ -38,6 +39,10 @@ PKCS1_v1_5_HEADER_BYTES = 11
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 LEGACY_ERROR_DECODING_PATTERN = re.compile(r"^<Error Decoding (.*)>$")
+
+RETRY_BACKOFF_BASE_SECONDS = 0.25
+RETRY_BACKOFF_MAX_SECONDS = 2.0
+RETRY_BACKOFF_JITTER_SECONDS = 0.1
 
 
 def normalize_name(name: str):
@@ -617,9 +622,16 @@ class TplinkDecoApi:
                     # Reached max retries
                     raise err
                 timeout_retries += 1
+                delay = min(
+                    RETRY_BACKOFF_BASE_SECONDS * (2 ** (timeout_retries - 1)),
+                    RETRY_BACKOFF_MAX_SECONDS,
+                )
+                delay += random.uniform(0, RETRY_BACKOFF_JITTER_SECONDS)
                 _LOGGER.debug(
-                    "Retry (%d of %d) timeout error: %s",
+                    "Retry (%d of %d) timeout error in %.2fs: %s",
                     timeout_retries,
                     max_timeout_retries,
+                    delay,
                     err,
                 )
+                await asyncio.sleep(delay)
