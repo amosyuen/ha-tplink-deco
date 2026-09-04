@@ -48,7 +48,7 @@ class DecoPollingIntervalSelect(SelectEntity):
         master_deco = self.coordinator.data.master_deco
         if master_deco is None:
             return None
-        return create_device_info(master_deco, master_deco)
+        return create_device_info(master_deco, master_deco, self.coordinator)
 
     async def async_select_option(self, option: str) -> None:
         """Change polling interval."""
