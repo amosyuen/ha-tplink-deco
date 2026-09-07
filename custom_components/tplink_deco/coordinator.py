@@ -29,6 +29,7 @@ from .exceptions import LoginInvalidException
 from .exceptions import TimeoutException
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+GLOBAL_FALLBACK_PROBE_INTERVAL_SECONDS = 300
 
 
 @dataclass
@@ -344,6 +345,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         self.data = {} if data is None else data
         self.has_successful_refresh = False
         self._use_global_client_query = False
+        self._next_per_node_probe = 0.0
         self.health = CoordinatorHealth()
 
     @property
@@ -352,17 +354,31 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         return "global_fallback" if self._use_global_client_query else "per_node"
 
     async def _async_list_clients_per_deco(self, deco_macs: list[str]):
-        """List clients sequentially without per-node timeout retries."""
+        """List clients per Deco without failing the complete refresh."""
         responses = []
+        failed_deco_macs = set()
         for deco_mac in deco_macs:
-            responses.append(
-                await async_call_and_propagate_config_error(
+            try:
+                response = await async_call_and_propagate_config_error(
                     self.api.async_list_clients,
                     deco_mac,
                     timeout_error_retries=0,
                 )
-            )
-        return responses
+            except aiohttp.ClientResponseError as err:
+                if err.status < 500:
+                    raise
+                failed_deco_macs.add(deco_mac)
+                _LOGGER.debug("Per-node client_list failed for %s: %s", deco_mac, err)
+            except TimeoutException as err:
+                self.health.timeout_count += 1
+                failed_deco_macs.add(deco_mac)
+                _LOGGER.debug(
+                    "Per-node client_list timed out for %s: %s", deco_mac, err
+                )
+            else:
+                responses.append((deco_mac, response))
+
+        return responses, failed_deco_macs
 
     async def _async_list_clients_global(self):
         """List all clients once without timeout retries."""
@@ -405,32 +421,39 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         deco_macs = list(self._deco_update_coordinator.data.decos)
         utc_point_in_time = dt_util.utcnow()
 
-        if self._use_global_client_query:
-            deco_macs, deco_client_responses = await self._async_list_clients_global()
-        else:
-            try:
-                deco_client_responses = await self._async_list_clients_per_deco(
-                    deco_macs
-                )
-            except (aiohttp.ClientResponseError, TimeoutException) as err:
-                if isinstance(err, aiohttp.ClientResponseError) and err.status < 500:
-                    raise
-                if isinstance(err, TimeoutException):
-                    self.health.timeout_count += 1
-                # Some Deco firmware times out or returns 5xx for per-node
-                # client queries. Use one global query for subsequent updates.
+        failed_deco_macs = set()
+        should_try_per_node = (
+            not self._use_global_client_query
+            or monotonic() >= self._next_per_node_probe
+        )
+
+        if should_try_per_node:
+            deco_client_responses, failed_deco_macs = (
+                await self._async_list_clients_per_deco(deco_macs)
+            )
+            if deco_client_responses:
+                if self._use_global_client_query:
+                    _LOGGER.info(
+                        "Per-node client_list recovered; leaving global fallback"
+                    )
+                self._use_global_client_query = False
+            else:
                 self._use_global_client_query = True
+                self._next_per_node_probe = (
+                    monotonic() + GLOBAL_FALLBACK_PROBE_INTERVAL_SECONDS
+                )
                 _LOGGER.debug(
-                    "Per-node client_list failed (%s); switching to global query",
-                    err,
+                    "All per-node client_list queries failed; using global fallback"
                 )
-                deco_macs, deco_client_responses = (
-                    await self._async_list_clients_global()
-                )
+                deco_macs, responses = await self._async_list_clients_global()
+                deco_client_responses = list(zip(deco_macs, responses))
+                failed_deco_macs.clear()
+        else:
+            deco_macs, responses = await self._async_list_clients_global()
+            deco_client_responses = list(zip(deco_macs, responses))
 
         if len(deco_client_responses) > 0:
-            # deco_macs is not subscriptable, must be iterated
-            for deco_mac, deco_clients in zip(deco_macs, deco_client_responses):
+            for deco_mac, deco_clients in deco_client_responses:
                 for deco_client in deco_clients:
                     client_mac = deco_client["mac"]
                     client = old_clients.get(client_mac)
@@ -448,6 +471,8 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             mac = client.mac
             if mac not in clients:
                 clients[mac] = client
+                if client.deco_mac in failed_deco_macs:
+                    continue
                 if client.last_activity is None:
                     client.online = False
                 else:
