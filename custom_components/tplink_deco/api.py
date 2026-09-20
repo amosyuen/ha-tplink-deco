@@ -168,6 +168,18 @@ class TplinkDecoApi:
         self._stok = None
         self._cookie = None
 
+        # Some Deco firmwares put the LuCI JSON API behind the same encrypted
+        # session used by the local web UI.  These values belong to that outer
+        # session; the existing fields above are for the LuCI API session.
+        self._outer_id = None
+        self._outer_aes_key = None
+        self._outer_aes_key_bytes = None
+        self._outer_aes_iv = None
+        self._outer_aes_iv_bytes = None
+        self._outer_rsa_n = None
+        self._outer_rsa_e = None
+        self._outer_seq = None
+
         if verify_ssl:
             self._ssl_context = None
         else:
@@ -368,6 +380,17 @@ class TplinkDecoApi:
             self._login_future = None
 
     async def _async_login(self):
+        if self._outer_id is None:
+            await self._async_outer_login()
+        # This firmware's code=7 login is the complete authentication flow.
+        # It exposes the same admin endpoints directly under /admin and does
+        # not implement the newer nested LuCI keys/auth/login handshake.
+        self._seq = 0
+        self._stok = ""
+        self._cookie = "outer=1"
+        self._auth_errors = 0
+        _LOGGER.debug("Legacy outer-session login successful")
+        return
         if self._aes_key is None:
             self._generate_aes_key_and_iv()
         if self._password_rsa_n is None:
@@ -425,6 +448,132 @@ class TplinkDecoApi:
         self._auth_errors = 0
         _LOGGER.debug("Login successful")
 
+    @staticmethod
+    def _security_encode(left: str, right: str, alphabet: str) -> str:
+        """Match the legacy web UI's $.su.encrypt challenge function."""
+        encoded = []
+        for index in range(max(len(left), len(right))):
+            left_code = ord(left[index]) if index < len(left) else 187
+            right_code = ord(right[index]) if index < len(right) else 187
+            encoded.append(alphabet[(left_code ^ right_code) % len(alphabet)])
+        return "".join(encoded)
+
+    async def _async_outer_post(self, params: dict[str, Any], data: str = ""):
+        """POST a web-UI session request without applying outer encryption."""
+        headers = {CONTENT_TYPE: "application/x-www-form-urlencoded; charset=UTF-8"}
+        async with async_timeout.timeout(self._timeout_seconds):
+            return await self._session.post(
+                f"{self._host}/",
+                params=params,
+                data=data,
+                headers=headers,
+                ssl=self._ssl_context,
+            )
+
+    async def _async_outer_login(self):
+        """Establish the encrypted local-web session required by some Decos."""
+        response = await self._async_outer_post({"code": 7, "asyn": 1})
+        challenge_text = await response.text()
+        if response.status != 401:
+            response.raise_for_status()
+        challenge = challenge_text.rstrip("\r\n").split("\r\n")
+        if len(challenge) < 5:
+            challenge = challenge_text.rstrip("\r\n").splitlines()
+        if len(challenge) < 5:
+            raise UnexpectedApiException("Outer login challenge was malformed")
+
+        response = await self._async_outer_post({"code": 16, "asyn": 0}, data="enable")
+        enable_text = await response.text()
+        response.raise_for_status()
+        if not enable_text.startswith("00000"):
+            raise UnexpectedApiException("Could not enable outer session encryption")
+
+        response = await self._async_outer_post({"code": 16, "asyn": 0}, data="get")
+        key_text = await response.text()
+        response.raise_for_status()
+        key_data = key_text.rstrip("\r\n").split("\r\n")
+        if len(key_data) < 4:
+            key_data = key_text.rstrip("\r\n").splitlines()
+        if len(key_data) < 4 or key_data[0] != "00000":
+            raise UnexpectedApiException("Outer session key response was malformed")
+
+        self._outer_rsa_e = int(key_data[1], 16)
+        self._outer_rsa_n = int(key_data[2], 16)
+        self._outer_seq = int(key_data[3])
+        self._outer_aes_key = str(
+            secrets.randbelow(MAX_AES_KEY - MIN_AES_KEY) + MIN_AES_KEY
+        )
+        self._outer_aes_iv = str(
+            secrets.randbelow(MAX_AES_KEY - MIN_AES_KEY) + MIN_AES_KEY
+        )
+        self._outer_aes_key_bytes = self._outer_aes_key.encode()
+        self._outer_aes_iv_bytes = self._outer_aes_iv.encode()
+
+        password_md5 = hashlib.md5(self._password.encode()).hexdigest()
+        self._outer_id = self._security_encode(challenge[3], password_md5, challenge[4])
+        password_encrypted = rsa_encrypt(
+            self._outer_rsa_n, self._outer_rsa_e, self._password.encode()
+        )
+        response = await self._async_outer_post(
+            {"code": 7, "asyn": 0, "id": self._outer_id},
+            data=password_encrypted,
+        )
+        login_text = await response.text()
+        if response.status != 200 or not login_text.startswith("00000"):
+            self._clear_outer_auth()
+            details = login_text.rstrip("\r\n").splitlines()
+            attempts = details[2] if len(details) > 2 else "unknown"
+            raise LoginInvalidException(attempts)
+
+        aes_key_string = f"k={self._outer_aes_key}&i={self._outer_aes_iv}"
+        encoded_aes_key = rsa_encrypt(
+            self._outer_rsa_n, self._outer_rsa_e, aes_key_string.encode()
+        )
+        response = await self._async_outer_post(
+            {"code": 16, "asyn": 0, "id": self._outer_id},
+            data=f"set {encoded_aes_key}",
+        )
+        set_text = await response.text()
+        response.raise_for_status()
+        if not set_text.startswith("00000"):
+            self._clear_outer_auth()
+            raise UnexpectedApiException("Could not install outer session AES key")
+        _LOGGER.debug("Outer local-web session established")
+
+    def _encode_outer_payload(self, data: str) -> str:
+        encrypted = aes_encrypt(
+            self._outer_aes_key_bytes,
+            self._outer_aes_iv_bytes,
+            data.encode(),
+        )
+        encrypted_b64 = base64.b64encode(encrypted).decode()
+        sign_text = (
+            f"k={self._outer_aes_key}&i={self._outer_aes_iv}"
+            f"&s={self._outer_seq + len(encrypted_b64)}"
+        )
+        signature = rsa_encrypt(
+            self._outer_rsa_n, self._outer_rsa_e, sign_text.encode()
+        )
+        return f"sign={signature}&data={encrypted_b64}"
+
+    def _decode_outer_payload(self, data: str) -> str:
+        decoded = base64.b64decode(data)
+        decrypted = aes_decrypt(
+            self._outer_aes_key_bytes, self._outer_aes_iv_bytes, decoded
+        )
+        padding_bytes = decrypted[-1]
+        return decrypted[:-padding_bytes].decode()
+
+    def _clear_outer_auth(self):
+        self._outer_id = None
+        self._outer_aes_key = None
+        self._outer_aes_key_bytes = None
+        self._outer_aes_iv = None
+        self._outer_aes_iv_bytes = None
+        self._outer_rsa_n = None
+        self._outer_rsa_e = None
+        self._outer_seq = None
+
     async def _async_post(
         self,
         context: str,
@@ -432,7 +581,16 @@ class TplinkDecoApi:
         params: dict[str:Any],
         data: Any,
     ) -> dict:
-        headers = {CONTENT_TYPE: "application/json"}
+        if self._outer_id is not None:
+            luci_prefix = f"{self._host}/cgi-bin/luci/;stok={self._stok}"
+            if url.startswith(luci_prefix):
+                url = self._host + url[len(luci_prefix) :]
+            params = dict(params)
+            params["id"] = self._outer_id
+            data = self._encode_outer_payload(data)
+            headers = {CONTENT_TYPE: "application/x-www-form-urlencoded; charset=UTF-8"}
+        else:
+            headers = {CONTENT_TYPE: "application/json"}
         # Gebruik een dictionary voor cookies in plaats van een string in headers
         request_cookies = {}
         if self._cookie is not None:
@@ -484,7 +642,20 @@ class TplinkDecoApi:
                         break
 
                 # Soms antwoordt de server met de verkeerde content-type
-                response_json = await response.json(content_type=None)
+                if self._outer_id is not None:
+                    response_text = await response.text()
+                    if not response_text:
+                        raise UnexpectedApiException(
+                            f"{context} outer response was empty "
+                            f"status={response.status} url={response.url} "
+                            f"content_type={response.headers.get(CONTENT_TYPE)} "
+                            f"history={len(response.history)}"
+                        )
+                    response_json = json.loads(
+                        self._decode_outer_payload(response_text)
+                    )
+                else:
+                    response_json = await response.json(content_type=None)
                 if "error_code" in response_json:
                     error_code = response_json.get("error_code")
                     if error_code != 0 and error_code != "":
@@ -495,6 +666,8 @@ class TplinkDecoApi:
                         )
                         raise UnexpectedApiException(f"{context} error: {error_code}")
 
+                if self._outer_id is not None:
+                    return {"data": response_json}
                 return response_json
         except asyncio.TimeoutError as err:
             _LOGGER.debug(
@@ -534,6 +707,8 @@ class TplinkDecoApi:
             raise err
 
     def _encode_payload(self, payload: Any):
+        if self._outer_id is not None:
+            return json.dumps(payload, separators=(",", ":"))
         data = self._encode_data(payload)
         sign = self._encode_sign(len(data))
         # Must URI encode data after calculating data length
@@ -569,8 +744,11 @@ class TplinkDecoApi:
         self._seq = None
         self._stok = None
         self._cookie = None
+        self._clear_outer_auth()
 
     def _decrypt_data(self, context: str, data: str):
+        if isinstance(data, dict):
+            return data
         if data == "":
             self.clear_auth()
             message = f"{context} data is empty"
