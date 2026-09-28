@@ -17,6 +17,7 @@ from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import UpdateFailed
 from homeassistant.util import dt as dt_util
 
 from .api import TplinkDecoApi
@@ -47,13 +48,16 @@ class CoordinatorHealth:
         self.last_successful_update = dt_util.utcnow()
         self.response_time_ms = round((monotonic() - started) * 1000)
         self.consecutive_failures = 0
+        self.last_error = "0"
 
-    def record_failure(self, started: float, err: Exception) -> None:
+    def record_failure(
+        self, started: float, err: Exception, *, count_timeout: bool = True
+    ) -> None:
         """Record a failed coordinator update without exposing response data."""
         self.response_time_ms = round((monotonic() - started) * 1000)
         self.consecutive_failures += 1
         self.last_error = type(err).__name__
-        if isinstance(err, TimeoutException):
+        if count_timeout and isinstance(err, TimeoutException):
             self.timeout_count += 1
 
 
@@ -347,6 +351,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         self._use_global_client_query = False
         self._next_per_node_probe = 0.0
         self.health = CoordinatorHealth()
+        self._transient_client_errors: list[Exception] = []
 
     @property
     def client_query_mode(self) -> str:
@@ -354,7 +359,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         return "global_fallback" if self._use_global_client_query else "per_node"
 
     async def _async_list_clients_per_deco(self, deco_macs: list[str]):
-        """List clients per Deco without failing the complete refresh."""
+        """List clients sequentially, keeping the complete refresh resilient."""
         responses = []
         failed_deco_macs = set()
         for deco_mac in deco_macs:
@@ -368,10 +373,12 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
                 if err.status < 500:
                     raise
                 failed_deco_macs.add(deco_mac)
+                self._transient_client_errors.append(err)
                 _LOGGER.debug("Per-node client_list failed for %s: %s", deco_mac, err)
             except TimeoutException as err:
                 self.health.timeout_count += 1
                 failed_deco_macs.add(deco_mac)
+                self._transient_client_errors.append(err)
                 _LOGGER.debug(
                     "Per-node client_list timed out for %s: %s", deco_mac, err
                 )
@@ -381,7 +388,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         return responses, failed_deco_macs
 
     async def _async_list_clients_global(self):
-        """List all clients once without timeout retries."""
+        """List all clients using the API's configured timeout retries."""
         master_deco = self._deco_update_coordinator.data.master_deco
         deco_macs = [master_deco.mac if master_deco is not None else "default"]
         responses = [
@@ -402,13 +409,36 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             return self.data
 
         started = monotonic()
+        self._transient_client_errors.clear()
         try:
             data = await self._async_update_data_internal()
         except Exception as err:
             self.health.record_failure(started, err)
+            if isinstance(err, TimeoutException) or (
+                isinstance(err, aiohttp.ClientResponseError) and err.status >= 500
+            ):
+                # Raising UpdateFailed keeps DataUpdateCoordinator's previous data
+                # while reporting this refresh as unsuccessful.
+                if self.has_successful_refresh:
+                    _LOGGER.warning(
+                        "Client refresh failed; retaining last successful client data: %s",
+                        type(err).__name__,
+                    )
+                else:
+                    _LOGGER.warning(
+                        "Initial client refresh failed: %s", type(err).__name__
+                    )
+                raise UpdateFailed("Transient client refresh failure") from err
             raise
 
-        self.health.record_success(started)
+        if self._transient_client_errors:
+            # Successful nodes can refresh while failed nodes retain their prior
+            # client state. Keep health degraded for this incomplete cycle.
+            self.health.record_failure(
+                started, self._transient_client_errors[0], count_timeout=False
+            )
+        else:
+            self.health.record_success(started)
         return data
 
     async def _async_update_data_internal(self):
@@ -448,6 +478,8 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
                 deco_macs, responses = await self._async_list_clients_global()
                 deco_client_responses = list(zip(deco_macs, responses))
                 failed_deco_macs.clear()
+                # The global fallback completed a full client refresh.
+                self._transient_client_errors.clear()
         else:
             deco_macs, responses = await self._async_list_clients_global()
             deco_client_responses = list(zip(deco_macs, responses))
