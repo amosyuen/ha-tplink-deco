@@ -321,7 +321,12 @@ class TplinkDecoApi:
         future = asyncio.get_running_loop().create_future()
         self._wireless_read_futures[form] = future
         try:
-            result = await self._async_call_with_retry(self._async_get_wireless, form)
+            # Only the request itself is serialized, so concurrent callers of the
+            # same form wait on the shared future instead of queueing on the lock.
+            async with self._operation_lock:
+                result = await self._async_call_with_retry(
+                    self._async_get_wireless, form
+                )
             future.set_result(result)
             return result
         except Exception as err:
