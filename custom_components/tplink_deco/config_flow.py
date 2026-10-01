@@ -39,6 +39,12 @@ from .exceptions import TimeoutException
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 SCAN_INTERVAL_OPTIONS = [10, 30, 60, 120]
 SCAN_INTERVAL_SELECTOR_OPTIONS = [str(value) for value in SCAN_INTERVAL_OPTIONS]
+CONNECTION_SETTINGS = (
+    CONF_HOST,
+    CONF_USERNAME,
+    CONF_PASSWORD,
+    CONF_VERIFY_SSL,
+)
 
 
 def _get_scan_interval(data: dict[str:Any]) -> str:
@@ -163,7 +169,6 @@ async def _async_test_credentials(hass: HomeAssistant, data: dict[str:Any]):
         return {"base": "invalid_host"}
     except Exception as err:
         _LOGGER.error("Error testing credentials: %s", err)
-        raise err
         return {"base": "unknown"}
 
 
@@ -248,9 +253,13 @@ class TplinkDecoOptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             _ensure_user_input_optionals(user_input)
             _normalize_scan_interval(user_input)
+            connection_settings_changed = any(
+                user_input.get(key) != self.data.get(key) for key in CONNECTION_SETTINGS
+            )
             self.data.update(user_input)
 
-            self._errors = await _async_test_credentials(self.hass, self.data)
+            if connection_settings_changed:
+                self._errors = await _async_test_credentials(self.hass, self.data)
             if len(self._errors) == 0:
                 self.hass.config_entries.async_update_entry(
                     entry=self.config_entry,
