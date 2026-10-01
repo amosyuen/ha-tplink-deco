@@ -1,18 +1,25 @@
 """Binary sensors for TP-Link Deco."""
 
+import logging
+
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .api import wireless_is_enabled
 from .const import COORDINATOR_DECOS_KEY
 from .const import DOMAIN
 from .const import SIGNAL_DECO_ADDED
+from .const import WIFI_NETWORKS
 from .coordinator import TpLinkDeco
 from .coordinator import TplinkDecoUpdateCoordinator
 from .device import create_device_info
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -54,6 +61,33 @@ async def async_setup_entry(
             hass, SIGNAL_DECO_ADDED, add_untracked_deco_binary_sensors
         )
     )
+
+    await _async_add_wifi_binary_sensors(coordinator_decos, async_add_entities)
+
+
+async def _async_add_wifi_binary_sensors(coordinator, async_add_entities) -> None:
+    """Add read-only on/off status sensors for the Deco's WiFi networks.
+
+    Enabling/disabling WiFi is not supported by the Deco local API (the write
+    handler errors server-side), but reading the state works reliably.
+    """
+    # WiFi sensors attach to the master Deco; skip on satellite-only entries.
+    if coordinator.data.master_deco is None:
+        _LOGGER.debug("No master Deco for this entry, skipping WiFi status sensors")
+        return
+
+    try:
+        config = await coordinator.api.async_get_wireless("wlan")
+    except Exception as err:  # noqa: BLE001 - skip sensors, don't fail setup
+        _LOGGER.warning("Could not read wireless config for WiFi sensors: %s", err)
+        return
+
+    entities = []
+    for network in WIFI_NETWORKS:
+        if wireless_is_enabled(config, network["paths"]) is None:
+            continue
+        entities.append(DecoWifiBinarySensor(coordinator, network))
+    async_add_entities(entities)
 
 
 class TplinkDecoInternetOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity):
@@ -145,3 +179,37 @@ class TplinkDecoOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity):
             deco,
             self.coordinator.data.master_deco,
         )
+
+
+class DecoWifiBinarySensor(BinarySensorEntity):
+    """Read-only on/off status of one of the Deco's WiFi networks."""
+
+    _attr_has_entity_name = True
+
+    def __init__(self, coordinator, network: dict) -> None:
+        self.coordinator = coordinator
+        self._form = network["form"]
+        self._paths = network["paths"]
+        self._attr_name = network["name"]
+        self._attr_icon = network["icon"]
+        self._attr_unique_id = f"tplink_deco_wifi_{network['key']}"
+        self._attr_is_on = None
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Attach to the master Deco device."""
+        master_deco = self.coordinator.data.master_deco
+        return create_device_info(master_deco, master_deco)
+
+    async def async_update(self) -> None:
+        """Refresh the on/off state from the Deco."""
+        # Respect the polling switch so we don't hit the router while paused.
+        if self.coordinator.paused:
+            return
+        try:
+            config = await self.coordinator.api.async_get_wireless(self._form)
+            self._attr_is_on = wireless_is_enabled(config, self._paths)
+            self._attr_available = self._attr_is_on is not None
+        except Exception as err:  # noqa: BLE001 - keep last state, mark unavailable
+            _LOGGER.debug("Error updating %s WiFi status: %s", self._form, err)
+            self._attr_available = False
