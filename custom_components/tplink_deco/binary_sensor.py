@@ -72,7 +72,8 @@ async def _async_add_wifi_binary_sensors(coordinator, async_add_entities) -> Non
     handler errors server-side), but reading the state works reliably.
     """
     # WiFi sensors attach to the master Deco; skip on satellite-only entries.
-    if coordinator.data.master_deco is None:
+    master_deco = coordinator.data.master_deco
+    if master_deco is None:
         _LOGGER.debug("No master Deco for this entry, skipping WiFi status sensors")
         return
 
@@ -86,7 +87,7 @@ async def _async_add_wifi_binary_sensors(coordinator, async_add_entities) -> Non
     for network in WIFI_NETWORKS:
         if wireless_is_enabled(config, network["paths"]) is None:
             continue
-        entities.append(DecoWifiBinarySensor(coordinator, network))
+        entities.append(DecoWifiBinarySensor(coordinator, master_deco, network))
     async_add_entities(entities)
 
 
@@ -186,20 +187,27 @@ class DecoWifiBinarySensor(BinarySensorEntity):
 
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator, network: dict) -> None:
+    def __init__(
+        self,
+        coordinator: TplinkDecoUpdateCoordinator,
+        master_deco: TpLinkDeco,
+        network: dict[str, object],
+    ) -> None:
         self.coordinator = coordinator
+        self._master_deco = master_deco
         self._form = network["form"]
         self._paths = network["paths"]
         self._attr_name = network["name"]
         self._attr_icon = network["icon"]
-        self._attr_unique_id = f"tplink_deco_wifi_{network['key']}"
+        # Key off the master's MAC so setups with multiple masters each get
+        # their own sensors instead of colliding on a shared unique_id.
+        self._attr_unique_id = f"{master_deco.mac}_wifi_{network['key']}"
         self._attr_is_on = None
 
     @property
-    def device_info(self) -> DeviceInfo | None:
-        """Attach to the master Deco device."""
-        master_deco = self.coordinator.data.master_deco
-        return create_device_info(master_deco, master_deco)
+    def device_info(self) -> DeviceInfo:
+        """Attach the sensor to the master Deco."""
+        return create_device_info(self._master_deco, self._master_deco)
 
     async def async_update(self) -> None:
         """Refresh the on/off state from the Deco."""
