@@ -199,6 +199,9 @@ class DecoWifiBinarySensor(BinarySensorEntity):
         self._paths = network["paths"]
         self._attr_name = network["name"]
         self._attr_icon = network["icon"]
+        self._attr_entity_registry_enabled_default = network.get(
+            "enabled_default", True
+        )
         # Key off the master's MAC so setups with multiple masters each get
         # their own sensors instead of colliding on a shared unique_id.
         self._attr_unique_id = f"{master_deco.mac}_wifi_{network['key']}"

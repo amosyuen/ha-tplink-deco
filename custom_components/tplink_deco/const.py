@@ -36,6 +36,9 @@ WIFI_NETWORKS = [
         "name": "Main WiFi",
         "icon": "mdi:wifi",
         "paths": [["band*", "host"]],
+        # The main network normally cannot be switched off, so the sensor would
+        # just read "on"; keep it available but disabled by default.
+        "enabled_default": False,
     },
     {
         "key": "guest",
