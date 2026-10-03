@@ -28,6 +28,7 @@ from .exceptions import ForbiddenException
 from .exceptions import LoginForbiddenException
 from .exceptions import LoginInvalidException
 from .exceptions import TimeoutException
+from .exceptions import TransientConnectionException
 from .exceptions import UnexpectedApiException
 
 AES_KEY_BYTES = 16
@@ -718,7 +719,18 @@ class TplinkDecoApi:
                 message = f"{context} Forbidden error: {err}"
                 raise ForbiddenException(message) from err
             raise err
-        except (aiohttp.ClientConnectorError, aiohttp.ServerDisconnectedError) as err:
+        except (aiohttp.ClientPayloadError, aiohttp.ServerDisconnectedError) as err:
+            if isinstance(err, aiohttp.ServerDisconnectedError):
+                self.clear_auth()
+            _LOGGER.debug(
+                "%s transient connection error: %s",
+                context,
+                err,
+            )
+            raise TransientConnectionException(
+                f"{context} transient connection error: {err}"
+            ) from err
+        except aiohttp.ClientConnectorError as err:
             # Clear auth in case deco rebooted and auth is invalid
             self.clear_auth()
             _LOGGER.error(
@@ -802,11 +814,13 @@ class TplinkDecoApi:
     ):
         relogin_retried = False
         timeout_retries = 0
+        transport_retries = 0
         max_timeout_retries = (
             self._timeout_error_retries
             if timeout_error_retries is None
             else timeout_error_retries
         )
+        max_transport_retries = self._timeout_error_retries
         while True:
             try:
                 return await func(*args)
@@ -828,5 +842,15 @@ class TplinkDecoApi:
                     "Retry (%d of %d) timeout error: %s",
                     timeout_retries,
                     max_timeout_retries,
+                    err,
+                )
+            except TransientConnectionException as err:
+                if transport_retries >= max_transport_retries:
+                    raise err
+                transport_retries += 1
+                _LOGGER.debug(
+                    "Retry (%d of %d) transient connection error: %s",
+                    transport_retries,
+                    max_transport_retries,
                     err,
                 )
