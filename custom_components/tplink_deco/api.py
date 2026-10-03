@@ -167,6 +167,7 @@ class TplinkDecoApi:
         self._seq = None
         self._stok = None
         self._cookie = None
+        self._use_outer_session = False
 
         # Some Deco firmwares put the LuCI JSON API behind the same encrypted
         # session used by the local web UI.  These values belong to that outer
@@ -380,21 +381,30 @@ class TplinkDecoApi:
             self._login_future = None
 
     async def _async_login(self):
-        if self._outer_id is None:
-            await self._async_outer_login()
-        # This firmware's code=7 login is the complete authentication flow.
-        # It exposes the same admin endpoints directly under /admin and does
-        # not implement the newer nested LuCI keys/auth/login handshake.
-        self._seq = 0
-        self._stok = ""
-        self._cookie = "outer=1"
-        self._auth_errors = 0
-        _LOGGER.debug("Legacy outer-session login successful")
-        return
+        if self._use_outer_session:
+            await self._async_login_outer_session()
+            return
+
         if self._aes_key is None:
             self._generate_aes_key_and_iv()
         if self._password_rsa_n is None:
-            await self._async_fetch_keys()
+            try:
+                await self._async_fetch_keys()
+            except aiohttp.ClientResponseError as err:
+                if err.status != 401:
+                    raise
+
+                # The tested S7 firmware protects the LuCI keys endpoint with
+                # HTTP 401 and instead exposes the API through its encrypted
+                # local-web session. Only use that protocol after observing
+                # this specific incompatibility signal.
+                _LOGGER.debug(
+                    "LuCI keys endpoint returned HTTP 401; trying legacy "
+                    "outer-session authentication"
+                )
+                await self._async_login_outer_session()
+                self._use_outer_session = True
+                return
         if self._seq is None:
             await self._async_fetch_auth()
 
@@ -447,6 +457,25 @@ class TplinkDecoApi:
         # Login success
         self._auth_errors = 0
         _LOGGER.debug("Login successful")
+
+    async def _async_login_outer_session(self):
+        """Log in through the legacy encrypted local-web session."""
+        if self._outer_id is None:
+            try:
+                await self._async_outer_login()
+            except Exception:
+                # The handshake stores its challenge, key, and session values
+                # incrementally. Never reuse a partially established session.
+                self._clear_outer_auth()
+                raise
+
+        # The code=7 login is the complete authentication flow for this
+        # firmware. It exposes the admin endpoints directly under /admin.
+        self._seq = 0
+        self._stok = ""
+        self._cookie = "outer=1"
+        self._auth_errors = 0
+        _LOGGER.debug("Legacy outer-session login successful")
 
     @staticmethod
     def _security_encode(left: str, right: str, alphabet: str) -> str:
