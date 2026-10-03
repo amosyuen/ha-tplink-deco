@@ -33,5 +33,9 @@ class TimeoutException(Exception):
         )
 
 
+class TransientConnectionException(Exception):
+    """Retryable connection or incomplete response exception."""
+
+
 class UnexpectedApiException(Exception):
     """Unexpected API exception"""

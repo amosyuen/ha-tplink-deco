@@ -27,6 +27,7 @@ from .const import SIGNAL_DECO_ADDED
 from .exceptions import LoginForbiddenException
 from .exceptions import LoginInvalidException
 from .exceptions import TimeoutException
+from .exceptions import TransientConnectionException
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 GLOBAL_FALLBACK_PROBE_INTERVAL_SECONDS = 300
@@ -248,9 +249,16 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
             self.api.async_list_devices
         )
 
-        performance_data = await async_call_and_propagate_config_error(
-            self.api.async_get_performance
-        )
+        try:
+            performance_data = await async_call_and_propagate_config_error(
+                self.api.async_get_performance
+            )
+        except TransientConnectionException as err:
+            performance_data = None
+            _LOGGER.debug(
+                "Get Performance failed after retries; retaining previous values: %s",
+                err,
+            )
 
         old_decos = self.data.decos
         master_deco = None
@@ -279,7 +287,7 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
                 decos[mac] = old_deco
 
         # Zet globale performance data op de master Deco
-        result = performance_data.get("result", {})
+        result = performance_data.get("result", {}) if performance_data else {}
         if master_deco is not None:
             cpu_raw = result.get("cpu_usage")
             mem_raw = result.get("mem_usage")
@@ -387,6 +395,13 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
                 failed_deco_macs.add(deco_mac)
                 _LOGGER.debug(
                     "Per-node client_list timed out for %s: %s", deco_mac, err
+                )
+            except TransientConnectionException as err:
+                failed_deco_macs.add(deco_mac)
+                _LOGGER.debug(
+                    "Per-node client_list connection failed for %s after retries: %s",
+                    deco_mac,
+                    err,
                 )
             else:
                 responses.append((deco_mac, response))
