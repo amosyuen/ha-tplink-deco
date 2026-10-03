@@ -346,6 +346,7 @@ message: "device_tracker.amos_phone_wifi connected to main 5G through Guest Room
 - Deco P9
 - Deco PX50
 - Deco S4
+- Deco S7 (1.3.0 Build 20220609 Rel. 64814)
 - Deco X20
 - Deco X50
 - Deco X60
@@ -356,9 +357,9 @@ message: "device_tracker.amos_phone_wifi connected to main 5G through Guest Room
 - Mercusys Halo H70X
 - Mercusys Halo H80X
 
-## Not Working Devices
-
-- Deco S7 (1.3.0 Build 20220609 Rel. 64814)
+The Deco S7 firmware listed above uses a legacy encrypted local-web session over
+HTTP. The integration detects and handles this authentication and request format,
+including numeric values returned as strings by the legacy API.
 
 ## Known Issues
 
