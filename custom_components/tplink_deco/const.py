@@ -19,6 +19,43 @@ DEFAULT_TIMEOUT_SECONDS = 30
 DEVICE_TYPE_CLIENT = "client"
 DEVICE_TYPE_DECO = "deco"
 
+# Wireless networks exposed as read-only on/off status sensors. All three live
+# inside the "wlan" form on the Deco X50 (guest/iot are NOT separate forms).
+# "paths" point at the section(s) whose "enable" flag we read, relative to the
+# wlan result:
+#   main  -> band2_4.host / band5_1.host
+#   guest -> band2_4.guest / band5_1.guest
+#   iot   -> iot.host
+# "band*" is a trailing-wildcard match so both 2.4G and 5G bands are covered.
+# NOTE: enabling/disabling is not possible on the X50 firmware (the wireless
+# write handler errors server-side), so these are status-only.
+WIFI_NETWORKS = [
+    {
+        "key": "main",
+        "form": "wlan",
+        "name": "Main WiFi",
+        "icon": "mdi:wifi",
+        "paths": [["band*", "host"]],
+        # The main network normally cannot be switched off, so the sensor would
+        # just read "on"; keep it available but disabled by default.
+        "enabled_default": False,
+    },
+    {
+        "key": "guest",
+        "form": "wlan",
+        "name": "Guest WiFi",
+        "icon": "mdi:wifi-lock-open",
+        "paths": [["band*", "guest"]],
+    },
+    {
+        "key": "iot",
+        "form": "wlan",
+        "name": "IoT WiFi",
+        "icon": "mdi:home-automation",
+        "paths": [["iot", "host"]],
+    },
+]
+
 # Attributes
 ATTR_BSSID_BAND2_4 = "bssid_band2_4"
 ATTR_BSSID_BAND5 = "bssid_band5"

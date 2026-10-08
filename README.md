@@ -49,6 +49,28 @@ Two types of sensors are available:
 
 ---
 
+### WiFi network status
+
+Read-only on/off status sensors for each WiFi network the Deco exposes
+(main / guest / IoT), attached to the master Deco:
+
+- `binary_sensor.<deco>_main_wifi` (disabled by default)
+- `binary_sensor.<deco>_guest_wifi`
+- `binary_sensor.<deco>_iot_wifi`
+
+Handy for dashboards, automations and notifications (e.g. alert when the guest
+network is left on). Only the networks present on your model are created. The
+main network sensor is disabled by default, since the main network usually
+cannot be switched off and it would always read "on"; enable it from the
+entity settings if you need it.
+
+> **Note:** these are **status only**. Enabling/disabling WiFi is not exposed
+> because some Deco firmwares (e.g. the Deco X50) reject wireless-config writes
+> on the local API (the write handler errors server-side), so writing is not
+> reliably supported.
+
+---
+
 ### Polling Control
 
 #### Runtime control
@@ -107,6 +129,12 @@ Configurable:
 
 - CPU usage (raw + smoothed)
 - Memory usage (raw + smoothed)
+
+### WiFi status
+
+- `binary_sensor.<deco>_main_wifi` (disabled by default)
+- `binary_sensor.<deco>_guest_wifi`
+- `binary_sensor.<deco>_iot_wifi`
 
 ---
 
