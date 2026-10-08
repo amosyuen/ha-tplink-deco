@@ -438,7 +438,7 @@ class TplinkDecoClientCountSensor(CoordinatorEntity, SensorEntity):
         """Update sensor state."""
         count = 0
         for client in self.coordinator.data.values():
-            if client.deco_mac == self._deco_mac:
+            if client.deco_mac == self._deco_mac and client.online:
                 count += 1
         self._attr_native_value = count
 
