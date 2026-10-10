@@ -720,8 +720,6 @@ class TplinkDecoApi:
                 raise ForbiddenException(message) from err
             raise err
         except (aiohttp.ClientPayloadError, aiohttp.ServerDisconnectedError) as err:
-            if isinstance(err, aiohttp.ServerDisconnectedError):
-                self.clear_auth()
             _LOGGER.debug(
                 "%s transient connection error: %s",
                 context,
@@ -731,8 +729,7 @@ class TplinkDecoApi:
                 f"{context} transient connection error: {err}"
             ) from err
         except aiohttp.ClientConnectorError as err:
-            # Clear auth in case deco rebooted and auth is invalid
-            self.clear_auth()
+            # A 401/403 on the next call still clears invalid auth.
             _LOGGER.error(
                 "%s connection error: %s",
                 context,
