@@ -166,19 +166,21 @@ Device trackers are added for both decos and clients. The device tracker state m
 
 #### Deco Attributes
 
-| Attribute       | Example Values (comma separated) |
-| --------------- | -------------------------------- |
-| hw_version      | 2.0                              |
-| sw_version      | 1.5.1 Build 20210204 Rel. 50164  |
-| device_model    | x60                              |
-| internet_online | false, true                      |
-| master          | false, true                      |
-| bssid_band2_4   | A1:B2:C3:D4:E5:F6                |
-| bssid_band5     | A1:B2:C3:D4:E5:F6                |
-| signal_band2_4  | 3                                |
-| signal_band2_4  | 4                                |
-| deco_device     | living_room                      |
-| deco_mac        | 1A-B2-C3-4D-56-EF                |
+| Attribute              | Example Values (comma separated) |
+| ---------------------- | -------------------------------- |
+| hw_version             | 2.0                              |
+| sw_version             | 1.5.1 Build 20210204 Rel. 50164  |
+| device_model           | x60                              |
+| internet_online        | false, true                      |
+| master                 | false, true                      |
+| bssid_band2_4          | A1:B2:C3:D4:E5:F6                |
+| bssid_band5            | A1:B2:C3:D4:E5:F6                |
+| backhaul_bssid_band2_4 | A1:B2:C3:D4:E5:F6                |
+| backhaul_bssid_band5   | A1:B2:C3:D4:E5:F6                |
+| signal_band2_4         | 3                                |
+| signal_band2_4         | 4                                |
+| deco_device            | living_room                      |
+| deco_mac               | 1A-B2-C3-4D-56-EF                |
 
 Note: `deco_device` and `deco_mac` will only be set for non-master decos.
 

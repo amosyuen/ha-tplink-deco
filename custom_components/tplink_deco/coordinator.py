@@ -112,6 +112,8 @@ class TpLinkDeco:
         self.interface = None
         self.bssid_band2_4 = None
         self.bssid_band5 = None
+        self.backhaul_bssid_band2_4 = None
+        self.backhaul_bssid_band5 = None
         self.signal_band2_4 = None
         self.signal_band5 = None
         self.backhaul_speed = None
@@ -147,6 +149,8 @@ class TpLinkDeco:
         self.connection_type = data.get("connection_type")
         self.bssid_band2_4 = data.get("bssid_2g")
         self.bssid_band5 = data.get("bssid_5g")
+        self.backhaul_bssid_band2_4 = data.get("bssid_sta_2g")
+        self.backhaul_bssid_band5 = data.get("bssid_sta_5g")
         signal_level = data.get("signal_level", {})
         self.signal_band2_4 = signal_level.get("band2_4")
         self.signal_band5 = signal_level.get("band5")

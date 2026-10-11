@@ -16,6 +16,8 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .const import ATTR_BACKHAUL_BSSID_BAND2_4
+from .const import ATTR_BACKHAUL_BSSID_BAND5
 from .const import ATTR_BSSID_BAND2_4
 from .const import ATTR_BSSID_BAND5
 from .const import ATTR_CONNECTION_TYPE
@@ -263,6 +265,8 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
         attributes = {
             ATTR_BSSID_BAND2_4: self._deco.bssid_band2_4,
             ATTR_BSSID_BAND5: self._deco.bssid_band5,
+            ATTR_BACKHAUL_BSSID_BAND2_4: self._deco.backhaul_bssid_band2_4,
+            ATTR_BACKHAUL_BSSID_BAND5: self._deco.backhaul_bssid_band5,
             ATTR_CONNECTION_TYPE: self._attr_connection_type,
             ATTR_DEVICE_MODEL: self._attr_device_model,
             ATTR_DEVICE_TYPE: DEVICE_TYPE_DECO,
