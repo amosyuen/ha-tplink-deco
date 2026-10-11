@@ -129,11 +129,15 @@ async def async_create_config_data(hass: HomeAssistant, config_entry: ConfigEntr
 
     # Populate client list with existing entries so that we keep track of disconnected clients
     # since deco list_clients only returns connected clients.
-    last_states = restore_state.async_get(hass).last_states
+    restore_state_data = restore_state.async_get(hass)
+    # async_get_stored_state is available starting with Home Assistant 2026.11.
+    get_stored_state = getattr(restore_state_data, "async_get_stored_state", None)
+    if get_stored_state is None:
+        get_stored_state = restore_state_data.last_states.get
     for entry in existing_entries:
         if entry.domain != DEVICE_TRACKER_DOMAIN:
             continue
-        state = last_states.get(entry.entity_id)
+        state = get_stored_state(entry.entity_id)
         if state is None:
             continue
         device_type = state.state.attributes.get(ATTR_DEVICE_TYPE)
