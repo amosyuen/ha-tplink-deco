@@ -384,6 +384,15 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
         return self._attr_ip_address
 
     @property
+    def hostname(self) -> str | None:
+        """Return the hostname of the device.
+
+        Home Assistant names the device it creates for a tracked MAC after the
+        hostname, falling back to the MAC address.
+        """
+        return self._attr_name
+
+    @property
     def source_type(self) -> str:
         """Return the source type."""
         return SourceType.ROUTER
