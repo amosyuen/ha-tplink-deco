@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import json
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -11,6 +13,7 @@ from aiohttp.client_reqrep import ConnectionKey
 import pytest
 
 from custom_components.tplink_deco.api import TplinkDecoApi
+from custom_components.tplink_deco.api import aes_encrypt
 from custom_components.tplink_deco.exceptions import TransientConnectionException
 
 
@@ -189,3 +192,143 @@ async def test_async_list_devices_403_relogs_in(api, mock_session):
     assert len(login_posts) == 1
     assert login_posts[0][1]["form"] == "login"
     _assert_authenticated(api)
+
+
+def _authenticate_outer(api):
+    api._use_outer_session = True
+    api._outer_id = "stale-id"
+    api._outer_aes_key = "0123456789abcdef"
+    api._outer_aes_key_bytes = api._outer_aes_key.encode()
+    api._outer_aes_iv = "abcdef0123456789"
+    api._outer_aes_iv_bytes = api._outer_aes_iv.encode()
+    api._outer_rsa_n = 123
+    api._outer_rsa_e = 65537
+    api._outer_seq = 0
+    api._seq = 0
+    api._stok = ""
+    api._cookie = "outer=1"
+    api._encode_outer_payload = MagicMock(return_value="payload")
+
+
+def _outer_response(text, status=200):
+    response = _response({})
+    response.status = status
+    response.text = AsyncMock(return_value=text)
+    return response
+
+
+def _encrypted_outer_response(key, iv):
+    payload = json.dumps({"result": {"device_list": []}, "error_code": 0}).encode()
+    encrypted = aes_encrypt(key.encode(), iv.encode(), payload)
+    return base64.b64encode(encrypted).decode()
+
+
+def _setup_outer_recovery(api, mock_session, stale_response):
+    _authenticate_outer(api)
+    fresh_key = "fedcba9876543210"
+    fresh_iv = "0011223344556677"
+    state = {"outer_logins": 0, "post_count": 0}
+    fresh_response = _encrypted_outer_response(fresh_key, fresh_iv)
+
+    async def fresh_login():
+        state["outer_logins"] += 1
+        api._outer_id = "fresh-id"
+        api._outer_aes_key = fresh_key
+        api._outer_aes_key_bytes = fresh_key.encode()
+        api._outer_aes_iv = fresh_iv
+        api._outer_aes_iv_bytes = fresh_iv.encode()
+        api._outer_rsa_n = 123
+        api._outer_rsa_e = 65537
+        api._outer_seq = 0
+
+    async def post(url, params=None, **kwargs):
+        if state["post_count"] == 0:
+            state["post_count"] += 1
+            raise _connector_error()
+        if params["id"] == "fresh-id":
+            return _outer_response(fresh_response)
+        assert params["id"] == "stale-id"
+        return stale_response()
+
+    api._async_outer_login = AsyncMock(side_effect=fresh_login)
+    mock_session.post.side_effect = post
+    return state
+
+
+@pytest.mark.asyncio
+async def test_outer_session_empty_response_after_reboot_relogs_in(api, mock_session):
+    state = _setup_outer_recovery(
+        api,
+        mock_session,
+        stale_response=lambda: _outer_response(""),
+    )
+
+    with pytest.raises(aiohttp.ClientConnectorError):
+        await api.async_list_devices()
+    assert api._outer_id == "stale-id"
+
+    result = await api.async_list_devices()
+
+    assert result == []
+    assert state["outer_logins"] == 1
+    assert api._outer_id == "fresh-id"
+
+
+@pytest.mark.asyncio
+async def test_outer_session_undecodable_response_after_reboot_relogs_in(
+    api, mock_session
+):
+    stale_response = base64.b64encode(
+        aes_encrypt(
+            b"fedcba9876543210",
+            b"1234567890abcdef",
+            json.dumps({"result": {"device_list": []}, "error_code": 0}).encode(),
+        )
+    ).decode()
+    state = _setup_outer_recovery(
+        api,
+        mock_session,
+        stale_response=lambda: _outer_response(stale_response),
+    )
+
+    with pytest.raises(aiohttp.ClientConnectorError):
+        await api.async_list_devices()
+    assert api._outer_id == "stale-id"
+
+    result = await api.async_list_devices()
+
+    assert result == []
+    assert state["outer_logins"] == 1
+    assert api._outer_id == "fresh-id"
+
+
+@pytest.mark.asyncio
+async def test_outer_session_401_after_reboot_relogs_in_on_next_call(api, mock_session):
+    def unauthorized_response():
+        response = _outer_response("", status=401)
+        response.raise_for_status.side_effect = aiohttp.ClientResponseError(
+            request_info=MagicMock(),
+            history=(),
+            status=401,
+        )
+        return response
+
+    state = _setup_outer_recovery(
+        api,
+        mock_session,
+        stale_response=unauthorized_response,
+    )
+
+    with pytest.raises(aiohttp.ClientConnectorError):
+        await api.async_list_devices()
+    assert api._outer_id == "stale-id"
+
+    with pytest.raises(aiohttp.ClientResponseError):
+        await api.async_list_devices()
+    assert api._outer_id is None
+
+    result = await api.async_list_devices()
+
+    assert result == []
+    assert state["outer_logins"] == 1
+    assert api._outer_id == "fresh-id"
