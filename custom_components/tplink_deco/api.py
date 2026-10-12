@@ -689,7 +689,7 @@ class TplinkDecoApi:
                         response_json = json.loads(
                             self._decode_outer_payload(response_text)
                         )
-                    except Exception as err:
+                    except (ValueError, IndexError) as err:
                         _LOGGER.debug(
                             "%s could not decode outer response, clearing stale session: %s",
                             context,
