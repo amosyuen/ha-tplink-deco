@@ -16,6 +16,8 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .const import ATTR_BACKHAUL_BSSID_BAND2_4
+from .const import ATTR_BACKHAUL_BSSID_BAND5
 from .const import ATTR_BSSID_BAND2_4
 from .const import ATTR_BSSID_BAND5
 from .const import ATTR_CONNECTION_TYPE
@@ -263,6 +265,8 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
         attributes = {
             ATTR_BSSID_BAND2_4: self._deco.bssid_band2_4,
             ATTR_BSSID_BAND5: self._deco.bssid_band5,
+            ATTR_BACKHAUL_BSSID_BAND2_4: self._deco.backhaul_bssid_band2_4,
+            ATTR_BACKHAUL_BSSID_BAND5: self._deco.backhaul_bssid_band5,
             ATTR_CONNECTION_TYPE: self._attr_connection_type,
             ATTR_DEVICE_MODEL: self._attr_device_model,
             ATTR_DEVICE_TYPE: DEVICE_TYPE_DECO,
@@ -382,6 +386,15 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
     def ip_address(self) -> str:
         """Return the primary ip address of the device."""
         return self._attr_ip_address
+
+    @property
+    def hostname(self) -> str | None:
+        """Return the hostname of the device.
+
+        Home Assistant names the device it creates for a tracked MAC after the
+        hostname, falling back to the MAC address.
+        """
+        return self._attr_name
 
     @property
     def source_type(self) -> str:

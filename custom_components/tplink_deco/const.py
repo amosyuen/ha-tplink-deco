@@ -59,6 +59,8 @@ WIFI_NETWORKS = [
 # Attributes
 ATTR_BSSID_BAND2_4 = "bssid_band2_4"
 ATTR_BSSID_BAND5 = "bssid_band5"
+ATTR_BACKHAUL_BSSID_BAND2_4 = "backhaul_bssid_band2_4"
+ATTR_BACKHAUL_BSSID_BAND5 = "backhaul_bssid_band5"
 ATTR_CONNECTION_TYPE = "connection_type"
 ATTR_DECO_DEVICE = "deco_device"
 ATTR_DECO_MAC = "deco_mac"
