@@ -675,15 +675,30 @@ class TplinkDecoApi:
                 if self._outer_id is not None:
                     response_text = await response.text()
                     if not response_text:
-                        raise UnexpectedApiException(
+                        message = (
                             f"{context} outer response was empty "
                             f"status={response.status} url={response.url} "
                             f"content_type={response.headers.get(CONTENT_TYPE)} "
                             f"history={len(response.history)}"
                         )
-                    response_json = json.loads(
-                        self._decode_outer_payload(response_text)
-                    )
+                        self.clear_auth()
+                        raise EmptyDataException(message)
+                    # A reboot can leave a stale outer session returning 200 with
+                    # an empty or undecodable body; clear auth so retry logs in once.
+                    try:
+                        response_json = json.loads(
+                            self._decode_outer_payload(response_text)
+                        )
+                    except (ValueError, IndexError) as err:
+                        _LOGGER.debug(
+                            "%s could not decode outer response, clearing stale session: %s",
+                            context,
+                            err,
+                        )
+                        self.clear_auth()
+                        raise EmptyDataException(
+                            f"{context} could not decode outer response"
+                        ) from err
                 else:
                     response_json = await response.json(content_type=None)
                 if "error_code" in response_json:
@@ -720,8 +735,6 @@ class TplinkDecoApi:
                 raise ForbiddenException(message) from err
             raise err
         except (aiohttp.ClientPayloadError, aiohttp.ServerDisconnectedError) as err:
-            if isinstance(err, aiohttp.ServerDisconnectedError):
-                self.clear_auth()
             _LOGGER.debug(
                 "%s transient connection error: %s",
                 context,
@@ -731,8 +744,7 @@ class TplinkDecoApi:
                 f"{context} transient connection error: {err}"
             ) from err
         except aiohttp.ClientConnectorError as err:
-            # Clear auth in case deco rebooted and auth is invalid
-            self.clear_auth()
+            # A 401/403 on the next call still clears invalid auth.
             _LOGGER.error(
                 "%s connection error: %s",
                 context,
