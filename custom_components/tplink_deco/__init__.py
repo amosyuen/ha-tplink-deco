@@ -27,6 +27,7 @@ from homeassistant.helpers import device_registry
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers import restore_state
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.device_registry import DeviceEntry
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 
@@ -259,6 +260,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     config_entry.async_on_unload(config_entry.add_update_listener(update_listener))
 
     return True
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, config_entry: ConfigEntry, device_entry: DeviceEntry
+) -> bool:
+    """Allow removing leftover client devices, but never a real Deco."""
+    return not any(domain == DOMAIN for domain, _ in device_entry.identifiers)
 
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
