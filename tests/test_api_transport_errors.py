@@ -14,6 +14,7 @@ import pytest
 
 from custom_components.tplink_deco.api import TplinkDecoApi
 from custom_components.tplink_deco.api import aes_encrypt
+from custom_components.tplink_deco.exceptions import EmptyDataException
 from custom_components.tplink_deco.exceptions import TransientConnectionException
 
 
@@ -326,6 +327,76 @@ async def test_outer_session_401_after_reboot_relogs_in_on_next_call(api, mock_s
     with pytest.raises(aiohttp.ClientResponseError):
         await api.async_list_devices()
     assert api._outer_id is None
+
+    result = await api.async_list_devices()
+
+    assert result == []
+    assert state["outer_logins"] == 1
+    assert api._outer_id == "fresh-id"
+
+
+@pytest.mark.asyncio
+async def test_async_post_session_expired_error_code_clears_auth(api, mock_session):
+    _authenticate(api)
+    mock_session.post.side_effect = [
+        _response({"error_code": -5002}),
+    ]
+
+    with pytest.raises(EmptyDataException):
+        await api._async_post("List Devices", f"{api._host}/path", params={}, data="x")
+
+    assert api._stok is None
+    assert api._cookie is None
+
+
+@pytest.mark.asyncio
+async def test_async_list_devices_session_expired_relogs_in(api, mock_session):
+    _authenticate(api)
+    _setup_device_list_call(api)
+    login_posts = []
+    expired = {"sent": False}
+
+    async def post(url, params=None, **kwargs):
+        if params.get("form") == "login":
+            login_posts.append((url, params))
+            return _response({})
+        if not expired["sent"]:
+            expired["sent"] = True
+            return _response({"error_code": -5002})
+        return _response({"data": "encrypted"})
+
+    async def login():
+        await mock_session.post(
+            f"{api._host}/cgi-bin/luci/;stok=/login",
+            params={"form": "login"},
+            data="payload",
+        )
+        _authenticate(api)
+
+    mock_session.post.side_effect = post
+    api.async_login = AsyncMock(side_effect=login)
+
+    assert await api.async_list_devices() == []
+    assert len(login_posts) == 1
+    _assert_authenticated(api)
+
+
+@pytest.mark.asyncio
+async def test_outer_session_expired_error_code_relogs_in(api, mock_session):
+    stale_response = base64.b64encode(
+        aes_encrypt(
+            b"0123456789abcdef",
+            b"abcdef0123456789",
+            json.dumps({"result": {}, "error_code": -5002}).encode(),
+        )
+    ).decode()
+    state = _setup_outer_recovery(
+        api, mock_session, stale_response=lambda: _outer_response(stale_response)
+    )
+
+    with pytest.raises(aiohttp.ClientConnectorError):
+        await api.async_list_devices()
+    assert api._outer_id == "stale-id"
 
     result = await api.async_list_devices()
 

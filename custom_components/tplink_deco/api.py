@@ -703,6 +703,13 @@ class TplinkDecoApi:
                     response_json = await response.json(content_type=None)
                 if "error_code" in response_json:
                     error_code = response_json.get("error_code")
+                    if error_code == -5002:
+                        # Session expired mid-use: same as an empty response,
+                        # clear auth so the retry logs in again once.
+                        self.clear_auth()
+                        raise EmptyDataException(
+                            f"{context} session expired, error_code={error_code}"
+                        )
                     if error_code != 0 and error_code != "":
                         _LOGGER.debug(
                             "%s error_code=%s",
