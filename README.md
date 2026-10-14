@@ -29,6 +29,15 @@ This integration provides local polling control and diagnostics for TP-Link Deco
 - Coordinator health (last successful update, response time, timeouts, query mode,
   and last error)
 
+### Session recovery
+
+- Keeps the current Deco session during temporary connection drops to avoid
+  unnecessary logins and session exhaustion.
+- Automatically establishes a new session when the Deco rejects a stale session
+  with HTTP 401/403.
+- Recovers encrypted legacy sessions when a rebooted Deco returns an empty or
+  invalid encrypted response.
+
 ### CPU / Memory sensors
 
 Two types of sensors are available:
@@ -144,6 +153,8 @@ This integration is a local polling integration that logs into the admin web UI 
 ### Device Trackers
 
 Device trackers are added for both decos and clients. The device tracker state marks whether the device is connected to the deco. If a device is not present, the previous values for attributes are saved except for `down_kilobytes_per_s` and `up_kilobytes_per_s`.
+
+By default, Home Assistant may link a client tracker to a device from another integration when both report the same MAC address. Disable **Link client trackers to devices by MAC address** in the integration options to prevent this. The tracker keeps its entity ID and exposes the MAC as a state attribute, but no longer participates in MAC-based device matching or DHCP discovery. Existing client devices can then be removed manually; Deco devices remain protected.
 
 #### Common Attributes
 

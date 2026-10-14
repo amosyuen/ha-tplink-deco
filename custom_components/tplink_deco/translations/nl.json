@@ -8,6 +8,7 @@
           "host": "Host",
           "username": "Gebruikersnaam",
           "password": "Wachtwoord",
+          "link_client_devices": "Koppel clienttrackers via het MAC-adres aan apparaten",
           "interval_seconds": "Aantal seconden tussen updates",
           "consider_home": "Aantal seconden sinds laatste keer dat het gezien is totdat een device als niet-thuis wordt gemarkeerd"
         }
@@ -35,6 +36,7 @@
           "host": "Host",
           "username": "Gebruikersnaam",
           "password": "Wachtwoord",
+          "link_client_devices": "Koppel clienttrackers via het MAC-adres aan apparaten",
           "interval_seconds": "Aantal seconden tussen updates",
           "consider_home": "Aantal seconden sinds laatste keer dat het gezien is totdat een device als niet-thuis wordt gemarkeerd"
         }
