@@ -5,6 +5,7 @@ from typing import Any
 
 from homeassistant.components.device_tracker import ScannerEntity
 from homeassistant.components.device_tracker.const import ATTR_IP
+from homeassistant.components.device_tracker.const import ATTR_MAC
 from homeassistant.components.device_tracker.const import SourceType
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_HW_VERSION
@@ -378,23 +379,25 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
             self.async_write_ha_state()
 
     @property
-    def mac_address(self) -> str:
-        """Return the mac address of the device."""
+    def mac_address(self) -> None:
+        """Hide the MAC from Home Assistant's ScannerEntity device logic.
+
+        When a ScannerEntity reports a MAC, Home Assistant creates a standalone
+        device for it in the device registry. That lists every network client
+        (speakers, vacuums, cameras...) as a device of this integration. Clients
+        are presence trackers only, so the MAC is exposed as an attribute instead.
+        """
+        return None
+
+    @property
+    def unique_id(self) -> str:
+        """Return the unique ID, the client MAC (ScannerEntity default)."""
         return self._mac_address
 
     @property
     def ip_address(self) -> str:
         """Return the primary ip address of the device."""
         return self._attr_ip_address
-
-    @property
-    def hostname(self) -> str | None:
-        """Return the hostname of the device.
-
-        Home Assistant names the device it creates for a tracked MAC after the
-        hostname, falling back to the MAC address.
-        """
-        return self._attr_name
 
     @property
     def source_type(self) -> str:
@@ -424,6 +427,7 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
             ATTR_DECO_DEVICE: None if deco is None else deco.name,
             ATTR_DECO_MAC: self._attr_deco_mac,
             ATTR_UI_DEVICE_NAME: self._attr_name,
+            ATTR_MAC: self._mac_address,
         }
 
     @property
