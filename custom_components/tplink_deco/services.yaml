@@ -11,3 +11,30 @@ reboot_deco:
           integration: tplink_deco
           manufacturer: TP-Link Deco
           multiple: true
+download_system_log:
+  name: Download system log
+  description: Save the Deco system log to a file in the tplink_deco_logs folder of the Home Assistant config directory.
+  fields:
+    filename:
+      name: File name
+      description: File name to save as. Defaults to deco-<timestamp>.log.
+      required: false
+      example: deco.log
+      selector:
+        text:
+    log_level:
+      name: Log level
+      description: Minimum severity of log lines to include.
+      required: false
+      default: ALL
+      selector:
+        select:
+          options:
+            - ALERT
+            - CRITICAL
+            - ERROR
+            - WARNING
+            - NOTICE
+            - INFO
+            - DEBUG
+            - ALL
