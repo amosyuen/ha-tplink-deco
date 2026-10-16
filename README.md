@@ -102,6 +102,7 @@ Configurable:
 - `tplink_deco.pause_polling`
 - `tplink_deco.resume_polling`
 - `tplink_deco.reboot_deco`
+- `tplink_deco.download_system_log`
 
 ---
 
@@ -288,6 +289,27 @@ Prefix to prepend to deco name. Example: Value of "Deco" for "Living Room" deco 
 ### Deco Name Postfix
 
 Postfix to append to deco name. Example: Value of "Deco" for "Living Room" deco will result in "Living Room Deco".
+
+### Syslog Forwarding
+
+Periodically downloads the Deco system log (the one shown in the web UI under Advanced > System > System Log) and sends new lines to a syslog server. Leave **Syslog server host** empty to disable it.
+
+- **Syslog server host / port / protocol**: where to send the log. UDP sends one message per datagram; TCP uses newline framing.
+- **Minimum Deco log level to forward**: `ALL` forwards everything, `WARNING` forwards WARNING and more severe, etc.
+- **Seconds between Deco log polls for syslog**: default 300. Each poll reads the whole log buffer from the Deco, so keep this well above the client scan interval.
+
+Messages are sent in RFC 5424 format with the Deco's facility, severity, program name and PID. The Deco's timestamps have no time zone, so they are treated as Home Assistant's local time. Only lines newer than the last forwarded ones are sent, and the position is remembered across restarts. If the Deco reboots or its log buffer wraps between polls, the whole buffer is sent again.
+
+### Download System Log Service
+
+Saves the Deco system log to `<config>/tplink_deco_logs/<filename>` and returns the path and line count.
+
+```yaml
+service: tplink_deco.download_system_log
+data:
+  filename: deco.log # optional, defaults to deco-<timestamp>.log
+  log_level: WARNING # optional, defaults to ALL
+```
 
 ### Disable new entities
 
