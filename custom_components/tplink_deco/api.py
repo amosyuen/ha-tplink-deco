@@ -36,6 +36,8 @@ MIN_AES_KEY = 10 ** (AES_KEY_BYTES - 1)
 MAX_AES_KEY = (10**AES_KEY_BYTES) - 1
 
 PKCS1_v1_5_HEADER_BYTES = 11
+SYSTEM_LOG_PAGE_SIZE = 100
+SYSTEM_LOG_EMPTY_PAGE_RETRIES = 3
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 LEGACY_ERROR_DECODING_PATTERN = re.compile(r"^<Error Decoding (.*)>$")
@@ -268,6 +270,60 @@ class TplinkDecoApi:
         data = self._decrypt_data(context, response_json["data"])
         check_data_error_code(context, data)
         return data
+
+    # Return system log lines, oldest first. Level is the minimum severity
+    # (1=ALERT ... 7=DEBUG, 8=ALL), matching the web UI's log level filter.
+    async def async_get_system_log(self, level: int = 8) -> list[str]:
+        async with self._operation_lock:
+            return await self._async_call_with_retry(self._async_get_system_log, level)
+
+    async def _async_get_system_log(self, level: int) -> list[str]:
+        await self.async_login_if_needed()
+
+        context = "Get System Log"
+        url = f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/log_export"
+        params = {"form": "feedback_log"}
+
+        # The router snapshots its log buffer on "build", then serves it in pages
+        build_payload = {"operation": "build", "params": {"level": level}}
+        response_json = await self._async_post(
+            context, url, params=params, data=self._encode_payload(build_payload)
+        )
+        data = self._decrypt_data(context, response_json["data"])
+        check_data_error_code(context, data)
+
+        lines = []
+        index = 0
+        while True:
+            read_payload = {
+                "operation": "read",
+                "params": {"index": index, "limit": SYSTEM_LOG_PAGE_SIZE},
+            }
+            # The Deco sometimes answers a page read with empty data while the session
+            # is still valid; retry the page rather than letting _decrypt_data clear auth
+            for _ in range(SYSTEM_LOG_EMPTY_PAGE_RETRIES):
+                response_json = await self._async_post(
+                    context, url, params=params, data=self._encode_payload(read_payload)
+                )
+                if response_json.get("data") != "":
+                    break
+                _LOGGER.debug("%s empty page index=%d, retrying", context, index)
+            data = self._decrypt_data(context, response_json["data"])
+            check_data_error_code(context, data)
+
+            try:
+                result = data["result"]
+                log_list = result.get("logList") or []
+                total_pages = int(result.get("totalNum") or 0)
+            except Exception as err:
+                _LOGGER.error("%s parse response error=%s", context, err)
+                raise err
+
+            lines.extend(entry.get("content", "") for entry in log_list)
+            index += 1
+            if not log_list or index >= total_pages:
+                _LOGGER.debug("%s line_count=%d", context, len(lines))
+                return lines
 
     # Return list of clients. Default lists clients for all decos.
     async def async_list_clients(

@@ -24,6 +24,11 @@ from .const import CONF_CLIENT_PREFIX
 from .const import CONF_DECO_POSTFIX
 from .const import CONF_DECO_PREFIX
 from .const import CONF_LINK_CLIENT_DEVICES
+from .const import CONF_SYSLOG_HOST
+from .const import CONF_SYSLOG_LOG_LEVEL
+from .const import CONF_SYSLOG_PORT
+from .const import CONF_SYSLOG_PROTOCOL
+from .const import CONF_SYSLOG_SCAN_INTERVAL
 from .const import CONF_TIMEOUT_ERROR_RETRIES
 from .const import CONF_TIMEOUT_SECONDS
 from .const import CONF_VERIFY_SSL
@@ -33,10 +38,16 @@ from .const import DEFAULT_CONSIDER_HOME
 from .const import DEFAULT_DECO_POSTFIX
 from .const import DEFAULT_LINK_CLIENT_DEVICES
 from .const import DEFAULT_SCAN_INTERVAL
+from .const import DEFAULT_SYSLOG_LOG_LEVEL
+from .const import DEFAULT_SYSLOG_PORT
+from .const import DEFAULT_SYSLOG_SCAN_INTERVAL
 from .const import DEFAULT_TIMEOUT_ERROR_RETRIES
 from .const import DEFAULT_TIMEOUT_SECONDS
 from .const import DOMAIN
+from .const import SYSLOG_PROTOCOL_TCP
+from .const import SYSLOG_PROTOCOL_UDP
 from .exceptions import TimeoutException
+from .log_forwarder import LOG_LEVELS
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 SCAN_INTERVAL_OPTIONS = [10, 30, 60, 120]
@@ -136,6 +147,38 @@ def _get_schema(data: dict[str:Any]):
                     "suggested_value": data.get(CONF_DECO_POSTFIX, DEFAULT_DECO_POSTFIX)
                 },
             ): str,
+            vol.Optional(
+                CONF_SYSLOG_HOST,
+                description={"suggested_value": data.get(CONF_SYSLOG_HOST, "")},
+            ): str,
+            vol.Required(
+                CONF_SYSLOG_PORT,
+                default=data.get(CONF_SYSLOG_PORT, DEFAULT_SYSLOG_PORT),
+            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
+            vol.Required(
+                CONF_SYSLOG_PROTOCOL,
+                default=data.get(CONF_SYSLOG_PROTOCOL, SYSLOG_PROTOCOL_UDP),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[SYSLOG_PROTOCOL_UDP, SYSLOG_PROTOCOL_TCP],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+            vol.Required(
+                CONF_SYSLOG_LOG_LEVEL,
+                default=data.get(CONF_SYSLOG_LOG_LEVEL, DEFAULT_SYSLOG_LOG_LEVEL),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=list(LOG_LEVELS),
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+            vol.Required(
+                CONF_SYSLOG_SCAN_INTERVAL,
+                default=data.get(
+                    CONF_SYSLOG_SCAN_INTERVAL, DEFAULT_SYSLOG_SCAN_INTERVAL
+                ),
+            ): vol.All(vol.Coerce(int), vol.Range(min=30)),
         }
     )
     return schema
@@ -148,6 +191,7 @@ def _ensure_user_input_optionals(data: dict[str:Any]) -> None:
         CONF_CLIENT_POSTFIX,
         CONF_DECO_PREFIX,
         CONF_DECO_POSTFIX,
+        CONF_SYSLOG_HOST,
     ]:
         if key not in data:
             data[key] = ""

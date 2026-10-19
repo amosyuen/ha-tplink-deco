@@ -16,7 +16,12 @@
           "client_prefix": "Client name prefix",
           "client_postfix": "Client name postfix",
           "deco_prefix": "Deco name prefix",
-          "deco_postfix": "Deco name postfix"
+          "deco_postfix": "Deco name postfix",
+          "syslog_host": "Syslog server host (leave empty to disable log forwarding)",
+          "syslog_port": "Syslog server port",
+          "syslog_protocol": "Syslog protocol",
+          "syslog_log_level": "Minimum Deco log level to forward",
+          "syslog_scan_interval": "Seconds between Deco log polls for syslog"
         }
       },
       "reauth_confirm": {
@@ -54,7 +59,12 @@
           "client_prefix": "Client name prefix",
           "client_postfix": "Client name postfix",
           "deco_prefix": "Deco name prefix",
-          "deco_postfix": "Deco name postfix"
+          "deco_postfix": "Deco name postfix",
+          "syslog_host": "Syslog server host (leave empty to disable log forwarding)",
+          "syslog_port": "Syslog server port",
+          "syslog_protocol": "Syslog protocol",
+          "syslog_log_level": "Minimum Deco log level to forward",
+          "syslog_scan_interval": "Seconds between Deco log polls for syslog"
         }
       }
     },
