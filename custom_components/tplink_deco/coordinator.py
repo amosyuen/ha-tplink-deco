@@ -249,10 +249,26 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data_internal(self):
         """Fetch and process Deco data."""
 
-        new_decos = await async_call_and_propagate_config_error(
-            self.api.async_list_devices
-        )
+        device_list_started = monotonic()
+        _LOGGER.debug("device_list request started")
+        try:
+            new_decos = await async_call_and_propagate_config_error(
+                self.api.async_list_devices
+            )
+        except Exception:
+            _LOGGER.debug(
+                "device_list request failed duration_seconds=%.3f",
+                monotonic() - device_list_started,
+            )
+            raise
+        else:
+            _LOGGER.debug(
+                "device_list request completed duration_seconds=%.3f",
+                monotonic() - device_list_started,
+            )
 
+        performance_started = monotonic()
+        _LOGGER.debug("performance request started")
         try:
             performance_data = await async_call_and_propagate_config_error(
                 self.api.async_get_performance
@@ -260,8 +276,15 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
         except TransientConnectionException as err:
             performance_data = None
             _LOGGER.debug(
-                "Get Performance failed after retries; retaining previous values: %s",
+                "performance request failed duration_seconds=%.3f; "
+                "retaining previous values: %s",
+                monotonic() - performance_started,
                 err,
+            )
+        else:
+            _LOGGER.debug(
+                "performance request completed duration_seconds=%.3f",
+                monotonic() - performance_started,
             )
 
         old_decos = self.data.decos
