@@ -212,10 +212,14 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
         config_entry: ConfigEntry,
         update_interval: timedelta = None,
         data: TpLinkDecoData = None,
+        device_list_interval_seconds: int = 30,
     ) -> None:
         """Initialize."""
         self.api = api
         self._on_close: list[Callable] = []
+        self.device_list_interval_seconds = device_list_interval_seconds
+        self._last_device_list_update: float | None = None
+        self._force_device_list_refresh = False
 
         super().__init__(
             hass,
@@ -232,7 +236,7 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Update data via api."""
-        if self.paused:
+        if self.paused and not self._force_device_list_refresh:
             _LOGGER.debug("Deco polling is paused")
             return self.data
 
@@ -249,10 +253,31 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data_internal(self):
         """Fetch and process Deco data."""
 
-        new_decos = await async_call_and_propagate_config_error(
-            self.api.async_list_devices
-        )
+        if self._device_list_refresh_due():
+            device_list_started = monotonic()
+            _LOGGER.debug("device_list request started")
+            try:
+                new_decos = await async_call_and_propagate_config_error(
+                    self.api.async_list_devices
+                )
+            except Exception:
+                _LOGGER.debug(
+                    "device_list request failed duration_seconds=%.3f",
+                    monotonic() - device_list_started,
+                )
+                raise
+            self._process_device_list(new_decos)
+            self._last_device_list_update = monotonic()
+            self._force_device_list_refresh = False
+            _LOGGER.debug(
+                "device_list request completed duration_seconds=%.3f",
+                monotonic() - device_list_started,
+            )
+        else:
+            _LOGGER.debug("device_list request skipped")
 
+        performance_started = monotonic()
+        _LOGGER.debug("performance request started")
         try:
             performance_data = await async_call_and_propagate_config_error(
                 self.api.async_get_performance
@@ -260,38 +285,20 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
         except TransientConnectionException as err:
             performance_data = None
             _LOGGER.debug(
-                "Get Performance failed after retries; retaining previous values: %s",
+                "performance request failed duration_seconds=%.3f; "
+                "retaining previous values: %s",
+                monotonic() - performance_started,
                 err,
             )
-
-        old_decos = self.data.decos
-        master_deco = None
-        deco_added = False
-        decos = {}
-        for new_deco in new_decos:
-            mac = new_deco["mac"]
-            deco = old_decos.get(mac)
-            if deco is None:
-                deco_added = True
-                deco = TpLinkDeco(mac)
-                _LOGGER.debug("_async_update_data: Found new deco mac=%s", deco.mac)
-            deco.update(new_deco)
-            decos[mac] = deco
-            if deco.master:
-                master_deco = deco
-
-        for mac, old_deco in old_decos.items():
-            if mac not in decos:
-                _LOGGER.debug(
-                    "_async_update_data: Deco mac=%s not returned by API, marking offline",
-                    mac,
-                )
-                old_deco.online = False
-                old_deco.internet_online = False
-                decos[mac] = old_deco
+        else:
+            _LOGGER.debug(
+                "performance request completed duration_seconds=%.3f",
+                monotonic() - performance_started,
+            )
 
         # Zet globale performance data op de master Deco
         result = performance_data.get("result", {}) if performance_data else {}
+        master_deco = self.data.master_deco
         if master_deco is not None:
             cpu_raw = result.get("cpu_usage")
             mem_raw = result.get("mem_usage")
@@ -320,10 +327,56 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
                 else:
                     master_deco.mem_usage = round(mem_percent, 1)
 
+        return self.data
+
+    def _device_list_refresh_due(self) -> bool:
+        """Return whether device_list should be refreshed this cycle."""
+        if self._force_device_list_refresh or self._last_device_list_update is None:
+            return True
+        if self.device_list_interval_seconds == 0:
+            return False
+        return (
+            monotonic() - self._last_device_list_update
+            >= self.device_list_interval_seconds
+        )
+
+    def _process_device_list(self, new_decos: list[dict[str, Any]]) -> None:
+        """Update cached Deco data from a device_list response."""
+        old_decos = self.data.decos
+        master_deco = None
+        deco_added = False
+        decos = {}
+        for new_deco in new_decos:
+            mac = new_deco["mac"]
+            deco = old_decos.get(mac)
+            if deco is None:
+                deco_added = True
+                deco = TpLinkDeco(mac)
+                _LOGGER.debug("_async_update_data: Found new deco mac=%s", deco.mac)
+            deco.update(new_deco)
+            decos[mac] = deco
+            if deco.master:
+                master_deco = deco
+
+        for mac, old_deco in old_decos.items():
+            if mac not in decos:
+                _LOGGER.debug(
+                    "_async_update_data: Deco mac=%s not returned by API, marking offline",
+                    mac,
+                )
+                old_deco.online = False
+                old_deco.internet_online = False
+                decos[mac] = old_deco
+
         if deco_added:
             async_dispatcher_send(self.hass, SIGNAL_DECO_ADDED)
 
-        return TpLinkDecoData(master_deco, decos)
+        self.data = TpLinkDecoData(master_deco, decos)
+
+    async def async_request_device_refresh(self) -> None:
+        """Request an immediate device_list refresh."""
+        self._force_device_list_refresh = True
+        await self.async_request_refresh()
 
     @callback
     def on_close(self, func: CALLBACK_TYPE) -> None:

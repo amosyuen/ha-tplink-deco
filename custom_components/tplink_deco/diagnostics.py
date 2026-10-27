@@ -120,6 +120,9 @@ async def async_get_config_entry_diagnostics(
         "deco_coordinator": {
             **_coordinator_diagnostics(deco_coordinator),
             "paused": deco_coordinator.paused,
+            "device_list_interval_seconds": (
+                deco_coordinator.device_list_interval_seconds
+            ),
             "master_deco_id": (
                 deco_ids.get(deco_coordinator.data.master_deco.mac)
                 if deco_coordinator.data.master_deco is not None

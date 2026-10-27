@@ -86,6 +86,21 @@ Configurable:
 - during setup
 - via Home Assistant UI (select entity)
 
+#### Deco status polling
+
+`device_list` polling can be configured independently from client and
+performance polling in the integration options. Enter an interval of at least
+10 seconds, or use `0` to run `device_list` only during integration startup.
+
+When automatic Deco status polling is disabled, client tracking and performance
+updates continue normally. Deco online state, topology changes, and newly added
+Deco nodes are refreshed only after reloading the integration or pressing the
+`Refresh Deco status` button.
+
+Some Deco firmware, including reported X20 firmware, may briefly interrupt
+wireless-backhaul traffic while processing `device_list`. A longer interval or
+startup-only mode can mitigate this firmware behavior.
+
 ---
 
 #### Benefits
@@ -111,6 +126,7 @@ Configurable:
 
 - `switch.deco_polling`
 - `select.polling_interval`
+- `button.refresh_deco_status`
 
 ### Diagnostics
 

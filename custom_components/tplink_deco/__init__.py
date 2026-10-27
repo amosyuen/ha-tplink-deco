@@ -38,6 +38,7 @@ from .const import CONF_CLIENT_POSTFIX
 from .const import CONF_CLIENT_PREFIX
 from .const import CONF_DECO_POSTFIX
 from .const import CONF_DECO_PREFIX
+from .const import CONF_DEVICE_LIST_INTERVAL
 from .const import CONF_LINK_CLIENT_DEVICES
 from .const import CONF_TIMEOUT_ERROR_RETRIES
 from .const import CONF_TIMEOUT_SECONDS
@@ -80,6 +81,15 @@ async def async_create_and_refresh_coordinators(
     timeout_error_retries = config_data.get(CONF_TIMEOUT_ERROR_RETRIES)
     timeout_seconds = config_data.get(CONF_TIMEOUT_SECONDS)
     verify_ssl = config_data.get(CONF_VERIFY_SSL)
+    device_list_interval_seconds = config_data.get(CONF_DEVICE_LIST_INTERVAL)
+    if device_list_interval_seconds is None:
+        device_list_interval_seconds = (
+            int(update_interval.total_seconds())
+            if update_interval is not None
+            else DEFAULT_SCAN_INTERVAL
+        )
+    else:
+        device_list_interval_seconds = int(device_list_interval_seconds)
     session = async_get_clientsession(hass)
 
     api = TplinkDecoApi(
@@ -92,7 +102,12 @@ async def async_create_and_refresh_coordinators(
         timeout_seconds,
     )
     deco_coordinator = TplinkDecoUpdateCoordinator(
-        hass, api, config_entry, update_interval, deco_data
+        hass,
+        api,
+        config_entry,
+        update_interval,
+        deco_data,
+        device_list_interval_seconds,
     )
     if config_entry is None:
         await deco_coordinator._async_update_data()
