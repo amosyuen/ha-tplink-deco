@@ -31,7 +31,9 @@ class DecoRefreshStatusButton(ButtonEntity):
     def __init__(self, coordinator) -> None:
         """Initialize the button."""
         self.coordinator = coordinator
-        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_refresh_deco_status"
+        self._attr_unique_id = (
+            f"{coordinator.config_entry.entry_id}_refresh_deco_status"
+        )
 
     @property
     def device_info(self) -> DeviceInfo | None:
