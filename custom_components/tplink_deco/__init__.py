@@ -98,6 +98,11 @@ async def async_create_and_refresh_coordinators(
         await deco_coordinator._async_update_data()
     else:
         await deco_coordinator.async_config_entry_first_refresh()
+    # Registry entries seeded as clients without a stored device type may be
+    # Decos; the first Deco refresh tells them apart.
+    if client_data:
+        for deco_mac in deco_coordinator.data.decos:
+            client_data.pop(deco_mac, None)
     clients_coordinator = TplinkDecoClientUpdateCoordinator(
         hass,
         api,
@@ -138,14 +143,15 @@ async def async_create_config_data(hass: HomeAssistant, config_entry: ConfigEntr
     if get_stored_state is None:
         get_stored_state = restore_state_data.last_states.get
     for entry in existing_entries:
-        if entry.domain != DEVICE_TRACKER_DOMAIN:
+        if entry.domain != DEVICE_TRACKER_DOMAIN or entry.disabled_by is not None:
             continue
+        # A state stored while the Deco was unreachable is "unavailable" with no
+        # attributes. Seed such entries as clients anyway; otherwise a restart
+        # during an outage drops every disconnected client for good.
         state = get_stored_state(entry.entity_id)
-        if state is None:
-            continue
-        device_type = state.state.attributes.get(ATTR_DEVICE_TYPE)
-        if device_type is None:
-            continue
+        device_type = (
+            None if state is None else state.state.attributes.get(ATTR_DEVICE_TYPE)
+        )
         if device_type == DEVICE_TYPE_DECO:
             deco = TpLinkDeco(entry.unique_id)
             deco.name = normalize_name(entry.original_name)
