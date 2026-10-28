@@ -34,6 +34,22 @@ def _stored_state(device_type=DEVICE_TYPE_CLIENT):
     return SimpleNamespace(state=SimpleNamespace(attributes=attributes))
 
 
+def _capture_coordinator_data(coordinator_data):
+    async def capture_coordinators(
+        hass,
+        config_data,
+        config_entry,
+        consider_home_seconds,
+        update_interval,
+        deco_data,
+        client_data,
+    ):
+        coordinator_data.update(deco_data=deco_data, client_data=client_data)
+        return {}
+
+    return capture_coordinators
+
+
 def test_discovered_decos_are_removed_from_provisional_clients():
     client_data = {
         "AA:BB:CC:DD:EE:01": MagicMock(),
@@ -51,10 +67,6 @@ async def test_restore_seeds_unavailable_tracker_without_device_type():
     entry = _entry("AA:BB:CC:DD:EE:01")
     coordinator_data = {}
 
-    async def capture_coordinators(*args, **kwargs):
-        coordinator_data.update(kwargs)
-        return {}
-
     restore_data = SimpleNamespace(
         async_get_stored_state=lambda entity_id: _stored_state(None)
     )
@@ -71,7 +83,7 @@ async def test_restore_seeds_unavailable_tracker_without_device_type():
         ),
         patch(
             "custom_components.tplink_deco.async_create_and_refresh_coordinators",
-            new=AsyncMock(side_effect=capture_coordinators),
+            new=AsyncMock(side_effect=_capture_coordinator_data(coordinator_data)),
         ),
     ):
         config_entry = MagicMock()
@@ -80,17 +92,13 @@ async def test_restore_seeds_unavailable_tracker_without_device_type():
         await async_create_config_data(MagicMock(), config_entry)
 
     assert list(coordinator_data["client_data"]) == [entry.unique_id]
-    assert coordinator_data["client_data"][entry.unique_id].name == entry.unique_id
+    assert coordinator_data["client_data"][entry.unique_id].name == entry.original_name
 
 
 @pytest.mark.asyncio
 async def test_restore_keeps_known_deco_out_of_client_data():
     entry = _entry("AA:BB:CC:DD:EE:02")
     coordinator_data = {}
-
-    async def capture_coordinators(*args, **kwargs):
-        coordinator_data.update(kwargs)
-        return {}
 
     restore_data = SimpleNamespace(
         async_get_stored_state=lambda entity_id: _stored_state(DEVICE_TYPE_DECO)
@@ -108,7 +116,7 @@ async def test_restore_keeps_known_deco_out_of_client_data():
         ),
         patch(
             "custom_components.tplink_deco.async_create_and_refresh_coordinators",
-            new=AsyncMock(side_effect=capture_coordinators),
+            new=AsyncMock(side_effect=_capture_coordinator_data(coordinator_data)),
         ),
     ):
         config_entry = MagicMock()
@@ -132,10 +140,6 @@ async def test_restore_keeps_known_deco_out_of_client_data():
 async def test_restore_skips_ineligible_registry_entries(entry, state):
     coordinator_data = {}
 
-    async def capture_coordinators(*args, **kwargs):
-        coordinator_data.update(kwargs)
-        return {}
-
     restore_data = SimpleNamespace(async_get_stored_state=lambda entity_id: state)
 
     with (
@@ -150,7 +154,7 @@ async def test_restore_skips_ineligible_registry_entries(entry, state):
         ),
         patch(
             "custom_components.tplink_deco.async_create_and_refresh_coordinators",
-            new=AsyncMock(side_effect=capture_coordinators),
+            new=AsyncMock(side_effect=_capture_coordinator_data(coordinator_data)),
         ),
     ):
         config_entry = MagicMock()
