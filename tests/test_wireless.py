@@ -4,9 +4,10 @@ from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-import pytest
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import UpdateFailed
+
+import pytest
 
 from custom_components.tplink_deco.api import TplinkDecoApi
 from custom_components.tplink_deco.exceptions import LoginInvalidException
@@ -69,7 +70,9 @@ def test_parse_wireless_states_returns_no_sensitive_values():
 
 
 def test_main_wifi_sensor_is_disabled_by_default():
-    main_network = next(network for network in WIRELESS_NETWORKS if network.key == "main")
+    main_network = next(
+        network for network in WIRELESS_NETWORKS if network.key == "main"
+    )
 
     assert main_network.entity_registry_enabled_default is False
 
