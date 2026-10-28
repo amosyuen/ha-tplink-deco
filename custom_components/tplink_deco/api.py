@@ -734,9 +734,10 @@ class TplinkDecoApi:
             is_client_list = params is not None and params.get("form") == "client_list"
             if err.status >= 500 and is_client_list:
                 _LOGGER.debug(
-                    "%s server response error: %s",
+                    "%s server response error: HTTP %s (%s)",
                     context,
-                    err,
+                    err.status,
+                    err.message,
                 )
             else:
                 _LOGGER.error(

@@ -572,8 +572,6 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
                 self._client_backoff_until,
                 self.remaining_backoff_seconds,
             )
-            if started is not None:
-                self.health.record_backoff(started)
             return self.data
 
         old_clients = self.data

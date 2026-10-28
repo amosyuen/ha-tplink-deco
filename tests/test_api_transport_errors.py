@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -412,16 +413,21 @@ async def test_outer_top_level_5002_relogs_in_once(api, mock_session):
 
 
 @pytest.mark.asyncio
-async def test_authenticated_http_500_retains_auth_session(api, mock_session):
+async def test_authenticated_http_500_retains_auth_session(api, mock_session, caplog):
     """Test that HTTP 500 does not clear authentication in _async_post."""
     _authenticate(api)
     saved_stok = api._stok
     saved_cookie = api._cookie
+    caplog.set_level(logging.DEBUG, logger="custom_components.tplink_deco.api")
 
     response = _response({})
     response.status = 500
+    request_info = MagicMock()
+    request_info.real_url = (
+        f"{api._host}/cgi-bin/luci/;stok={saved_stok}/admin/client?form=client_list"
+    )
     response.raise_for_status.side_effect = aiohttp.ClientResponseError(
-        request_info=MagicMock(),
+        request_info=request_info,
         history=(),
         status=500,
         message="Internal Server Error",
@@ -439,3 +445,6 @@ async def test_authenticated_http_500_retains_auth_session(api, mock_session):
     assert api._stok == saved_stok
     assert api._cookie == saved_cookie
     assert api._seq is not None
+    assert "HTTP 500 (Internal Server Error)" in caplog.text
+    assert saved_stok not in caplog.text
+    assert ";stok=" not in caplog.text

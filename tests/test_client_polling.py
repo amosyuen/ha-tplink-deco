@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import aiohttp
+from homeassistant.util import dt as dt_util
 import pytest
 
 from custom_components.tplink_deco.coordinator import CLIENT_BACKOFF_INITIAL_SECONDS
@@ -13,7 +14,6 @@ from custom_components.tplink_deco.coordinator import CLIENT_BACKOFF_MAX_SECONDS
 from custom_components.tplink_deco.coordinator import CoordinatorHealth
 from custom_components.tplink_deco.coordinator import TpLinkDecoClient
 from custom_components.tplink_deco.coordinator import TplinkDecoClientUpdateCoordinator
-from homeassistant.util import dt as dt_util
 
 
 def _client_response_error(
@@ -235,7 +235,7 @@ async def test_coordinator_health_during_backoff():
         assert coordinator.is_backed_off is True
         assert coordinator.remaining_backoff_seconds == 20
         assert coordinator.health.last_successful_update == initial_update_time
-        assert coordinator.health.consecutive_failures == 2
+        assert coordinator.health.consecutive_failures == 1
 
 
 @pytest.mark.asyncio
