@@ -59,6 +59,13 @@ class CoordinatorHealth:
         if isinstance(err, TimeoutException):
             self.timeout_count += 1
 
+    def record_backoff(self, started: float, err: Exception | None = None) -> None:
+        """Record coordinator backoff without marking update as successful."""
+        self.response_time_ms = round((monotonic() - started) * 1000)
+        self.consecutive_failures += 1
+        if err is not None:
+            self.last_error = type(err).__name__
+
 
 def coerce_float(value):
     """Coerce numeric values returned as strings by legacy firmware."""
@@ -436,7 +443,20 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         """Return the client query strategy currently in use."""
         return "global_fallback" if self._use_global_client_query else "per_node"
 
-    def _apply_client_backoff(self, err: Exception) -> None:
+    @property
+    def is_backed_off(self) -> bool:
+        """Return whether client polling is currently backed off."""
+        return monotonic() < self._client_backoff_until
+
+    @property
+    def remaining_backoff_seconds(self) -> int:
+        """Return the remaining backoff time in seconds."""
+        remaining = self._client_backoff_until - monotonic()
+        return max(0, int(round(remaining)))
+
+    def _apply_client_backoff(
+        self, err: Exception, started: float | None = None
+    ) -> None:
         """Apply capped exponential backoff on HTTP 500 response."""
         if self._client_backoff_seconds <= 0.0:
             self._client_backoff_seconds = float(CLIENT_BACKOFF_INITIAL_SECONDS)
@@ -447,20 +467,28 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             )
         self._client_backoff_until = monotonic() + self._client_backoff_seconds
 
-        err_msg = str(err)
-        if self._last_logged_500_error != err_msg:
+        status = getattr(err, "status", 500)
+        message = getattr(err, "message", "Internal Server Error")
+        error_key = f"{status}_{message}"
+
+        if self._last_logged_500_error != error_key:
             _LOGGER.warning(
-                "Client list query returned HTTP 500 (%s); backing off for %d seconds and preserving client states",
-                err,
+                "Client list query returned HTTP %s (%s); backing off for %d seconds and preserving client states",
+                status,
+                message,
                 int(self._client_backoff_seconds),
             )
-            self._last_logged_500_error = err_msg
+            self._last_logged_500_error = error_key
         else:
             _LOGGER.debug(
-                "Client list query returned HTTP 500 (%s); backing off for %d seconds",
-                err,
+                "Client list query returned HTTP %s (%s); backing off for %d seconds",
+                status,
+                message,
                 int(self._client_backoff_seconds),
             )
+
+        if started is not None:
+            self.health.record_backoff(started, err)
 
     def _reset_client_backoff(self) -> None:
         """Reset exponential backoff after a successful response."""
@@ -527,22 +555,25 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
 
         started = monotonic()
         try:
-            data = await self._async_update_data_internal()
+            data = await self._async_update_data_internal(started)
         except Exception as err:
             self.health.record_failure(started, err)
             raise
 
-        self.health.record_success(started)
+        if not self.is_backed_off:
+            self.health.record_success(started)
         return data
 
-    async def _async_update_data_internal(self):
+    async def _async_update_data_internal(self, started: float | None = None):
         """Fetch and process client data."""
-        if monotonic() < self._client_backoff_until:
+        if self.is_backed_off:
             _LOGGER.debug(
-                "Client polling is backed off until %.1f (%.1fs remaining); preserving previous client states",
+                "Client polling is backed off until %.1f (%ds remaining); preserving previous client states",
                 self._client_backoff_until,
-                self._client_backoff_until - monotonic(),
+                self.remaining_backoff_seconds,
             )
+            if started is not None:
+                self.health.record_backoff(started)
             return self.data
 
         old_clients = self.data
@@ -598,7 +629,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
                 deco_client_responses = []
 
         if server_500_error is not None:
-            self._apply_client_backoff(server_500_error)
+            self._apply_client_backoff(server_500_error, started)
             return self.data
 
         self._reset_client_backoff()

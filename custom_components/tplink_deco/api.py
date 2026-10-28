@@ -731,7 +731,8 @@ class TplinkDecoApi:
             )
             raise TimeoutException from err
         except aiohttp.ClientResponseError as err:
-            if err.status >= 500:
+            is_client_list = params is not None and params.get("form") == "client_list"
+            if err.status >= 500 and is_client_list:
                 _LOGGER.debug(
                     "%s server response error: %s",
                     context,
