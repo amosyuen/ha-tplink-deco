@@ -30,6 +30,7 @@ from .const import CONF_TIMEOUT_SECONDS
 from .const import CONF_VERIFY_SSL
 from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
+from .const import COORDINATOR_WIRELESS_KEY
 from .const import DEFAULT_CONSIDER_HOME
 from .const import DEFAULT_DECO_POSTFIX
 from .const import DEFAULT_LINK_CLIENT_DEVICES
@@ -177,6 +178,7 @@ async def _async_test_credentials(hass: HomeAssistant, data: dict[str:Any]):
         await asyncio.gather(
             coordinators[COORDINATOR_DECOS_KEY].async_shutdown(),
             coordinators[COORDINATOR_CLIENTS_KEY].async_shutdown(),
+            coordinators[COORDINATOR_WIRELESS_KEY].async_shutdown(),
         )
         return {}
     except TimeoutException:

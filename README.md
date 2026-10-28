@@ -112,6 +112,20 @@ startup-only mode can mitigate this firmware behavior.
 
 ---
 
+### WiFi network status
+
+Read-only binary sensors show whether the main, guest and IoT WiFi networks are
+enabled. Only networks exposed by the Deco firmware are created. The main WiFi
+sensor is disabled by default because most models do not allow that network to
+be switched off.
+
+Wireless status uses the configured integration polling interval and does not
+delay integration setup when the optional endpoint is slow or unavailable.
+Changing WiFi settings is not supported because the local write API is not
+reliable across Deco models and firmware versions.
+
+---
+
 ## 🔧 Services
 
 - `tplink_deco.pause_polling`
@@ -132,6 +146,12 @@ startup-only mode can mitigate this firmware behavior.
 
 - CPU usage (raw + smoothed)
 - Memory usage (raw + smoothed)
+
+### WiFi status
+
+- Main WiFi (disabled by default)
+- Guest WiFi
+- IoT WiFi
 
 ---
 

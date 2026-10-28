@@ -39,6 +39,7 @@ PKCS1_v1_5_HEADER_BYTES = 11
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 LEGACY_ERROR_DECODING_PATTERN = re.compile(r"^<Error Decoding (.*)>$")
+WIRELESS_TIMEOUT_SECONDS = 10
 
 
 def normalize_name(name: str):
@@ -248,6 +249,32 @@ class TplinkDecoApi:
         data = self._decrypt_data(context, response_json["data"])
         self._check_authenticated_data_error_code(context, data)
         _LOGGER.debug("Rebooted decos %s", deco_macs)
+
+    async def async_get_wireless(self, form: str) -> dict:
+        """Return wireless configuration for a form."""
+        async with self._operation_lock:
+            async with async_timeout.timeout(WIRELESS_TIMEOUT_SECONDS):
+                return await self._async_call_with_retry(
+                    self._async_get_wireless,
+                    form,
+                    timeout_error_retries=0,
+                )
+
+    async def _async_get_wireless(self, form: str) -> dict:
+        """Return wireless configuration without exposing it in logs."""
+        await self.async_login_if_needed()
+
+        context = f"Get Wireless {form}"
+        response_json = await self._async_post(
+            context,
+            f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/wireless",
+            params={"form": form},
+            data=self._encode_payload({"operation": "read"}),
+        )
+
+        data = self._decrypt_data(context, response_json["data"])
+        self._check_authenticated_data_error_code(context, data)
+        return data.get("result", {})
 
     # Return performance data (CPU / memory)
     async def async_get_performance(self) -> dict:

@@ -45,6 +45,7 @@ from .const import CONF_TIMEOUT_SECONDS
 from .const import CONF_VERIFY_SSL
 from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
+from .const import COORDINATOR_WIRELESS_KEY
 from .const import DEFAULT_CONSIDER_HOME
 from .const import DEFAULT_DECO_POSTFIX
 from .const import DEFAULT_LINK_CLIENT_DEVICES
@@ -62,6 +63,7 @@ from .coordinator import TpLinkDecoClient
 from .coordinator import TpLinkDecoData
 from .coordinator import TplinkDecoClientUpdateCoordinator
 from .coordinator import TplinkDecoUpdateCoordinator
+from .wireless import TplinkDecoWirelessUpdateCoordinator
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -137,9 +139,17 @@ async def async_create_and_refresh_coordinators(
         update_interval,
         client_data,
     )
+    wireless_coordinator = TplinkDecoWirelessUpdateCoordinator(
+        hass,
+        api,
+        config_entry,
+        deco_coordinator,
+        update_interval,
+    )
     return {
         COORDINATOR_DECOS_KEY: deco_coordinator,
         COORDINATOR_CLIENTS_KEY: clients_coordinator,
+        COORDINATOR_WIRELESS_KEY: wireless_coordinator,
     }
 
 
@@ -217,6 +227,11 @@ async def async_resume_polling(hass: HomeAssistant, config_entry: ConfigEntry) -
     coordinator_decos.paused = False
     _LOGGER.info("TP-Link Deco polling resumed")
     await coordinator_decos.async_request_refresh()
+    coordinator_wireless = hass.data[DOMAIN][config_entry.entry_id].get(
+        COORDINATOR_WIRELESS_KEY
+    )
+    if coordinator_wireless is not None:
+        await coordinator_wireless.async_request_refresh()
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
@@ -230,6 +245,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     hass.data[DOMAIN][config_entry.entry_id] = data
     deco_coordinator = data[COORDINATOR_DECOS_KEY]
     clients_coordinator = data[COORDINATOR_CLIENTS_KEY]
+    wireless_coordinator = data[COORDINATOR_WIRELESS_KEY]
 
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
 
@@ -237,6 +253,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         hass,
         clients_coordinator.async_request_refresh(),
         name="tplink_deco initial client refresh",
+    )
+    config_entry.async_create_background_task(
+        hass,
+        wireless_coordinator.async_request_refresh(),
+        name="tplink_deco initial wireless refresh",
     )
 
     async def async_reboot_deco(service: ServiceCall) -> None:
