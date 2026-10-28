@@ -40,6 +40,33 @@ jobs:
         run: |
           pre-commit run --all-files --show-diff-on-failure --color=always
 
+  tests:
+    runs-on: ubuntu-latest
+    name: Tests
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python ${{ env.DEFAULT_PYTHON }}
+        uses: actions/setup-python@v7.1.0
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Upgrade pip
+        run: |
+          python -m pip install --constraint=requirements.txt pip
+          python -m pip --version
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --constraint=requirements.txt homeassistant pycryptodome pytest pytest-asyncio pytest-cov
+
+      - name: Run tests
+        run: |
+          pytest --no-cov tests/
+
   hacs:
     runs-on: "ubuntu-latest"
     name: HACS
