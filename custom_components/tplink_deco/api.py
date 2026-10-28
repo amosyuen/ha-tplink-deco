@@ -731,11 +731,18 @@ class TplinkDecoApi:
             )
             raise TimeoutException from err
         except aiohttp.ClientResponseError as err:
-            _LOGGER.error(
-                "%s client response error: %s",
-                context,
-                err,
-            )
+            if err.status >= 500:
+                _LOGGER.debug(
+                    "%s server response error: %s",
+                    context,
+                    err,
+                )
+            else:
+                _LOGGER.error(
+                    "%s client response error: %s",
+                    context,
+                    err,
+                )
             if err.status == 401:
                 self.clear_auth()
                 raise err
