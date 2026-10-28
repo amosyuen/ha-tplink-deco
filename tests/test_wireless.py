@@ -6,7 +6,6 @@ from unittest.mock import patch
 
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import UpdateFailed
-
 import pytest
 
 from custom_components.tplink_deco.api import TplinkDecoApi
