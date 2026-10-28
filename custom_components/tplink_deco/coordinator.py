@@ -31,6 +31,8 @@ from .exceptions import TransientConnectionException
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 GLOBAL_FALLBACK_PROBE_INTERVAL_SECONDS = 300
+CLIENT_BACKOFF_INITIAL_SECONDS = 30
+CLIENT_BACKOFF_MAX_SECONDS = 300
 
 
 @dataclass
@@ -56,6 +58,13 @@ class CoordinatorHealth:
         self.last_error = type(err).__name__
         if isinstance(err, TimeoutException):
             self.timeout_count += 1
+
+    def record_backoff(self, started: float, err: Exception | None = None) -> None:
+        """Record coordinator backoff without marking update as successful."""
+        self.response_time_ms = round((monotonic() - started) * 1000)
+        self.consecutive_failures += 1
+        if err is not None:
+            self.last_error = type(err).__name__
 
 
 def coerce_float(value):
@@ -424,12 +433,70 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         self.has_successful_refresh = False
         self._use_global_client_query = False
         self._next_per_node_probe = 0.0
+        self._client_backoff_until = 0.0
+        self._client_backoff_seconds = 0.0
+        self._last_logged_500_error: str | None = None
         self.health = CoordinatorHealth()
 
     @property
     def client_query_mode(self) -> str:
         """Return the client query strategy currently in use."""
         return "global_fallback" if self._use_global_client_query else "per_node"
+
+    @property
+    def is_backed_off(self) -> bool:
+        """Return whether client polling is currently backed off."""
+        return monotonic() < self._client_backoff_until
+
+    @property
+    def remaining_backoff_seconds(self) -> int:
+        """Return the remaining backoff time in seconds."""
+        remaining = self._client_backoff_until - monotonic()
+        return max(0, int(round(remaining)))
+
+    def _apply_client_backoff(
+        self, err: Exception, started: float | None = None
+    ) -> None:
+        """Apply capped exponential backoff on HTTP 500 response."""
+        if self._client_backoff_seconds <= 0.0:
+            self._client_backoff_seconds = float(CLIENT_BACKOFF_INITIAL_SECONDS)
+        else:
+            self._client_backoff_seconds = min(
+                self._client_backoff_seconds * 2,
+                float(CLIENT_BACKOFF_MAX_SECONDS),
+            )
+        self._client_backoff_until = monotonic() + self._client_backoff_seconds
+
+        status = getattr(err, "status", 500)
+        message = getattr(err, "message", "Internal Server Error")
+        error_key = f"{status}_{message}"
+
+        if self._last_logged_500_error != error_key:
+            _LOGGER.warning(
+                "Client list query returned HTTP %s (%s); backing off for %d seconds and preserving client states",
+                status,
+                message,
+                int(self._client_backoff_seconds),
+            )
+            self._last_logged_500_error = error_key
+        else:
+            _LOGGER.debug(
+                "Client list query returned HTTP %s (%s); backing off for %d seconds",
+                status,
+                message,
+                int(self._client_backoff_seconds),
+            )
+
+        if started is not None:
+            self.health.record_backoff(started, err)
+
+    def _reset_client_backoff(self) -> None:
+        """Reset exponential backoff after a successful response."""
+        if self._client_backoff_seconds > 0.0:
+            _LOGGER.info("Client list query recovered after HTTP 500 backoff")
+        self._client_backoff_seconds = 0.0
+        self._client_backoff_until = 0.0
+        self._last_logged_500_error = None
 
     async def _async_list_clients_per_deco(self, deco_macs: list[str]):
         """List clients per Deco without failing the complete refresh."""
@@ -488,16 +555,24 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
 
         started = monotonic()
         try:
-            data = await self._async_update_data_internal()
+            data = await self._async_update_data_internal(started)
         except Exception as err:
             self.health.record_failure(started, err)
             raise
 
-        self.health.record_success(started)
+        if not self.is_backed_off:
+            self.health.record_success(started)
         return data
 
-    async def _async_update_data_internal(self):
+    async def _async_update_data_internal(self, started: float | None = None):
         """Fetch and process client data."""
+        if self.is_backed_off:
+            _LOGGER.debug(
+                "Client polling is backed off until %.1f (%ds remaining); preserving previous client states",
+                self._client_backoff_until,
+                self.remaining_backoff_seconds,
+            )
+            return self.data
 
         old_clients = self.data
         clients = {}
@@ -512,10 +587,12 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             or monotonic() >= self._next_per_node_probe
         )
 
+        server_500_error = None
         if should_try_per_node:
-            deco_client_responses, failed_deco_macs = (
-                await self._async_list_clients_per_deco(deco_macs)
-            )
+            (
+                deco_client_responses,
+                failed_deco_macs,
+            ) = await self._async_list_clients_per_deco(deco_macs)
             if deco_client_responses:
                 if self._use_global_client_query:
                     _LOGGER.info(
@@ -530,12 +607,30 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
                 _LOGGER.debug(
                     "All per-node client_list queries failed; using global fallback"
                 )
+                try:
+                    deco_macs, responses = await self._async_list_clients_global()
+                    deco_client_responses = list(zip(deco_macs, responses))
+                    failed_deco_macs.clear()
+                except aiohttp.ClientResponseError as err:
+                    if err.status < 500:
+                        raise
+                    server_500_error = err
+                    deco_client_responses = []
+        else:
+            try:
                 deco_macs, responses = await self._async_list_clients_global()
                 deco_client_responses = list(zip(deco_macs, responses))
-                failed_deco_macs.clear()
-        else:
-            deco_macs, responses = await self._async_list_clients_global()
-            deco_client_responses = list(zip(deco_macs, responses))
+            except aiohttp.ClientResponseError as err:
+                if err.status < 500:
+                    raise
+                server_500_error = err
+                deco_client_responses = []
+
+        if server_500_error is not None:
+            self._apply_client_backoff(server_500_error, started)
+            return self.data
+
+        self._reset_client_backoff()
 
         if len(deco_client_responses) > 0:
             for deco_mac, deco_clients in deco_client_responses:
