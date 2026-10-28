@@ -205,7 +205,7 @@ class TplinkDecoApi:
             data=self._encode_payload(device_list_payload),
         )
         data = self._decrypt_data(context, response_json["data"])
-        check_data_error_code(context, data)
+        self._check_authenticated_data_error_code(context, data)
 
         try:
             device_list = data["result"]["device_list"]
@@ -226,7 +226,9 @@ class TplinkDecoApi:
     # Reboot decos.
     async def async_reboot_decos(self, deco_macs) -> dict:
         async with self._operation_lock:
-            return await self._async_reboot_decos(deco_macs)
+            return await self._async_call_with_retry(
+                self._async_reboot_decos, deco_macs
+            )
 
     async def _async_reboot_decos(self, deco_macs) -> dict:
         await self.async_login_if_needed()
@@ -244,7 +246,7 @@ class TplinkDecoApi:
         )
 
         data = self._decrypt_data(context, response_json["data"])
-        check_data_error_code(context, data)
+        self._check_authenticated_data_error_code(context, data)
         _LOGGER.debug("Rebooted decos %s", deco_macs)
 
     # Return performance data (CPU / memory)
@@ -266,7 +268,7 @@ class TplinkDecoApi:
         )
 
         data = self._decrypt_data(context, response_json["data"])
-        check_data_error_code(context, data)
+        self._check_authenticated_data_error_code(context, data)
         return data
 
     # Return list of clients. Default lists clients for all decos.
@@ -293,7 +295,7 @@ class TplinkDecoApi:
         )
 
         data = self._decrypt_data(context, response_json["data"])
-        check_data_error_code(context, data)
+        self._check_authenticated_data_error_code(context, data)
 
         try:
             client_list = data["result"]["client_list"]
@@ -611,6 +613,9 @@ class TplinkDecoApi:
         params: dict[str:Any],
         data: Any,
     ) -> dict:
+        authenticated_request = self._outer_id is not None or (
+            self._stok not in (None, "") and f";stok={self._stok}/" in url
+        )
         if self._outer_id is not None:
             luci_prefix = f"{self._host}/cgi-bin/luci/;stok={self._stok}"
             if url.startswith(luci_prefix):
@@ -703,6 +708,11 @@ class TplinkDecoApi:
                     response_json = await response.json(content_type=None)
                 if "error_code" in response_json:
                     error_code = response_json.get("error_code")
+                    if error_code == -5002 and authenticated_request:
+                        self.clear_auth()
+                        raise EmptyDataException(
+                            f"{context} session expired, error_code={error_code}"
+                        )
                     if error_code != 0 and error_code != "":
                         _LOGGER.debug(
                             "%s error_code=%s",
@@ -798,6 +808,16 @@ class TplinkDecoApi:
         self._stok = None
         self._cookie = None
         self._clear_outer_auth()
+
+    def _check_authenticated_data_error_code(self, context: str, data: dict) -> None:
+        """Check an authenticated response and recover from an expired session."""
+        error_code = data.get("error_code") or data.get("errorcode")
+        if error_code == -5002:
+            self.clear_auth()
+            raise EmptyDataException(
+                f"{context} session expired, error_code={error_code}"
+            )
+        check_data_error_code(context, data)
 
     def _decrypt_data(self, context: str, data: str):
         if isinstance(data, dict):
