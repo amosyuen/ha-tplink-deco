@@ -92,7 +92,7 @@ async def test_restore_seeds_unavailable_tracker_without_device_type():
         await async_create_config_data(MagicMock(), config_entry)
 
     assert list(coordinator_data["client_data"]) == [entry.unique_id]
-    assert coordinator_data["client_data"][entry.unique_id].name == entry.unique_id
+    assert coordinator_data["client_data"][entry.unique_id].name == entry.original_name
 
 
 @pytest.mark.asyncio
