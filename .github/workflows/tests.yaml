@@ -65,7 +65,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest --no-cov tests/
+          python -m pytest --no-cov tests/
 
   hacs:
     runs-on: "ubuntu-latest"
