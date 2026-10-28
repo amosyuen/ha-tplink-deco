@@ -44,6 +44,7 @@ CONF_CLIENT_PREFIX = "client_prefix"
 CONF_CLIENT_POSTFIX = "client_postfix"
 CONF_DECO_PREFIX = "deco_prefix"
 CONF_DECO_POSTFIX = "deco_postfix"
+CONF_DEVICE_LIST_INTERVAL = "device_list_interval"
 CONF_LINK_CLIENT_DEVICES = "link_client_devices"
 CONF_TIMEOUT_ERROR_RETRIES = "timeout_error_retries"
 CONF_TIMEOUT_SECONDS = "timeout_seconds"
@@ -58,4 +59,11 @@ SERVICE_REBOOT_DECO = "reboot_deco"
 SERVICE_PAUSE_POLLING = "pause_polling"
 SERVICE_RESUME_POLLING = "resume_polling"
 # Platforms
-PLATFORMS = ["device_tracker", "sensor", "binary_sensor", "switch", "select"]
+PLATFORMS = [
+    "device_tracker",
+    "sensor",
+    "binary_sensor",
+    "switch",
+    "select",
+    "button",
+]
