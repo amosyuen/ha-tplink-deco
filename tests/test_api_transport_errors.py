@@ -409,3 +409,33 @@ async def test_outer_top_level_5002_relogs_in_once(api, mock_session):
     assert await api.async_list_devices() == []
     assert state["outer_logins"] == 1
     assert api._outer_id == "fresh-id"
+
+
+@pytest.mark.asyncio
+async def test_authenticated_http_500_retains_auth_session(api, mock_session):
+    """Test that HTTP 500 does not clear authentication in _async_post."""
+    _authenticate(api)
+    saved_stok = api._stok
+    saved_cookie = api._cookie
+
+    response = _response({})
+    response.status = 500
+    response.raise_for_status.side_effect = aiohttp.ClientResponseError(
+        request_info=MagicMock(),
+        history=(),
+        status=500,
+        message="Internal Server Error",
+    )
+    mock_session.post.return_value = response
+
+    with pytest.raises(aiohttp.ClientResponseError):
+        await api._async_post(
+            "List Clients",
+            f"{api._host}/cgi-bin/luci/;stok={api._stok}/admin/client",
+            params={"form": "client_list"},
+            data="payload",
+        )
+
+    assert api._stok == saved_stok
+    assert api._cookie == saved_cookie
+    assert api._seq is not None
