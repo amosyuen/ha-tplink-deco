@@ -66,6 +66,14 @@ from .coordinator import TplinkDecoUpdateCoordinator
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
+def _remove_discovered_decos_from_clients(
+    client_data: dict[str:TpLinkDecoClient], deco_data: TpLinkDecoData
+) -> None:
+    """Remove provisional clients identified as Decos by the first refresh."""
+    for deco_mac in deco_data.decos:
+        client_data.pop(deco_mac, None)
+
+
 async def async_create_and_refresh_coordinators(
     hass: HomeAssistant,
     config_data: dict[str:Any],
@@ -113,6 +121,13 @@ async def async_create_and_refresh_coordinators(
         await deco_coordinator._async_update_data()
     else:
         await deco_coordinator.async_config_entry_first_refresh()
+
+    # A stored unavailable state has no device_type, so it is provisionally
+    # restored as a client. The first device refresh identifies and removes
+    # any entries that are actually Decos before client entities are created.
+    if client_data:
+        _remove_discovered_decos_from_clients(client_data, deco_coordinator.data)
+
     clients_coordinator = TplinkDecoClientUpdateCoordinator(
         hass,
         api,
@@ -153,14 +168,12 @@ async def async_create_config_data(hass: HomeAssistant, config_entry: ConfigEntr
     if get_stored_state is None:
         get_stored_state = restore_state_data.last_states.get
     for entry in existing_entries:
-        if entry.domain != DEVICE_TRACKER_DOMAIN:
+        if entry.domain != DEVICE_TRACKER_DOMAIN or entry.disabled_by is not None:
             continue
         state = get_stored_state(entry.entity_id)
         if state is None:
             continue
         device_type = state.state.attributes.get(ATTR_DEVICE_TYPE)
-        if device_type is None:
-            continue
         if device_type == DEVICE_TYPE_DECO:
             deco = TpLinkDeco(entry.unique_id)
             deco.name = normalize_name(entry.original_name)
