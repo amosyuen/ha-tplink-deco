@@ -384,7 +384,9 @@ class TplinkTotalClientDataRateSensor(CoordinatorEntity, SensorEntity):
         """Handle updated data from the coordinator."""
         state = 0.0
         for client in self.coordinator.data.values():
-            if self._deco is None or client.deco_mac == self._deco.mac:
+            if client.online and (
+                self._deco is None or client.deco_mac == self._deco.mac
+            ):
                 state += getattr(client, self._client_attribute)
         self._attr_native_value = state
 
