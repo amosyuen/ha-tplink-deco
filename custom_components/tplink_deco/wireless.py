@@ -20,6 +20,9 @@ from .coordinator import async_call_and_propagate_config_error
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 WIRELESS_RETRY_INTERVAL_SECONDS = 300
+# Failures tolerated before retries are deferred, so a single slow response
+# does not make the sensors unavailable for the whole retry interval.
+WIRELESS_FAILURES_BEFORE_RETRY_DELAY = 2
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -128,11 +131,17 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator):
         )
         self.data = {}
         self._next_retry = 0.0
+        self._consecutive_failures = 0
 
     @property
     def retry_remaining_seconds(self) -> int:
         """Return seconds remaining before the optional endpoint is retried."""
         return max(0, round(self._next_retry - monotonic()))
+
+    def reset_retry(self) -> None:
+        """Allow the next refresh to query the Deco immediately."""
+        self._next_retry = 0.0
+        self._consecutive_failures = 0
 
     async def _async_update_data(self) -> dict[str, bool]:
         """Fetch wireless states without affecting integration setup."""
@@ -151,10 +160,13 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator):
         except ConfigEntryAuthFailed:
             raise
         except Exception as err:
-            self._next_retry = now + WIRELESS_RETRY_INTERVAL_SECONDS
-            raise UpdateFailed(f"Unable to read wireless status: {err}") from err
+            self._consecutive_failures += 1
+            if self._consecutive_failures >= WIRELESS_FAILURES_BEFORE_RETRY_DELAY:
+                self._next_retry = now + WIRELESS_RETRY_INTERVAL_SECONDS
+            reason = f"{type(err).__name__}: {err}" if str(err) else type(err).__name__
+            raise UpdateFailed(f"Unable to read wireless status: {reason}") from err
 
-        self._next_retry = 0.0
+        self.reset_retry()
         states = parse_wireless_states(config)
         _LOGGER.debug("Wireless status networks=%s", sorted(states))
         return states

@@ -231,6 +231,7 @@ async def async_resume_polling(hass: HomeAssistant, config_entry: ConfigEntry) -
         COORDINATOR_WIRELESS_KEY
     )
     if coordinator_wireless is not None:
+        coordinator_wireless.reset_retry()
         await coordinator_wireless.async_request_refresh()
 
 

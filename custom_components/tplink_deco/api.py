@@ -39,7 +39,6 @@ PKCS1_v1_5_HEADER_BYTES = 11
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 LEGACY_ERROR_DECODING_PATTERN = re.compile(r"^<Error Decoding (.*)>$")
-WIRELESS_TIMEOUT_SECONDS = 10
 
 
 def normalize_name(name: str):
@@ -253,12 +252,7 @@ class TplinkDecoApi:
     async def async_get_wireless(self, form: str) -> dict:
         """Return wireless configuration for a form."""
         async with self._operation_lock:
-            async with async_timeout.timeout(WIRELESS_TIMEOUT_SECONDS):
-                return await self._async_call_with_retry(
-                    self._async_get_wireless,
-                    form,
-                    timeout_error_retries=0,
-                )
+            return await self._async_call_with_retry(self._async_get_wireless, form)
 
     async def _async_get_wireless(self, form: str) -> dict:
         """Return wireless configuration without exposing it in logs."""
