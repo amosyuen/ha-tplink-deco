@@ -26,6 +26,7 @@ This integration provides local polling control and diagnostics for TP-Link Deco
 - CPU usage (raw + smoothed)
 - Memory usage (raw + smoothed)
 - Backhaul and network diagnostics
+- Monthly mobile data usage on supported 5G Deco firmware
 - Coordinator health (last successful update, response time, timeouts, query mode,
   and last error)
 
@@ -132,6 +133,7 @@ startup-only mode can mitigate this firmware behavior.
 
 - CPU usage (raw + smoothed)
 - Memory usage (raw + smoothed)
+- Mobile data usage (only created when exposed by the firmware)
 
 ---
 
