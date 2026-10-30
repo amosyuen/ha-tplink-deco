@@ -271,6 +271,47 @@ class TplinkDecoApi:
         self._check_authenticated_data_error_code(context, data)
         return data
 
+    async def async_get_mobile_data_usage(self) -> int | None:
+        """Return mobile data usage in KiB when supported by the firmware."""
+        async with self._operation_lock:
+            return await self._async_call_with_retry(self._async_get_mobile_data_usage)
+
+    async def _async_get_mobile_data_usage(self) -> int | None:
+        """Read only the non-sensitive mobile data usage value."""
+        await self.async_login_if_needed()
+
+        context = "Get Mobile Data Usage"
+        response_json = await self._async_post(
+            context,
+            f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/network",
+            params={"form": "internet"},
+            data=self._encode_payload({"operation": "read"}),
+        )
+
+        data = self._decrypt_data(context, response_json["data"])
+        self._check_authenticated_data_error_code(context, data)
+
+        result = data.get("result")
+        mobile_cpe = result.get("mobile_cpe") if isinstance(result, dict) else None
+        if not isinstance(mobile_cpe, dict):
+            _LOGGER.debug("Mobile data usage is not exposed by this firmware")
+            return None
+
+        value = mobile_cpe.get("data_usage")
+        if isinstance(value, bool):
+            return None
+
+        try:
+            usage_kib = int(value)
+        except (TypeError, ValueError):
+            return None
+
+        if usage_kib < 0:
+            return None
+
+        _LOGGER.debug("Mobile data usage is available")
+        return usage_kib
+
     # Return list of clients. Default lists clients for all decos.
     async def async_list_clients(
         self, deco_mac="default", timeout_error_retries: int | None = None
