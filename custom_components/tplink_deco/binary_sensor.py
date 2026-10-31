@@ -5,14 +5,19 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import COORDINATOR_DECOS_KEY
+from .const import COORDINATOR_WIRELESS_KEY
 from .const import DOMAIN
 from .const import SIGNAL_DECO_ADDED
 from .coordinator import TpLinkDeco
 from .coordinator import TplinkDecoUpdateCoordinator
 from .device import create_device_info
+from .wireless import TplinkDecoWirelessUpdateCoordinator
+from .wireless import WIRELESS_NETWORKS
+from .wireless import WirelessNetworkDescription
 
 
 async def async_setup_entry(
@@ -21,6 +26,7 @@ async def async_setup_entry(
     """Set up binary sensor platform."""
     data = hass.data[DOMAIN][entry.entry_id]
     coordinator_decos = data[COORDINATOR_DECOS_KEY]
+    coordinator_wireless = data[COORDINATOR_WIRELESS_KEY]
 
     tracked_decos = set()
 
@@ -54,6 +60,41 @@ async def async_setup_entry(
             hass, SIGNAL_DECO_ADDED, add_untracked_deco_binary_sensors
         )
     )
+
+    tracked_wireless_networks = set()
+
+    def add_wireless_binary_sensors() -> None:
+        """Add sensors discovered in a successful wireless response."""
+        master_deco = coordinator_decos.data.master_deco
+        if master_deco is None:
+            return
+
+        entities = []
+        for network in WIRELESS_NETWORKS:
+            if (
+                network.key not in coordinator_wireless.data
+                or network.key in tracked_wireless_networks
+            ):
+                continue
+            entities.append(
+                TplinkDecoWirelessBinarySensor(
+                    coordinator_wireless,
+                    master_deco,
+                    network,
+                )
+            )
+            tracked_wireless_networks.add(network.key)
+
+        if entities:
+            async_add_entities(entities)
+
+    entry.async_on_unload(
+        coordinator_wireless.async_add_listener(add_wireless_binary_sensors)
+    )
+    coordinator_decos.on_close(
+        async_dispatcher_connect(hass, SIGNAL_DECO_ADDED, add_wireless_binary_sensors)
+    )
+    add_wireless_binary_sensors()
 
 
 class TplinkDecoInternetOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity):
@@ -145,3 +186,37 @@ class TplinkDecoOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity):
             deco,
             self.coordinator.data.master_deco,
         )
+
+
+class TplinkDecoWirelessBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Read-only status of a Deco wireless network."""
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: TplinkDecoWirelessUpdateCoordinator,
+        master_deco: TpLinkDeco,
+        description: WirelessNetworkDescription,
+    ) -> None:
+        super().__init__(coordinator)
+        self._master_deco = master_deco
+        self.entity_description = description
+        self._attr_unique_id = f"{master_deco.mac}_wifi_{description.key}"
+
+    @property
+    def available(self) -> bool:
+        """Return whether this network is present in the latest response."""
+        return (
+            super().available and self.entity_description.key in self.coordinator.data
+        )
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return whether the wireless network is enabled."""
+        return self.coordinator.data.get(self.entity_description.key)
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Attach the sensor to the master Deco."""
+        return create_device_info(self._master_deco, self._master_deco)
