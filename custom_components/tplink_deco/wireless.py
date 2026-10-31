@@ -14,6 +14,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from .api import TplinkDecoApi
+from .api import decode_name_with_fallback
 from .const import DOMAIN
 from .coordinator import TplinkDecoUpdateCoordinator
 from .coordinator import async_call_and_propagate_config_error
@@ -109,6 +110,18 @@ def parse_wireless_states(config: object) -> dict[str, bool]:
     return states
 
 
+def parse_wireless_ssids(config: object) -> dict[str, str]:
+    """Extract the network names, ignoring every other wireless setting."""
+    ssids = {}
+    for network in WIRELESS_NETWORKS:
+        for section in _resolve_sections(config, network.paths):
+            ssid = section.get("ssid")
+            if isinstance(ssid, str) and ssid:
+                ssids[network.key] = decode_name_with_fallback(ssid)
+                break
+    return ssids
+
+
 class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator):
     """Coordinate optional wireless status requests."""
 
@@ -130,6 +143,7 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator):
             update_interval=update_interval,
         )
         self.data = {}
+        self.ssids: dict[str, str] = {}
         self._next_retry = 0.0
         self._consecutive_failures = 0
 
@@ -168,5 +182,6 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator):
 
         self.reset_retry()
         states = parse_wireless_states(config)
+        self.ssids = parse_wireless_ssids(config)
         _LOGGER.debug("Wireless status networks=%s", sorted(states))
         return states
