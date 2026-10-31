@@ -13,6 +13,7 @@ from custom_components.tplink_deco.exceptions import LoginInvalidException
 from custom_components.tplink_deco.exceptions import TimeoutException
 from custom_components.tplink_deco.wireless import TplinkDecoWirelessUpdateCoordinator
 from custom_components.tplink_deco.wireless import WIRELESS_NETWORKS
+from custom_components.tplink_deco.wireless import parse_wireless_ssids
 from custom_components.tplink_deco.wireless import parse_wireless_states
 
 
@@ -22,6 +23,7 @@ def _coordinator(*responses) -> TplinkDecoWirelessUpdateCoordinator:
     coordinator.api.async_get_wireless = AsyncMock(side_effect=responses)
     coordinator._deco_coordinator = MagicMock(paused=False)
     coordinator.data = {}
+    coordinator.ssids = {}
     coordinator._next_retry = 0.0
     coordinator._consecutive_failures = 0
     return coordinator
@@ -70,6 +72,28 @@ def test_parse_wireless_states_returns_no_sensitive_values():
     assert "private" not in repr(states)
 
 
+def test_parse_wireless_ssids_decodes_names():
+    config = {
+        "band2_4": {
+            "host": {"enable": True, "ssid": "SG9tZQ==", "password": "secret"},
+            "guest": {"enable": True, "ssid": "Ospiti"},
+        },
+        "band5_1": {"host": {"enable": True, "ssid": "SG9tZQ=="}},
+        "iot": {"host": {"enable": False, "psk": "secret"}},
+    }
+
+    ssids = parse_wireless_ssids(config)
+
+    assert ssids == {"main": "Home", "guest": "Ospiti"}
+    assert "secret" not in repr(ssids)
+
+
+def test_parse_wireless_ssids_ignores_non_string_values():
+    config = {"band2_4": {"guest": {"enable": True, "ssid": ["private-network"]}}}
+
+    assert parse_wireless_ssids(config) == {}
+
+
 def test_main_wifi_sensor_is_disabled_by_default():
     main_network = next(
         network for network in WIRELESS_NETWORKS if network.key == "main"
@@ -82,7 +106,7 @@ def test_main_wifi_sensor_is_disabled_by_default():
 async def test_wireless_coordinator_retries_next_poll_after_single_failure():
     coordinator = _coordinator(
         OSError("temporary failure"),
-        {"band2_4": {"guest": {"enable": "on"}}},
+        {"band2_4": {"guest": {"enable": "on", "ssid": "Ospiti"}}},
     )
 
     with patch(
@@ -94,6 +118,7 @@ async def test_wireless_coordinator_retries_next_poll_after_single_failure():
 
         assert coordinator._next_retry == 0.0
         assert await coordinator._async_update_data() == {"guest": True}
+        assert coordinator.ssids == {"guest": "Ospiti"}
         assert coordinator._consecutive_failures == 0
 
 

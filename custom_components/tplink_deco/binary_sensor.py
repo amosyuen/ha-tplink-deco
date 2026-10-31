@@ -8,6 +8,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .const import ATTR_SSID
 from .const import COORDINATOR_DECOS_KEY
 from .const import COORDINATOR_WIRELESS_KEY
 from .const import DOMAIN
@@ -215,6 +216,11 @@ class TplinkDecoWirelessBinarySensor(CoordinatorEntity, BinarySensorEntity):
     def is_on(self) -> bool | None:
         """Return whether the wireless network is enabled."""
         return self.coordinator.data.get(self.entity_description.key)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str | None]:
+        """Return the network name."""
+        return {ATTR_SSID: self.coordinator.ssids.get(self.entity_description.key)}
 
     @property
     def device_info(self) -> DeviceInfo:
