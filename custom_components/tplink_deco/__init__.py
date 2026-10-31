@@ -8,8 +8,10 @@ https://github.com/amosyuen/ha-tplink-deco
 import asyncio
 from datetime import timedelta
 import logging
+import os
 from typing import Any
 from typing import cast
+from urllib.parse import urlparse
 
 from homeassistant.components.device_tracker.const import (
     DOMAIN as DEVICE_TRACKER_DOMAIN,
@@ -23,12 +25,16 @@ from homeassistant.const import CONF_PASSWORD
 from homeassistant.const import CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.core import ServiceCall
+from homeassistant.core import ServiceResponse
+from homeassistant.core import SupportsResponse
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers import restore_state
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.device_registry import DeviceEntry
+from homeassistant.util import dt as dt_util
 import voluptuous as vol
 
 from .api import TplinkDecoApi
@@ -40,6 +46,11 @@ from .const import CONF_DECO_POSTFIX
 from .const import CONF_DECO_PREFIX
 from .const import CONF_DEVICE_LIST_INTERVAL
 from .const import CONF_LINK_CLIENT_DEVICES
+from .const import CONF_SYSLOG_HOST
+from .const import CONF_SYSLOG_LOG_LEVEL
+from .const import CONF_SYSLOG_PORT
+from .const import CONF_SYSLOG_PROTOCOL
+from .const import CONF_SYSLOG_SCAN_INTERVAL
 from .const import CONF_TIMEOUT_ERROR_RETRIES
 from .const import CONF_TIMEOUT_SECONDS
 from .const import CONF_VERIFY_SSL
@@ -49,19 +60,31 @@ from .const import DEFAULT_CONSIDER_HOME
 from .const import DEFAULT_DECO_POSTFIX
 from .const import DEFAULT_LINK_CLIENT_DEVICES
 from .const import DEFAULT_SCAN_INTERVAL
+from .const import DEFAULT_SYSLOG_LOG_LEVEL
+from .const import DEFAULT_SYSLOG_PORT
+from .const import DEFAULT_SYSLOG_SCAN_INTERVAL
 from .const import DEFAULT_TIMEOUT_ERROR_RETRIES
 from .const import DEFAULT_TIMEOUT_SECONDS
 from .const import DEVICE_TYPE_DECO
 from .const import DOMAIN
+from .const import LOG_FORWARDER_KEY
 from .const import PLATFORMS
+from .const import SERVICE_DOWNLOAD_SYSTEM_LOG
 from .const import SERVICE_PAUSE_POLLING
 from .const import SERVICE_REBOOT_DECO
 from .const import SERVICE_RESUME_POLLING
+from .const import SYSLOG_PROTOCOL_UDP
 from .coordinator import TpLinkDeco
 from .coordinator import TpLinkDecoClient
 from .coordinator import TpLinkDecoData
 from .coordinator import TplinkDecoClientUpdateCoordinator
 from .coordinator import TplinkDecoUpdateCoordinator
+from .log_forwarder import LOG_LEVELS
+from .log_forwarder import TplinkDecoLogForwarder
+
+ATTR_FILENAME = "filename"
+ATTR_LOG_LEVEL = "log_level"
+SYSTEM_LOG_DIR = "tplink_deco_logs"
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -202,6 +225,36 @@ async def async_create_config_data(hass: HomeAssistant, config_entry: ConfigEntr
     )
 
 
+def async_create_log_forwarder(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    deco_coordinator: TplinkDecoUpdateCoordinator,
+) -> TplinkDecoLogForwarder | None:
+    """Create the syslog forwarder, or None when no syslog server is configured."""
+    config_data = config_entry.data
+    syslog_host = (config_data.get(CONF_SYSLOG_HOST) or "").strip()
+    if not syslog_host:
+        return None
+
+    level_name = config_data.get(CONF_SYSLOG_LOG_LEVEL, DEFAULT_SYSLOG_LOG_LEVEL)
+    return TplinkDecoLogForwarder(
+        hass,
+        deco_coordinator.api,
+        config_entry.entry_id,
+        hostname=urlparse(config_data.get(CONF_HOST)).hostname,
+        syslog_host=syslog_host,
+        syslog_port=int(config_data.get(CONF_SYSLOG_PORT, DEFAULT_SYSLOG_PORT)),
+        syslog_protocol=config_data.get(CONF_SYSLOG_PROTOCOL, SYSLOG_PROTOCOL_UDP),
+        level=LOG_LEVELS.get(level_name, LOG_LEVELS[DEFAULT_SYSLOG_LOG_LEVEL]),
+        interval=timedelta(
+            seconds=config_data.get(
+                CONF_SYSLOG_SCAN_INTERVAL, DEFAULT_SYSLOG_SCAN_INTERVAL
+            )
+        ),
+        is_paused=lambda: deco_coordinator.paused,
+    )
+
+
 async def async_pause_polling(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
     """Pause Deco polling."""
     coordinator_decos = hass.data[DOMAIN][config_entry.entry_id][COORDINATOR_DECOS_KEY]
@@ -246,6 +299,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         clients_coordinator.async_request_refresh(),
         name="tplink_deco initial client refresh",
     )
+
+    log_forwarder = async_create_log_forwarder(hass, config_entry, deco_coordinator)
+    if log_forwarder is not None:
+        data[LOG_FORWARDER_KEY] = log_forwarder
+        await log_forwarder.async_start()
+        config_entry.async_create_background_task(
+            hass, log_forwarder.async_poll(), name="tplink_deco initial syslog forward"
+        )
 
     async def async_reboot_deco(service: ServiceCall) -> None:
         dr = device_registry.async_get(hass=hass)
@@ -294,6 +355,42 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         handle_resume_polling,
     )
 
+    async def handle_download_system_log(service: ServiceCall) -> ServiceResponse:
+        """Save the Deco system log to a file in the config directory."""
+        level_name = service.data[ATTR_LOG_LEVEL]
+        filename = service.data.get(ATTR_FILENAME) or (
+            f"deco-{dt_util.now():%Y%m%d-%H%M%S}.log"
+        )
+        if os.path.basename(filename) != filename or filename in (".", ".."):
+            raise HomeAssistantError("filename must not contain a directory")
+        path = hass.config.path(SYSTEM_LOG_DIR, filename)
+
+        lines = await deco_coordinator.api.async_get_system_log(LOG_LEVELS[level_name])
+
+        def write_file():
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8", newline="\n") as f:
+                f.write("\n".join(lines) + "\n")
+
+        await hass.async_add_executor_job(write_file)
+        _LOGGER.info("Saved %d Deco system log lines to %s", len(lines), path)
+        return {"path": path, "line_count": len(lines)}
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_DOWNLOAD_SYSTEM_LOG,
+        handle_download_system_log,
+        schema=vol.Schema(
+            {
+                vol.Optional(ATTR_FILENAME): cv.string,
+                vol.Optional(ATTR_LOG_LEVEL, default=DEFAULT_SYSLOG_LOG_LEVEL): vol.In(
+                    list(LOG_LEVELS)
+                ),
+            }
+        ),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
     config_entry.async_on_unload(config_entry.add_update_listener(update_listener))
 
     return True
@@ -315,7 +412,10 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
 
     deco_coordinator = data.get(COORDINATOR_DECOS_KEY)
     clients_coordinator = data.get(COORDINATOR_CLIENTS_KEY)
+    log_forwarder = data.get(LOG_FORWARDER_KEY)
 
+    if log_forwarder is not None:
+        await log_forwarder.async_stop()
     if deco_coordinator is not None:
         await deco_coordinator.async_close()
     if clients_coordinator is not None:
@@ -334,6 +434,7 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
         hass.data[DOMAIN].pop(config_entry.entry_id, None)
         hass.services.async_remove(DOMAIN, SERVICE_PAUSE_POLLING)
         hass.services.async_remove(DOMAIN, SERVICE_RESUME_POLLING)
+        hass.services.async_remove(DOMAIN, SERVICE_DOWNLOAD_SYSTEM_LOG)
 
     return unloaded
 
