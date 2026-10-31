@@ -76,6 +76,14 @@ def _remove_discovered_decos_from_clients(
         client_data.pop(deco_mac, None)
 
 
+def deco_mac_from_identifiers(identifiers) -> str | None:
+    """Return the Deco MAC of a device from its registry identifiers."""
+    return next(
+        (identifier[1] for identifier in identifiers if identifier[0] == DOMAIN),
+        None,
+    )
+
+
 async def async_create_and_refresh_coordinators(
     hass: HomeAssistant,
     config_data: dict[str:Any],
@@ -269,13 +277,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             device = dr.async_get(device_id)
             if device is None:
                 raise Exception(f"Device ID {device_id} is not a TP-Link Deco device")
-            ids = device.identifiers
-            id = next(iter(ids)) if len(ids) == 1 else None
-            if id[0] != DOMAIN:
+            mac = deco_mac_from_identifiers(device.identifiers)
+            if mac is None:
                 raise Exception(
                     f"Device ID {device_id} does not have {DOMAIN} MAC identifier"
                 )
-            macs.append(id[1])
+            macs.append(mac)
         await deco_coordinator.api.async_reboot_decos(macs)
 
     hass.services.async_register(
