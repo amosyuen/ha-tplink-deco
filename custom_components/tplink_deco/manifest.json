@@ -1,6 +1,7 @@
 {
   "domain": "tplink_deco",
   "name": "TP-Link Deco",
+  "categories": ["computers_network.routers_network"],
   "codeowners": ["@amosyuen"],
   "config_flow": true,
   "dependencies": [],

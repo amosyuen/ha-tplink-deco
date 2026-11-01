@@ -153,20 +153,6 @@ reliable across Deco models and firmware versions.
 - Guest WiFi
 - IoT WiFi
 
----
-
-## 📦 Installation
-
-### HACS
-
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=amosyuen&repository=ha-tplink-deco&category=integration)
-
-### Manual
-
-1. Copy `custom_components/tplink_deco` to your Home Assistant config folder
-2. Restart Home Assistant
-3. Add the integration via UI
-
 # TP-Link Deco
 
 [![GitHub Release][releases-shield]][releases]
@@ -253,7 +239,17 @@ target:
 
 ## Installation
 
-### HACS
+### Marketplace / HACS
+
+For Home Assistant 2026.11 and later:
+
+1. Open **Settings > Marketplace**.
+2. Search for **TP-Link Deco**.
+3. Select the integration and choose **Install**.
+
+For Home Assistant 2026.10 and earlier, follow the same steps under **HACS > Integrations**.
+
+The button below opens this repository in Marketplace on Home Assistant 2026.11 and later, and in HACS on older versions:
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=amosyuen&repository=ha-tplink-deco&category=integration)
 
