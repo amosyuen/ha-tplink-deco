@@ -12,6 +12,7 @@ from homeassistant.components.sensor.const import SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.const import UnitOfDataRate
+from homeassistant.const import UnitOfInformation
 from homeassistant.const import UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.core import callback
@@ -21,12 +22,14 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
+from .const import COORDINATOR_MOBILE_KEY
 from .const import DOMAIN
 from .const import SIGNAL_DECO_ADDED
 from .coordinator import TpLinkDeco
 from .coordinator import TplinkDecoClientUpdateCoordinator
 from .coordinator import TplinkDecoUpdateCoordinator
 from .device import create_device_info
+from .mobile import TplinkDecoMobileDataUpdateCoordinator
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -219,6 +222,7 @@ async def async_setup_entry(
     data = hass.data[DOMAIN][entry.entry_id]
     coordinator_decos = data[COORDINATOR_DECOS_KEY]
     coordinator_clients = data[COORDINATOR_CLIENTS_KEY]
+    coordinator_mobile = data[COORDINATOR_MOBILE_KEY]
 
     def add_sensors_for_deco(
         deco: TpLinkDeco | None,
@@ -336,6 +340,36 @@ async def async_setup_entry(
         async_dispatcher_connect(hass, SIGNAL_DECO_ADDED, add_untracked_deco_sensors)
     )
 
+    mobile_data_sensor_added = False
+
+    @callback
+    def add_mobile_data_usage_sensor() -> None:
+        """Add the optional mobile usage sensor after feature detection."""
+        nonlocal mobile_data_sensor_added
+        master_deco = coordinator_decos.data.master_deco
+        if (
+            mobile_data_sensor_added
+            or coordinator_mobile.data is None
+            or master_deco is None
+        ):
+            return
+
+        async_add_entities(
+            [
+                TplinkMobileDataUsageSensor(
+                    coordinator_decos,
+                    coordinator_mobile,
+                    master_deco.mac,
+                )
+            ]
+        )
+        mobile_data_sensor_added = True
+
+    entry.async_on_unload(
+        coordinator_mobile.async_add_listener(add_mobile_data_usage_sensor)
+    )
+    add_mobile_data_usage_sensor()
+
 
 class TplinkTotalClientDataRateSensor(CoordinatorEntity, SensorEntity):
     """TP-Link total client data rate sensor entity."""
@@ -389,6 +423,39 @@ class TplinkTotalClientDataRateSensor(CoordinatorEntity, SensorEntity):
             ):
                 state += getattr(client, self._client_attribute)
         self._attr_native_value = state
+
+
+class TplinkMobileDataUsageSensor(CoordinatorEntity, SensorEntity):
+    """Monthly mobile data usage reported by supported Deco firmware."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Mobile data usage"
+    _attr_device_class = SensorDeviceClass.DATA_SIZE
+    _attr_native_unit_of_measurement = UnitOfInformation.KIBIBYTES
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+
+    def __init__(
+        self,
+        coordinator_decos: TplinkDecoUpdateCoordinator,
+        coordinator_mobile: TplinkDecoMobileDataUpdateCoordinator,
+        master_deco_mac: str,
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator_mobile)
+        self._coordinator_decos = coordinator_decos
+        self._master_deco_mac = master_deco_mac
+        self._attr_unique_id = f"{master_deco_mac}_mobile_data_usage"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Attach the sensor to the master Deco."""
+        master_deco = self._coordinator_decos.data.decos[self._master_deco_mac]
+        return create_device_info(master_deco, master_deco, self._coordinator_decos)
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the monthly usage in KiB."""
+        return self.coordinator.data
 
 
 class TplinkDecoClientCountSensor(CoordinatorEntity, SensorEntity):

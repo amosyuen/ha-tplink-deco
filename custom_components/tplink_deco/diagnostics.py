@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant
 
 from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
+from .const import COORDINATOR_MOBILE_KEY
 from .const import COORDINATOR_WIRELESS_KEY
 from .const import DOMAIN
 from .coordinator import TpLinkDeco
@@ -107,6 +108,7 @@ async def async_get_config_entry_diagnostics(
     client_coordinator: TplinkDecoClientUpdateCoordinator = data[
         COORDINATOR_CLIENTS_KEY
     ]
+    mobile_coordinator = data.get(COORDINATOR_MOBILE_KEY)
     wireless_coordinator: TplinkDecoWirelessUpdateCoordinator = data[
         COORDINATOR_WIRELESS_KEY
     ]
@@ -154,4 +156,17 @@ async def async_get_config_entry_diagnostics(
             "retry_remaining_seconds": (wireless_coordinator.retry_remaining_seconds),
             "available_networks": sorted(wireless_coordinator.data),
         },
+        "mobile_data_coordinator": (
+            {
+                "last_update_success": mobile_coordinator.last_update_success,
+                "supported": mobile_coordinator.data is not None,
+                "update_interval_seconds": (
+                    mobile_coordinator.update_interval.total_seconds()
+                    if mobile_coordinator.update_interval is not None
+                    else None
+                ),
+            }
+            if mobile_coordinator is not None
+            else None
+        ),
     }
