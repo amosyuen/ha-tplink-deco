@@ -119,6 +119,13 @@ enabled. Only networks exposed by the Deco firmware are created. The main WiFi
 sensor is disabled by default because most models do not allow that network to
 be switched off.
 
+Network names (SSIDs) are not exposed by default. Enable **Show WiFi network
+names on the WiFi status sensors** in the integration options to add them as
+attributes. A sensor shows a single `ssid` attribute when all bands use the same
+name, or one attribute per band (for example `ssid_band2_4` and `ssid_band5_1`)
+when the names differ. The attribute is omitted when no name is reported.
+Passwords are never read.
+
 Wireless status uses the configured integration polling interval and does not
 delay integration setup when the optional endpoint is slow or unavailable.
 Changing WiFi settings is not supported because the local write API is not

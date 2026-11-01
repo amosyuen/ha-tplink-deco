@@ -13,6 +13,7 @@ COORDINATOR_WIRELESS_KEY = "wireless"
 
 DEFAULT_CONSIDER_HOME = DEFAULT_CONSIDER_HOME_SPAN.total_seconds()
 DEFAULT_DECO_POSTFIX = "Deco"
+DEFAULT_EXPOSE_WIFI_SSIDS = False
 DEFAULT_LINK_CLIENT_DEVICES = True
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_TIMEOUT_ERROR_RETRIES = 1
@@ -37,6 +38,7 @@ ATTR_INTERNET_ONLINE = "internet_online"
 ATTR_MASTER = "master"
 ATTR_SIGNAL_BAND2_4 = "signal_band2_4"
 ATTR_SIGNAL_BAND5 = "signal_band5"
+ATTR_SSID = "ssid"
 ATTR_UP_KILOBYTES_PER_S = "up_kilobytes_per_s"
 ATTR_UI_DEVICE_NAME = "ui_device_name"
 
@@ -46,6 +48,7 @@ CONF_CLIENT_POSTFIX = "client_postfix"
 CONF_DECO_PREFIX = "deco_prefix"
 CONF_DECO_POSTFIX = "deco_postfix"
 CONF_DEVICE_LIST_INTERVAL = "device_list_interval"
+CONF_EXPOSE_WIFI_SSIDS = "expose_wifi_ssids"
 CONF_LINK_CLIENT_DEVICES = "link_client_devices"
 CONF_TIMEOUT_ERROR_RETRIES = "timeout_error_retries"
 CONF_TIMEOUT_SECONDS = "timeout_seconds"

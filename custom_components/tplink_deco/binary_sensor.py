@@ -18,6 +18,7 @@ from .device import create_device_info
 from .wireless import TplinkDecoWirelessUpdateCoordinator
 from .wireless import WIRELESS_NETWORKS
 from .wireless import WirelessNetworkDescription
+from .wireless import wireless_ssid_attributes
 
 
 async def async_setup_entry(
@@ -215,6 +216,14 @@ class TplinkDecoWirelessBinarySensor(CoordinatorEntity, BinarySensorEntity):
     def is_on(self) -> bool | None:
         """Return whether the wireless network is enabled."""
         return self.coordinator.data.get(self.entity_description.key)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str] | None:
+        """Return the network name when exposing names is enabled."""
+        names = self.coordinator.ssids.get(self.entity_description.key)
+        if not names:
+            return None
+        return wireless_ssid_attributes(names)
 
     @property
     def device_info(self) -> DeviceInfo:

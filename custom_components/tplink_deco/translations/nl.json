@@ -10,6 +10,7 @@
           "password": "Wachtwoord",
           "device_list_interval": "Aantal seconden tussen Deco-statusupdates (0 schakelt automatische updates na het opstarten uit)",
           "link_client_devices": "Koppel clienttrackers via het MAC-adres aan apparaten",
+          "expose_wifi_ssids": "Toon wifi-netwerknamen op de wifi-statussensoren",
           "interval_seconds": "Aantal seconden tussen updates",
           "consider_home": "Aantal seconden sinds laatste keer dat het gezien is totdat een device als niet-thuis wordt gemarkeerd"
         }
@@ -39,6 +40,7 @@
           "password": "Wachtwoord",
           "device_list_interval": "Aantal seconden tussen Deco-statusupdates (0 schakelt automatische updates na het opstarten uit)",
           "link_client_devices": "Koppel clienttrackers via het MAC-adres aan apparaten",
+          "expose_wifi_ssids": "Toon wifi-netwerknamen op de wifi-statussensoren",
           "interval_seconds": "Aantal seconden tussen updates",
           "consider_home": "Aantal seconden sinds laatste keer dat het gezien is totdat een device als niet-thuis wordt gemarkeerd"
         }
