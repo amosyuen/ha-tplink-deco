@@ -377,10 +377,10 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
                 old_deco.internet_online = False
                 decos[mac] = old_deco
 
+        self.data = TpLinkDecoData(master_deco, decos)
+
         if deco_added:
             async_dispatcher_send(self.hass, SIGNAL_DECO_ADDED)
-
-        self.data = TpLinkDecoData(master_deco, decos)
 
     async def async_request_device_refresh(self) -> None:
         """Request an immediate device_list refresh."""
