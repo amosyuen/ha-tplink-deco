@@ -3,7 +3,7 @@
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -45,6 +45,7 @@ async def async_setup_entry(
             ]
         )
 
+    @callback
     def add_untracked_deco_binary_sensors():
         """Add binary sensors for newly discovered decos."""
         for mac, deco in coordinator_decos.data.decos.items():
