@@ -64,3 +64,30 @@ def test_device_list_refresh_uses_independent_interval():
 
     with patch("custom_components.tplink_deco.coordinator.monotonic", return_value=400):
         assert coordinator._device_list_refresh_due() is True
+
+
+def test_new_deco_is_stored_before_added_signal():
+    coordinator = _coordinator(30)
+    mac = "AA:BB:CC:DD:EE:FF"
+    decos_seen_by_signal = []
+
+    def capture_decos(_hass, _signal):
+        decos_seen_by_signal.append(set(coordinator.data.decos))
+
+    with patch(
+        "custom_components.tplink_deco.coordinator.async_dispatcher_send",
+        side_effect=capture_decos,
+    ):
+        coordinator._process_device_list(
+            [
+                {
+                    "mac": mac,
+                    "nickname": "living_room",
+                    "device_ip": "192.168.1.2",
+                    "role": "master",
+                }
+            ]
+        )
+
+    assert decos_seen_by_signal == [{mac}]
+    assert coordinator.data.master_deco is coordinator.data.decos[mac]
