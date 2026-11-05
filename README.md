@@ -244,6 +244,8 @@ target:
     - d7f96b1f312d83f195b35ecdfbb3b02b
 ```
 
+<!-- ha-marketplace:exclude-start -->
+
 {% if not installed %}
 
 ## Installation
@@ -272,6 +274,8 @@ The button below opens this repository in Marketplace on Home Assistant 2026.11 
 6. Restart Home Assistant
 
 {% endif %}
+
+<!-- ha-marketplace:exclude-end -->
 
 ## Configuration (Important! Please Read)
 
