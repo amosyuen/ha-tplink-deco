@@ -14,7 +14,6 @@ from Crypto.PublicKey import RSA
 import aiohttp
 from aiohttp.hdrs import CONTENT_TYPE
 from aiohttp.hdrs import SET_COOKIE
-import async_timeout
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher
 from cryptography.hazmat.primitives.ciphers import algorithms
@@ -555,7 +554,7 @@ class TplinkDecoApi:
     async def _async_outer_post(self, params: dict[str, Any], data: str = ""):
         """POST a web-UI session request without applying outer encryption."""
         headers = {CONTENT_TYPE: "application/x-www-form-urlencoded; charset=UTF-8"}
-        async with async_timeout.timeout(self._timeout_seconds):
+        async with asyncio.timeout(self._timeout_seconds):
             return await self._session.post(
                 f"{self._host}/",
                 params=params,
@@ -699,7 +698,7 @@ class TplinkDecoApi:
             except Exception:
                 _LOGGER.warning("Could not parse session cookie")
         try:
-            async with async_timeout.timeout(self._timeout_seconds):
+            async with asyncio.timeout(self._timeout_seconds):
                 response = await self._session.post(
                     url,
                     params=params,

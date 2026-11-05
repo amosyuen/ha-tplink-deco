@@ -278,17 +278,17 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     config_entry.async_create_background_task(
         hass,
-        clients_coordinator.async_request_refresh(),
+        clients_coordinator.async_refresh(),
         name="tplink_deco initial client refresh",
     )
     config_entry.async_create_background_task(
         hass,
-        wireless_coordinator.async_request_refresh(),
+        wireless_coordinator.async_refresh(),
         name="tplink_deco initial wireless refresh",
     )
     config_entry.async_create_background_task(
         hass,
-        mobile_coordinator.async_request_refresh(),
+        mobile_coordinator.async_refresh(),
         name="tplink_deco initial mobile data refresh",
     )
 
