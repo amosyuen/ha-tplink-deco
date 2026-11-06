@@ -26,7 +26,7 @@ class DecoPollingSwitch(SwitchEntity):
     def __init__(self, coordinator) -> None:
         self.coordinator = coordinator
         self._attr_name = "Polling"
-        self._attr_unique_id = "tplink_deco_polling"
+        self._attr_unique_id = f"tplink_deco_polling_{coordinator.config_entry.entry_id}"
         self._attr_icon = "mdi:lan-connect"
 
     @property
