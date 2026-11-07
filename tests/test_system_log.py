@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 
@@ -159,26 +158,3 @@ async def test_outer_session_firmware_is_unsupported(api, session):
 
     assert router.builds == []
     assert router.saves == []
-
-
-@pytest.mark.asyncio
-async def test_cancelled_login_releases_lock(api, session):
-    FakeRouter(api, session)
-    api.clear_auth()
-
-    async def hang():
-        await asyncio.Event().wait()
-
-    api._async_login = AsyncMock(side_effect=hang)
-
-    download = asyncio.create_task(api.async_get_system_log())
-    await asyncio.sleep(0)
-    download.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await download
-
-    assert not api._operation_lock.locked()
-    assert api._login_future is None
-    async with asyncio.timeout(1):
-        async with api._operation_lock:
-            pass

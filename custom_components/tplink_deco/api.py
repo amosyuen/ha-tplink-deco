@@ -501,11 +501,6 @@ class TplinkDecoApi:
         try:
             await self._async_login()
             self._login_future.set_result(True)
-        except asyncio.CancelledError:
-            # Resolve the future so the finally block and other waiters don't
-            # wait forever.
-            self._login_future.cancel()
-            raise
         except Exception as err:
             self._login_future.set_exception(err)
             raise err
@@ -513,7 +508,7 @@ class TplinkDecoApi:
             # Await future to suppress future exception was never retrieved error
             try:
                 await self._login_future
-            except (Exception, asyncio.CancelledError):
+            except Exception:
                 pass
             self._login_future = None
 
