@@ -3,6 +3,7 @@ import base64
 from dataclasses import dataclass
 from dataclasses import field
 import hashlib
+from itertools import takewhile
 import json
 import logging
 import math
@@ -24,6 +25,7 @@ import homeassistant.util.ssl as ssl
 
 from .const import DEFAULT_TIMEOUT_ERROR_RETRIES
 from .const import DEFAULT_TIMEOUT_SECONDS
+from .const import SYSTEM_LOG_LEVELS
 from .exceptions import EmptyDataException
 from .exceptions import ForbiddenException
 from .exceptions import LoginForbiddenException
@@ -38,7 +40,7 @@ MAX_AES_KEY = (10**AES_KEY_BYTES) - 1
 
 PKCS1_v1_5_HEADER_BYTES = 11
 
-SYSTEM_LOG_LEVEL_ALL = 8
+SYSTEM_LOG_CONTEXT = "Get System Log"
 SYSTEM_LOG_PAGE_SIZE = 100
 SYSTEM_LOG_EMPTY_PAGE_RETRIES = 3
 SYSTEM_LOG_DEADLINE_SECONDS = 60
@@ -72,6 +74,18 @@ class _SystemLogCheckpoint:
         self.total_pages = None
         self.pages = {}
 
+    def record_first_page(self, lines: list[str], total_pages: int) -> None:
+        self.pages[0] = lines
+        self.total_pages = max(total_pages, 1)
+
+    def unread_pages(self) -> list[int]:
+        """Return the indexes still to read after page 0, newest first."""
+        return [
+            index
+            for index in range(self.total_pages - 1, 0, -1)
+            if index not in self.pages
+        ]
+
     @property
     def complete(self) -> bool:
         return self.total_pages is not None and len(self.pages) >= self.total_pages
@@ -80,13 +94,9 @@ class _SystemLogCheckpoint:
         """Return the unbroken run of pages that ends at the newest page."""
         if self.total_pages is None:
             return []
-        run = []
-        for index in range(self.total_pages - 1, -1, -1):
-            page = self.pages.get(index)
-            if page is None:
-                break
-            run.append(page)
-        return [line for page in reversed(run) for line in page]
+        newest_first = range(self.total_pages - 1, -1, -1)
+        run = list(takewhile(lambda index: index in self.pages, newest_first))
+        return [line for index in reversed(run) for line in self.pages[index]]
 
 
 def normalize_name(name: str):
@@ -383,7 +393,7 @@ class TplinkDecoApi:
 
     async def async_get_system_log(
         self,
-        level: int = SYSTEM_LOG_LEVEL_ALL,
+        level: int = SYSTEM_LOG_LEVELS["ALL"],
         deadline_seconds: float = SYSTEM_LOG_DEADLINE_SECONDS,
     ) -> SystemLog:
         """Return the system log at or above level (1=ALERT ... 7=DEBUG, 8=ALL).
@@ -401,7 +411,8 @@ class TplinkDecoApi:
                     )
         except TimeoutError:
             _LOGGER.warning(
-                "Get System Log stopped after %s seconds with %d of %s pages",
+                "%s stopped after %s seconds with %d of %s pages",
+                SYSTEM_LOG_CONTEXT,
                 deadline_seconds,
                 len(checkpoint.pages),
                 checkpoint.total_pages,
@@ -413,44 +424,44 @@ class TplinkDecoApi:
     ) -> None:
         await self.async_login_if_needed()
 
-        context = "Get System Log"
-        url = f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/log_export"
-        params = {"form": "feedback_log"}
-
         # "build" snapshots the log buffer and "read" pages through it. A retry
         # in the same session resumes from the checkpoint; after a re-login,
         # take a new snapshot rather than mixing pages from two.
         session = (self._stok, self._outer_id)
         if checkpoint.session != session:
-            build_payload = {"operation": "build", "params": {"level": level}}
-            response_json = await self._async_post(
-                context, url, params=params, data=self._encode_payload(build_payload)
-            )
-            data = self._decrypt_data(context, response_json["data"])
-            self._check_authenticated_data_error_code(context, data)
+            await self._async_build_system_log(level)
             checkpoint.reset(session)
 
         if checkpoint.total_pages is None:
-            lines, total_pages = await self._async_read_system_log_page(
-                context, url, params, 0
-            )
-            checkpoint.pages[0] = lines
-            checkpoint.total_pages = max(total_pages, 1)
+            checkpoint.record_first_page(*await self._async_read_system_log_page(0))
 
-        for index in range(checkpoint.total_pages - 1, 0, -1):
-            if index not in checkpoint.pages:
-                lines, _ = await self._async_read_system_log_page(
-                    context, url, params, index
-                )
-                checkpoint.pages[index] = lines
+        for index in checkpoint.unread_pages():
+            checkpoint.pages[index], _ = await self._async_read_system_log_page(index)
 
-        _LOGGER.debug("%s page_count=%d", context, checkpoint.total_pages)
+        _LOGGER.debug("%s page_count=%d", SYSTEM_LOG_CONTEXT, checkpoint.total_pages)
 
-    async def _async_read_system_log_page(
-        self, context: str, url: str, params: dict, index: int
-    ) -> tuple[list[str], int]:
+    async def _async_post_system_log(self, payload: dict) -> dict:
+        return await self._async_post(
+            SYSTEM_LOG_CONTEXT,
+            f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/log_export",
+            params={"form": "feedback_log"},
+            data=self._encode_payload(payload),
+        )
+
+    def _decrypt_system_log_data(self, response_json: dict) -> dict:
+        data = self._decrypt_data(SYSTEM_LOG_CONTEXT, response_json["data"])
+        self._check_authenticated_data_error_code(SYSTEM_LOG_CONTEXT, data)
+        return data
+
+    async def _async_build_system_log(self, level: int) -> None:
+        response_json = await self._async_post_system_log(
+            {"operation": "build", "params": {"level": level}}
+        )
+        self._decrypt_system_log_data(response_json)
+
+    async def _async_read_system_log_page(self, index: int) -> tuple[list[str], int]:
         """Return one page of log lines and the snapshot's total page count."""
-        read_payload = {
+        payload = {
             "operation": "read",
             "params": {"index": index, "limit": SYSTEM_LOG_PAGE_SIZE},
         }
@@ -458,21 +469,18 @@ class TplinkDecoApi:
         # session is still valid; retry the page before _decrypt_data treats
         # it as an expired session.
         for _ in range(SYSTEM_LOG_EMPTY_PAGE_RETRIES):
-            response_json = await self._async_post(
-                context, url, params=params, data=self._encode_payload(read_payload)
-            )
+            response_json = await self._async_post_system_log(payload)
             if response_json.get("data") != "":
                 break
-            _LOGGER.debug("%s empty page index=%d, retrying", context, index)
-        data = self._decrypt_data(context, response_json["data"])
-        self._check_authenticated_data_error_code(context, data)
+            _LOGGER.debug("%s empty page index=%d, retrying", SYSTEM_LOG_CONTEXT, index)
+        data = self._decrypt_system_log_data(response_json)
 
         try:
             result = data["result"]
             log_list = result.get("logList") or []
             total_pages = int(result.get("totalNum") or 0)
         except Exception as err:
-            _LOGGER.error("%s parse response error=%s", context, err)
+            _LOGGER.error("%s parse response error=%s", SYSTEM_LOG_CONTEXT, err)
             raise err
 
         return [entry.get("content", "") for entry in log_list], total_pages
