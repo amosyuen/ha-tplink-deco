@@ -22,7 +22,7 @@ import voluptuous as vol
 from .const import COORDINATOR_DECOS_KEY
 from .const import DOMAIN
 from .const import SERVICE_DOWNLOAD_SYSTEM_LOG
-from .const import SYSTEM_LOG_LEVELS
+from .system_log import SYSTEM_LOG_LEVELS
 
 ATTR_FILENAME = "filename"
 ATTR_LOG_LEVEL = "log_level"

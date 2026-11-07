@@ -1,9 +1,6 @@
 import asyncio
 import base64
-from dataclasses import dataclass
-from dataclasses import field
 import hashlib
-from itertools import takewhile
 import json
 import logging
 import math
@@ -25,7 +22,6 @@ import homeassistant.util.ssl as ssl
 
 from .const import DEFAULT_TIMEOUT_ERROR_RETRIES
 from .const import DEFAULT_TIMEOUT_SECONDS
-from .const import SYSTEM_LOG_LEVELS
 from .exceptions import EmptyDataException
 from .exceptions import ForbiddenException
 from .exceptions import LoginForbiddenException
@@ -33,6 +29,12 @@ from .exceptions import LoginInvalidException
 from .exceptions import TimeoutException
 from .exceptions import TransientConnectionException
 from .exceptions import UnexpectedApiException
+from .system_log import SYSTEM_LOG_DEADLINE_SECONDS
+from .system_log import SYSTEM_LOG_EMPTY_PAGE_RETRIES
+from .system_log import SYSTEM_LOG_LEVELS
+from .system_log import SYSTEM_LOG_PAGE_SIZE
+from .system_log import SystemLog
+from .system_log import SystemLogCheckpoint
 
 AES_KEY_BYTES = 16
 MIN_AES_KEY = 10 ** (AES_KEY_BYTES - 1)
@@ -41,60 +43,9 @@ MAX_AES_KEY = (10**AES_KEY_BYTES) - 1
 PKCS1_v1_5_HEADER_BYTES = 11
 
 SYSTEM_LOG_CONTEXT = "Get System Log"
-SYSTEM_LOG_PAGE_SIZE = 100
-SYSTEM_LOG_EMPTY_PAGE_RETRIES = 3
-SYSTEM_LOG_DEADLINE_SECONDS = 60
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 LEGACY_ERROR_DECODING_PATTERN = re.compile(r"^<Error Decoding (.*)>$")
-
-
-@dataclass
-class SystemLog:
-    """Deco system log lines, oldest first.
-
-    complete is False if the deadline ended the download early.
-    """
-
-    lines: list[str]
-    complete: bool
-
-
-@dataclass
-class _SystemLogCheckpoint:
-    """Pages read from one log snapshot, kept across retries of a download."""
-
-    session: tuple | None = None
-    total_pages: int | None = None
-    pages: dict[int, list[str]] = field(default_factory=dict)
-
-    def reset(self, session: tuple) -> None:
-        self.session = session
-        self.total_pages = None
-        self.pages = {}
-
-    def record_first_page(self, lines: list[str], total_pages: int) -> None:
-        self.pages[0] = lines
-        self.total_pages = max(total_pages, 1)
-
-    def unread_pages(self) -> list[int]:
-        return [
-            index
-            for index in range(self.total_pages - 1, 0, -1)
-            if index not in self.pages
-        ]
-
-    @property
-    def complete(self) -> bool:
-        return self.total_pages is not None and len(self.pages) >= self.total_pages
-
-    def newest_lines(self) -> list[str]:
-        """Return lines from the newest pages, stopping at the first unread one."""
-        if self.total_pages is None:
-            return []
-        newest_first = range(self.total_pages - 1, -1, -1)
-        run = list(takewhile(lambda index: index in self.pages, newest_first))
-        return [line for index in reversed(run) for line in self.pages[index]]
 
 
 def normalize_name(name: str):
@@ -401,7 +352,7 @@ class TplinkDecoApi:
         Pages are read newest first, so a download cut short keeps the most
         recent lines.
         """
-        checkpoint = _SystemLogCheckpoint()
+        checkpoint = SystemLogCheckpoint()
         try:
             async with asyncio.timeout(deadline_seconds):
                 async with self._operation_lock:
@@ -419,7 +370,7 @@ class TplinkDecoApi:
         return SystemLog(checkpoint.newest_lines(), checkpoint.complete)
 
     async def _async_read_system_log(
-        self, level: int, checkpoint: _SystemLogCheckpoint
+        self, level: int, checkpoint: SystemLogCheckpoint
     ) -> None:
         await self.async_login_if_needed()
 

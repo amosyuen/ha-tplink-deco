@@ -13,11 +13,11 @@ import pytest_asyncio
 
 from custom_components.tplink_deco import async_setup
 from custom_components.tplink_deco import async_unload_entry
-from custom_components.tplink_deco.api import SystemLog
 from custom_components.tplink_deco.const import COORDINATOR_CLIENTS_KEY
 from custom_components.tplink_deco.const import COORDINATOR_DECOS_KEY
 from custom_components.tplink_deco.const import DOMAIN
 from custom_components.tplink_deco.const import SERVICE_DOWNLOAD_SYSTEM_LOG
+from custom_components.tplink_deco.system_log import SystemLog
 
 
 class FakeServices:
