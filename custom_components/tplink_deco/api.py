@@ -29,12 +29,15 @@ from .exceptions import LoginInvalidException
 from .exceptions import TimeoutException
 from .exceptions import TransientConnectionException
 from .exceptions import UnexpectedApiException
+from .system_log import DEFAULT_SYSTEM_LOG_LEVEL
 from .system_log import SYSTEM_LOG_DEADLINE_SECONDS
 from .system_log import SYSTEM_LOG_EMPTY_PAGE_RETRIES
 from .system_log import SYSTEM_LOG_LEVELS
 from .system_log import SYSTEM_LOG_PAGE_SIZE
 from .system_log import SystemLog
 from .system_log import SystemLogCheckpoint
+from .system_log import SystemLogPage
+from .system_log import parse_system_log_page
 
 AES_KEY_BYTES = 16
 MIN_AES_KEY = 10 ** (AES_KEY_BYTES - 1)
@@ -342,7 +345,7 @@ class TplinkDecoApi:
 
     async def async_get_system_log(
         self,
-        level: int = SYSTEM_LOG_LEVELS["ALL"],
+        level: int = SYSTEM_LOG_LEVELS[DEFAULT_SYSTEM_LOG_LEVEL],
         deadline_seconds: float = SYSTEM_LOG_DEADLINE_SECONDS,
     ) -> SystemLog:
         """Return the system log at or above level (1=ALERT ... 7=DEBUG, 8=ALL).
@@ -367,7 +370,7 @@ class TplinkDecoApi:
                 len(checkpoint.pages),
                 checkpoint.total_pages,
             )
-        return SystemLog(checkpoint.newest_lines(), checkpoint.complete)
+        return checkpoint.result()
 
     async def _async_read_system_log(
         self, level: int, checkpoint: SystemLogCheckpoint
@@ -383,10 +386,10 @@ class TplinkDecoApi:
             checkpoint.reset(session)
 
         if checkpoint.total_pages is None:
-            checkpoint.record_first_page(*await self._async_read_system_log_page(0))
+            checkpoint.record_first_page(await self._async_read_system_log_page(0))
 
         for index in checkpoint.unread_pages():
-            checkpoint.pages[index], _ = await self._async_read_system_log_page(index)
+            checkpoint.record_page(index, await self._async_read_system_log_page(index))
 
         _LOGGER.debug("%s page_count=%d", SYSTEM_LOG_CONTEXT, checkpoint.total_pages)
 
@@ -409,8 +412,7 @@ class TplinkDecoApi:
         )
         self._decrypt_system_log_data(response_json)
 
-    async def _async_read_system_log_page(self, index: int) -> tuple[list[str], int]:
-        """Return one page of log lines and the snapshot's total page count."""
+    async def _async_read_system_log_page(self, index: int) -> SystemLogPage:
         payload = {
             "operation": "read",
             "params": {"index": index, "limit": SYSTEM_LOG_PAGE_SIZE},
@@ -426,14 +428,10 @@ class TplinkDecoApi:
         data = self._decrypt_system_log_data(response_json)
 
         try:
-            result = data["result"]
-            log_list = result.get("logList") or []
-            total_pages = int(result.get("totalNum") or 0)
+            return parse_system_log_page(data["result"])
         except Exception as err:
             _LOGGER.error("%s parse response error=%s", SYSTEM_LOG_CONTEXT, err)
             raise err
-
-        return [entry.get("content", "") for entry in log_list], total_pages
 
     # Return list of clients. Default lists clients for all decos.
     async def async_list_clients(

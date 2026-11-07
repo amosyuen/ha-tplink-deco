@@ -15,6 +15,7 @@ SYSTEM_LOG_LEVELS = {
     "DEBUG": 7,
     "ALL": 8,
 }
+DEFAULT_SYSTEM_LOG_LEVEL = "ALL"
 
 SYSTEM_LOG_PAGE_SIZE = 100
 SYSTEM_LOG_EMPTY_PAGE_RETRIES = 3
@@ -33,6 +34,20 @@ class SystemLog:
 
 
 @dataclass
+class SystemLogPage:
+    lines: list[str]
+    total_pages: int
+
+
+def parse_system_log_page(result: dict) -> SystemLogPage:
+    """Return the lines and snapshot page count from a "read" result."""
+    return SystemLogPage(
+        [entry.get("content", "") for entry in result.get("logList") or []],
+        int(result.get("totalNum") or 0),
+    )
+
+
+@dataclass
 class SystemLogCheckpoint:
     """Pages read from one log snapshot, kept across retries of a download."""
 
@@ -45,9 +60,12 @@ class SystemLogCheckpoint:
         self.total_pages = None
         self.pages = {}
 
-    def record_first_page(self, lines: list[str], total_pages: int) -> None:
-        self.pages[0] = lines
-        self.total_pages = max(total_pages, 1)
+    def record_first_page(self, page: SystemLogPage) -> None:
+        self.pages[0] = page.lines
+        self.total_pages = max(page.total_pages, 1)
+
+    def record_page(self, index: int, page: SystemLogPage) -> None:
+        self.pages[index] = page.lines
 
     def unread_pages(self) -> list[int]:
         return [
@@ -67,3 +85,6 @@ class SystemLogCheckpoint:
         newest_first = range(self.total_pages - 1, -1, -1)
         run = list(takewhile(lambda index: index in self.pages, newest_first))
         return [line for index in reversed(run) for line in self.pages[index]]
+
+    def result(self) -> SystemLog:
+        return SystemLog(self.newest_lines(), self.complete)

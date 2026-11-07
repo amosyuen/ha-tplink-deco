@@ -22,11 +22,11 @@ import voluptuous as vol
 from .const import COORDINATOR_DECOS_KEY
 from .const import DOMAIN
 from .const import SERVICE_DOWNLOAD_SYSTEM_LOG
+from .system_log import DEFAULT_SYSTEM_LOG_LEVEL
 from .system_log import SYSTEM_LOG_LEVELS
 
 ATTR_FILENAME = "filename"
 ATTR_LOG_LEVEL = "log_level"
-DEFAULT_LOG_LEVEL = "ALL"
 SYSTEM_LOG_DIR = "tplink_deco_logs"
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ DOWNLOAD_SYSTEM_LOG_SCHEMA = vol.Schema(
     {
         vol.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
         vol.Optional(ATTR_FILENAME): cv.string,
-        vol.Optional(ATTR_LOG_LEVEL, default=DEFAULT_LOG_LEVEL): vol.In(
+        vol.Optional(ATTR_LOG_LEVEL, default=DEFAULT_SYSTEM_LOG_LEVEL): vol.In(
             list(SYSTEM_LOG_LEVELS)
         ),
     }
@@ -100,14 +100,9 @@ def async_setup_services(hass: HomeAssistant) -> None:
         )
 
         await hass.async_add_executor_job(_write_lines, path, system_log.lines)
-        _LOGGER.info(
-            "Saved %d Deco system log lines to %s", len(system_log.lines), path
-        )
-        return {
-            "path": path,
-            "line_count": len(system_log.lines),
-            "complete": system_log.complete,
-        }
+        line_count = len(system_log.lines)
+        _LOGGER.info("Saved %d Deco system log lines to %s", line_count, path)
+        return {"path": path, "line_count": line_count, "complete": system_log.complete}
 
     hass.services.async_register(
         DOMAIN,
