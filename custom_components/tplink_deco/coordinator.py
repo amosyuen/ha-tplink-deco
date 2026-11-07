@@ -144,7 +144,9 @@ class TpLinkDeco:
             data.get("custom_nickname")
         )  # Only set if custom value
         if self.name is None:
-            self.name = normalize_name(snake_case_to_title_space(data.get("nickname")))
+            nickname = data.get("nickname")
+            if nickname:
+                self.name = normalize_name(snake_case_to_title_space(nickname))
         self.ip_address = filter_invalid_ip(data.get("device_ip"))
         self.online = data.get("group_status") == "connected"
         inet = data.get("inet_status")
