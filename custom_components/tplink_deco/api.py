@@ -29,13 +29,12 @@ from .exceptions import LoginInvalidException
 from .exceptions import TimeoutException
 from .exceptions import TransientConnectionException
 from .exceptions import UnexpectedApiException
-from .system_log import DEFAULT_SYSTEM_LOG_LEVEL
 from .system_log import SYSTEM_LOG_DEADLINE_SECONDS
 from .system_log import SYSTEM_LOG_EMPTY_PAGE_RETRIES
-from .system_log import SYSTEM_LOG_LEVELS
 from .system_log import SYSTEM_LOG_PAGE_SIZE
 from .system_log import SystemLog
 from .system_log import SystemLogCheckpoint
+from .system_log import SystemLogLevel
 from .system_log import SystemLogPage
 from .system_log import parse_system_log_page
 
@@ -345,10 +344,10 @@ class TplinkDecoApi:
 
     async def async_get_system_log(
         self,
-        level: int = SYSTEM_LOG_LEVELS[DEFAULT_SYSTEM_LOG_LEVEL],
+        level: SystemLogLevel = SystemLogLevel.ALL,
         deadline_seconds: float = SYSTEM_LOG_DEADLINE_SECONDS,
     ) -> SystemLog:
-        """Return log lines of level or more severe (1=ALERT ... 7=DEBUG, 8=ALL).
+        """Return log lines of level or more severe.
 
         The deadline includes time spent waiting for the operation lock, so
         polling never waits longer than deadline_seconds behind a download.
@@ -373,7 +372,7 @@ class TplinkDecoApi:
         return checkpoint.result()
 
     async def _async_read_system_log(
-        self, level: int, checkpoint: SystemLogCheckpoint
+        self, level: SystemLogLevel, checkpoint: SystemLogCheckpoint
     ) -> None:
         await self.async_login_if_needed()
 
@@ -406,7 +405,7 @@ class TplinkDecoApi:
         self._check_authenticated_data_error_code(SYSTEM_LOG_CONTEXT, data)
         return data
 
-    async def _async_build_system_log(self, level: int) -> None:
+    async def _async_build_system_log(self, level: SystemLogLevel) -> None:
         response_json = await self._async_post_system_log(
             {"operation": "build", "params": {"level": level}}
         )

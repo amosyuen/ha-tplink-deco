@@ -22,8 +22,7 @@ import voluptuous as vol
 from .const import COORDINATOR_DECOS_KEY
 from .const import DOMAIN
 from .const import SERVICE_DOWNLOAD_SYSTEM_LOG
-from .system_log import DEFAULT_SYSTEM_LOG_LEVEL
-from .system_log import SYSTEM_LOG_LEVELS
+from .system_log import SystemLogLevel
 
 ATTR_FILENAME = "filename"
 ATTR_LOG_LEVEL = "log_level"
@@ -35,8 +34,8 @@ DOWNLOAD_SYSTEM_LOG_SCHEMA = vol.Schema(
     {
         vol.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
         vol.Optional(ATTR_FILENAME): cv.string,
-        vol.Optional(ATTR_LOG_LEVEL, default=DEFAULT_SYSTEM_LOG_LEVEL): vol.In(
-            list(SYSTEM_LOG_LEVELS)
+        vol.Optional(ATTR_LOG_LEVEL, default=SystemLogLevel.ALL.name): vol.In(
+            [level.name for level in SystemLogLevel]
         ),
     }
 )
@@ -96,7 +95,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
 
         api = hass.data[DOMAIN][entry.entry_id][COORDINATOR_DECOS_KEY].api
         system_log = await api.async_get_system_log(
-            SYSTEM_LOG_LEVELS[call.data[ATTR_LOG_LEVEL]]
+            SystemLogLevel[call.data[ATTR_LOG_LEVEL]]
         )
 
         await hass.async_add_executor_job(_write_lines, path, system_log.lines)

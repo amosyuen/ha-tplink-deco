@@ -11,6 +11,7 @@ import pytest
 
 from custom_components.tplink_deco.api import TplinkDecoApi
 from custom_components.tplink_deco.exceptions import TransientConnectionException
+from custom_components.tplink_deco.system_log import SystemLogLevel
 
 
 @pytest.fixture
@@ -82,7 +83,7 @@ async def _hang():
 async def test_pages_are_read_newest_first_and_assembled_oldest_first(api):
     router = _serve(api, [["a1", "a2"], ["b1"], ["c1", "c2"], ["d1"]])
 
-    system_log = await api.async_get_system_log(level=4)
+    system_log = await api.async_get_system_log(level=SystemLogLevel.WARNING)
 
     assert system_log.lines == ["a1", "a2", "b1", "c1", "c2", "d1"]
     assert system_log.complete is True

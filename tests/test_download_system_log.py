@@ -18,6 +18,7 @@ from custom_components.tplink_deco.const import COORDINATOR_DECOS_KEY
 from custom_components.tplink_deco.const import DOMAIN
 from custom_components.tplink_deco.const import SERVICE_DOWNLOAD_SYSTEM_LOG
 from custom_components.tplink_deco.system_log import SystemLog
+from custom_components.tplink_deco.system_log import SystemLogLevel
 
 
 class FakeServices:
@@ -113,7 +114,9 @@ async def test_targets_selected_entry_when_two_are_loaded(hass, tmp_path):
     path = tmp_path / "tplink_deco_logs" / "deco.log"
     assert response == {"path": str(path), "line_count": 2, "complete": True}
     assert path.read_text() == "second log\nmore\n"
-    _api(hass, "second").async_get_system_log.assert_awaited_once_with(4)
+    _api(hass, "second").async_get_system_log.assert_awaited_once_with(
+        SystemLogLevel.WARNING
+    )
     _api(hass, "first").async_get_system_log.assert_not_awaited()
 
 
