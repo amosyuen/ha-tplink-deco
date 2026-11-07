@@ -1,5 +1,6 @@
 import asyncio
 import base64
+from collections.abc import Hashable
 import hashlib
 import json
 import logging
@@ -29,12 +30,22 @@ from .exceptions import LoginInvalidException
 from .exceptions import TimeoutException
 from .exceptions import TransientConnectionException
 from .exceptions import UnexpectedApiException
+from .system_log import SYSTEM_LOG_DEADLINE_SECONDS
+from .system_log import SYSTEM_LOG_EMPTY_PAGE_RETRIES
+from .system_log import SYSTEM_LOG_PAGE_SIZE
+from .system_log import SystemLog
+from .system_log import SystemLogLevel
+from .system_log import SystemLogSnapshot
+from .system_log import parse_page_count
+from .system_log import parse_page_lines
 
 AES_KEY_BYTES = 16
 MIN_AES_KEY = 10 ** (AES_KEY_BYTES - 1)
 MAX_AES_KEY = (10**AES_KEY_BYTES) - 1
 
 PKCS1_v1_5_HEADER_BYTES = 11
+
+SYSTEM_LOG_CONTEXT = "Get System Log"
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 LEGACY_ERROR_DECODING_PATTERN = re.compile(r"^<Error Decoding (.*)>$")
@@ -332,6 +343,97 @@ class TplinkDecoApi:
         _LOGGER.debug("Mobile data usage is available")
         return usage_kib
 
+    async def async_get_system_log(
+        self,
+        level: SystemLogLevel = SystemLogLevel.ALL,
+        deadline_seconds: float = SYSTEM_LOG_DEADLINE_SECONDS,
+    ) -> SystemLog:
+        """Return log lines of level or more severe.
+
+        The deadline includes time spent waiting for the operation lock, so
+        polling never waits longer than deadline_seconds behind a download.
+        Pages are read newest first, so a download cut short keeps the most
+        recent lines.
+        """
+        snapshot = SystemLogSnapshot()
+        try:
+            async with asyncio.timeout(deadline_seconds):
+                async with self._operation_lock:
+                    await self._async_call_with_retry(
+                        self._async_read_system_log, level, snapshot
+                    )
+        except TimeoutError:
+            _LOGGER.warning(
+                "%s reached its %s second deadline after %d pages; the log is"
+                " incomplete",
+                SYSTEM_LOG_CONTEXT,
+                deadline_seconds,
+                len(snapshot.pages),
+            )
+        return snapshot.result()
+
+    async def _async_read_system_log(
+        self, level: SystemLogLevel, snapshot: SystemLogSnapshot
+    ) -> None:
+        await self.async_login_if_needed()
+
+        # "build" snapshots the log buffer and "read" pages through it. A retry
+        # in the same session resumes the snapshot. A new session takes a new
+        # snapshot, whose page indexes can differ from the old one.
+        session = self._session_key()
+        if snapshot.session != session:
+            await self._async_build_system_log(level)
+            snapshot.reset(session)
+
+        if not snapshot.started:
+            result = await self._async_read_system_log_page(0)
+            snapshot.start(parse_page_count(result), parse_page_lines(result))
+
+        for index in snapshot.unread_page_indexes():
+            result = await self._async_read_system_log_page(index)
+            snapshot.add_page(index, parse_page_lines(result))
+
+        _LOGGER.debug("%s page_count=%d", SYSTEM_LOG_CONTEXT, snapshot.page_count)
+
+    def _session_key(self) -> Hashable:
+        return (self._stok, self._outer_id)
+
+    async def _async_post_system_log(self, payload: dict) -> dict:
+        return await self._async_post(
+            SYSTEM_LOG_CONTEXT,
+            f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/log_export",
+            params={"form": "feedback_log"},
+            data=self._encode_payload(payload),
+        )
+
+    def _decrypt_system_log_data(self, response_json: dict) -> dict:
+        data = self._decrypt_data(SYSTEM_LOG_CONTEXT, response_json["data"])
+        self._check_authenticated_data_error_code(SYSTEM_LOG_CONTEXT, data)
+        return data
+
+    async def _async_build_system_log(self, level: SystemLogLevel) -> None:
+        response_json = await self._async_post_system_log(
+            {"operation": "build", "params": {"level": level}}
+        )
+        self._decrypt_system_log_data(response_json)
+
+    async def _async_read_system_log_page(self, index: int) -> dict:
+        payload = {
+            "operation": "read",
+            "params": {"index": index, "limit": SYSTEM_LOG_PAGE_SIZE},
+        }
+        # The Deco sometimes answers a page read with empty data while the
+        # session is still valid; retry the page before _decrypt_data treats
+        # it as an expired session.
+        for _ in range(SYSTEM_LOG_EMPTY_PAGE_RETRIES):
+            response_json = await self._async_post_system_log(payload)
+            if response_json.get("data") != "":
+                break
+            _LOGGER.debug("%s empty page index=%d, retrying", SYSTEM_LOG_CONTEXT, index)
+        data = self._decrypt_system_log_data(response_json)
+
+        return data["result"]
+
     # Return list of clients. Default lists clients for all decos.
     async def async_list_clients(
         self, deco_mac="default", timeout_error_retries: int | None = None
@@ -433,6 +535,11 @@ class TplinkDecoApi:
         try:
             await self._async_login()
             self._login_future.set_result(True)
+        except asyncio.CancelledError:
+            # Resolve the future so the finally block and other waiters don't
+            # wait forever.
+            self._login_future.cancel()
+            raise
         except Exception as err:
             self._login_future.set_exception(err)
             raise err
@@ -440,7 +547,7 @@ class TplinkDecoApi:
             # Await future to suppress future exception was never retrieved error
             try:
                 await self._login_future
-            except Exception:
+            except (Exception, asyncio.CancelledError):
                 pass
             self._login_future = None
 
