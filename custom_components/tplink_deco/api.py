@@ -879,6 +879,24 @@ class TplinkDecoApi:
         self._cookie = None
         self._clear_outer_auth()
 
+    async def async_logout(self) -> None:
+        """Log out of the Deco to release the admin session."""
+        async with self._operation_lock:
+            if self._stok is None or self._cookie is None:
+                self.clear_auth()
+                return
+            try:
+                await self._async_post(
+                    "Logout",
+                    f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/system",
+                    params={"form": "logout"},
+                    data=self._encode_payload({"operation": "logout"}),
+                )
+            except Exception as err:  # best effort: never block the unload
+                _LOGGER.debug("Logout failed: %s", err)
+            finally:
+                self.clear_auth()
+
     def _check_authenticated_data_error_code(self, context: str, data: dict) -> None:
         """Check an authenticated response and recover from an expired session."""
         error_code = data.get("error_code") or data.get("errorcode")

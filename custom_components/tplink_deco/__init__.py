@@ -379,6 +379,12 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     )
 
     if unloaded:
+        if deco_coordinator is not None:
+            await deco_coordinator.async_shutdown()
+        if clients_coordinator is not None:
+            await clients_coordinator.async_shutdown()
+        if deco_coordinator is not None:
+            await deco_coordinator.api.async_logout()
         hass.data[DOMAIN].pop(config_entry.entry_id, None)
         hass.services.async_remove(DOMAIN, SERVICE_PAUSE_POLLING)
         hass.services.async_remove(DOMAIN, SERVICE_RESUME_POLLING)
