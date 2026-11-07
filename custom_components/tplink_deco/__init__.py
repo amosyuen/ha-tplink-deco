@@ -67,9 +67,18 @@ from .coordinator import TpLinkDecoData
 from .coordinator import TplinkDecoClientUpdateCoordinator
 from .coordinator import TplinkDecoUpdateCoordinator
 from .mobile import TplinkDecoMobileDataUpdateCoordinator
+from .services import async_setup_services
 from .wireless import TplinkDecoWirelessUpdateCoordinator
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Register integration-wide actions once, independent of config entries."""
+    async_setup_services(hass)
+    return True
 
 
 def _remove_discovered_decos_from_clients(

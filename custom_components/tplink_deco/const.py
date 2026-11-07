@@ -63,6 +63,20 @@ SIGNAL_DECO_ADDED = f"{DOMAIN}-deco-added"
 SERVICE_REBOOT_DECO = "reboot_deco"
 SERVICE_PAUSE_POLLING = "pause_polling"
 SERVICE_RESUME_POLLING = "resume_polling"
+SERVICE_DOWNLOAD_SYSTEM_LOG = "download_system_log"
+
+# Deco system log levels, most severe first. Each level includes those above it.
+SYSTEM_LOG_LEVELS = {
+    "ALERT": 1,
+    "CRITICAL": 2,
+    "ERROR": 3,
+    "WARNING": 4,
+    "NOTICE": 5,
+    "INFO": 6,
+    "DEBUG": 7,
+    "ALL": 8,
+}
+
 # Platforms
 PLATFORMS = [
     "device_tracker",

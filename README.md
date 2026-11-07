@@ -139,6 +139,7 @@ reliable across Deco models and firmware versions.
 - `tplink_deco.pause_polling`
 - `tplink_deco.resume_polling`
 - `tplink_deco.reboot_deco`
+- `tplink_deco.download_system_log`
 
 ---
 
@@ -243,6 +244,25 @@ target:
     - ef41562be18e5e3057e232ffb26de9bb
     - d7f96b1f312d83f195b35ecdfbb3b02b
 ```
+
+#### Download System Log Service
+
+Saves the Deco system log, the one the web UI shows under Advanced > System >
+System Log, to `<config>/tplink_deco_logs/<filename>`. The response holds the
+file path, the line count, and `complete`.
+
+```yaml
+service: tplink_deco.download_system_log
+data:
+  config_entry_id: 01JABCDEF0123456789ABCDEFG # required with more than one Deco entry
+  filename: deco.log # optional, defaults to deco-<timestamp>.log
+  log_level: WARNING # optional, defaults to ALL
+response_variable: system_log
+```
+
+A download stops after 60 seconds so that polling isn't held up behind it.
+Pages are read newest first, so a download cut short keeps the most recent
+lines and returns `complete: false`.
 
 <!-- ha-marketplace:exclude-start -->
 
