@@ -248,8 +248,8 @@ target:
 #### Download System Log Service
 
 Saves the Deco system log to `<config>/tplink_deco_logs/<filename>` and returns
-the file path and line count. This is the log the web UI shows under Advanced >
-System > System Log.
+the file path and line count. The file is the one the web UI's Save Log button
+produces under Advanced > System > System Log.
 
 ```yaml
 service: tplink_deco.download_system_log
@@ -260,8 +260,9 @@ data:
 response_variable: system_log
 ```
 
-Downloads stop after 60 seconds so they don't hold up polling. A download cut
-short keeps the most recent lines and returns `complete: false`.
+The action isn't available on firmware that uses the legacy encrypted web
+session, such as the Deco S7 firmware listed under
+[Tested Devices](#tested-devices).
 
 <!-- ha-marketplace:exclude-start -->
 

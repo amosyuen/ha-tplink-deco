@@ -15,8 +15,7 @@ download_system_log:
   name: Download system log
   description: >-
     Save the Deco system log to the tplink_deco_logs folder of the Home
-    Assistant config directory. Returns the file path, the line count, and
-    whether the whole log was read before the 60 second deadline.
+    Assistant config directory. Returns the file path and line count.
   fields:
     config_entry_id:
       name: Deco

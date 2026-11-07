@@ -1,4 +1,4 @@
-"""Tests for paging through the Deco system log."""
+"""Tests for downloading the Deco system log through build and save_log."""
 
 from __future__ import annotations
 
@@ -10,15 +10,24 @@ import aiohttp
 import pytest
 
 from custom_components.tplink_deco.api import TplinkDecoApi
-from custom_components.tplink_deco.exceptions import TransientConnectionException
+from custom_components.tplink_deco.exceptions import UnexpectedApiException
 from custom_components.tplink_deco.system_log import SystemLogLevel
+
+LOG_TEXT = "Sat Nov  9 10:00:00 2026 user.err : first\nsecond line\n"
 
 
 @pytest.fixture
-def api():
+def session():
+    session = MagicMock(spec=aiohttp.ClientSession)
+    session.post = AsyncMock()
+    return session
+
+
+@pytest.fixture
+def api(session):
     api = TplinkDecoApi(
-        session=MagicMock(spec=aiohttp.ClientSession),
-        host="http://192.168.1.1",
+        session=session,
+        host="https://192.168.1.1",
         username="admin",
         password="password",
         verify_ssl=False,
@@ -34,161 +43,142 @@ def _authenticate(api, stok):
     api._seq = 1
 
 
-class FakeLogRouter:
-    """Serve a log snapshot in pages, recording each request."""
+class FakeRouter:
+    """Answer "build" through _async_post and "save_log" through the session."""
 
-    def __init__(self, pages):
-        self.pages = pages
+    def __init__(self, api, session):
+        self.api = api
         self.builds = []
-        self.reads = []
-        self.page_responses = {}
+        self.saves = []
+        self.save_responses = []
+        api._async_post = AsyncMock(side_effect=self.build)
+        session.post.side_effect = self.save
 
-    async def post(self, context, url, params, data):
-        if data["operation"] == "build":
-            self.builds.append(data["params"]["level"])
-            return {"data": {"error_code": 0}}
+    async def build(self, context, url, params, data):
+        assert params == {"form": "feedback_log"}
+        assert data["operation"] == "build"
+        self.builds.append((self.api._stok, data["params"]["level"]))
+        return {"data": {"error_code": 0}}
 
-        index = data["params"]["index"]
-        self.reads.append(index)
-        responses = self.page_responses.get(index)
-        if responses:
-            response = responses.pop(0)
-            if isinstance(response, BaseException):
-                raise response
-            if callable(response):
-                return await response()
-            return response
-        return {
-            "data": {
-                "error_code": 0,
-                "result": {
-                    "totalNum": len(self.pages),
-                    "logList": [{"content": line} for line in self.pages[index]],
-                },
-            }
-        }
+    async def save(self, url, params, data, cookies, ssl):
+        assert params == {"form": "save_log"}
+        self.saves.append((url, cookies))
+        if self.save_responses:
+            return self.save_responses.pop(0)
+        return _text_response(LOG_TEXT)
 
 
-def _serve(api, pages):
-    router = FakeLogRouter(pages)
-    api._async_post = AsyncMock(side_effect=router.post)
-    return router
+def _text_response(text):
+    response = MagicMock()
+    response.content_type = "text/plain"
+    response.raise_for_status = MagicMock()
+    response.text = AsyncMock(return_value=text)
+    return response
 
 
-async def _hang():
-    await asyncio.Event().wait()
+def _json_response(payload):
+    response = MagicMock()
+    response.content_type = "application/json"
+    response.raise_for_status = MagicMock()
+    response.json = AsyncMock(return_value=payload)
+    return response
 
 
-@pytest.mark.asyncio
-async def test_pages_are_read_newest_first_and_assembled_oldest_first(api):
-    router = _serve(api, [["a1", "a2"], ["b1"], ["c1", "c2"], ["d1"]])
-
-    system_log = await api.async_get_system_log(level=SystemLogLevel.WARNING)
-
-    assert system_log.lines == ["a1", "a2", "b1", "c1", "c2", "d1"]
-    assert system_log.complete is True
-    assert router.builds == [4]
-    assert router.reads == [0, 3, 2, 1]
+def _status_response(status):
+    response = MagicMock()
+    response.raise_for_status.side_effect = aiohttp.ClientResponseError(
+        request_info=MagicMock(), history=(), status=status
+    )
+    return response
 
 
-@pytest.mark.asyncio
-async def test_deadline_keeps_newest_unbroken_pages(api):
-    router = _serve(api, [["a"], ["b"], ["c"], ["d"], ["e"]])
-    router.page_responses[2] = [_hang]
-
-    system_log = await api.async_get_system_log(deadline_seconds=0.05)
-
-    # Page 0 was read for the page count but is not contiguous with 3 and 4.
-    assert router.reads == [0, 4, 3, 2]
-    assert system_log.lines == ["d", "e"]
-    assert system_log.complete is False
-
-
-@pytest.mark.asyncio
-async def test_deadline_releases_lock_for_waiting_poller(api):
-    router = _serve(api, [["a"], ["b"]])
-    router.page_responses[1] = [_hang]
-
-    download = asyncio.create_task(api.async_get_system_log(deadline_seconds=0.05))
-    await asyncio.sleep(0)
-    assert api._operation_lock.locked()
-
-    async def poll():
-        async with api._operation_lock:
-            return "polled"
-
-    async with asyncio.timeout(1):
-        assert await poll() == "polled"
-    system_log = await download
-    assert system_log.complete is False
-    assert not api._operation_lock.locked()
-
-
-@pytest.mark.asyncio
-async def test_deadline_includes_waiting_for_lock(api):
-    router = _serve(api, [["a"]])
-
-    async with api._operation_lock:
-        system_log = await api.async_get_system_log(deadline_seconds=0.05)
-
-    assert system_log.lines == []
-    assert system_log.complete is False
-    assert router.builds == []
-
-
-@pytest.mark.asyncio
-async def test_empty_page_is_retried_without_relogin(api):
-    router = _serve(api, [["a"], ["b"]])
-    router.page_responses[1] = [{"data": ""}, {"data": ""}]
-    api.async_login = AsyncMock()
-
-    system_log = await api.async_get_system_log()
-
-    assert system_log.lines == ["a", "b"]
-    assert router.reads == [0, 1, 1, 1]
-    assert router.builds == [8]
-    api.async_login.assert_not_awaited()
-    assert api._stok == "token"
-
-
-@pytest.mark.asyncio
-async def test_retry_in_same_session_resumes_snapshot(api):
-    router = _serve(api, [["a"], ["b"], ["c"]])
-    router.page_responses[1] = [TransientConnectionException("reset")]
-
-    system_log = await api.async_get_system_log()
-
-    assert system_log.lines == ["a", "b", "c"]
-    assert router.builds == [8]
-    assert router.reads == [0, 2, 1, 1]
-
-
-@pytest.mark.asyncio
-async def test_relogin_takes_new_snapshot(api):
-    router = _serve(api, [["a"], ["b"], ["c"]])
-    router.page_responses[1] = [{"data": ""}] * 3
-
+def _relogin(api):
     async def login():
         _authenticate(api, "fresh-token")
 
     api.async_login = AsyncMock(side_effect=login)
 
-    system_log = await api.async_get_system_log()
 
-    assert system_log.lines == ["a", "b", "c"]
-    assert router.builds == [8, 8]
-    assert router.reads == [0, 2, 1, 1, 1, 0, 2, 1]
+@pytest.mark.asyncio
+async def test_builds_at_level_then_saves_snapshot(api, session):
+    router = FakeRouter(api, session)
+
+    text = await api.async_get_system_log(SystemLogLevel.WARNING)
+
+    assert text == LOG_TEXT
+    assert router.builds == [("token", 4)]
+    assert router.saves == [
+        (
+            "https://192.168.1.1/cgi-bin/luci/;stok=token/admin/log_export",
+            {"sysauth": "abc"},
+        )
+    ]
 
 
 @pytest.mark.asyncio
-async def test_deadline_during_login_releases_lock(api):
-    _serve(api, [["a"]])
+@pytest.mark.parametrize(
+    "expired",
+    [
+        lambda: _json_response({"success": False, "errorcode": "timeout"}),
+        lambda: _status_response(403),
+    ],
+    ids=["errorcode-timeout", "http-403"],
+)
+async def test_expired_session_relogs_in_and_rebuilds(api, session, expired):
+    router = FakeRouter(api, session)
+    router.save_responses.append(expired())
+    _relogin(api)
+
+    text = await api.async_get_system_log()
+
+    assert text == LOG_TEXT
+    api.async_login.assert_awaited_once()
+    assert router.builds == [("token", 8), ("fresh-token", 8)]
+
+
+@pytest.mark.asyncio
+async def test_other_error_is_not_retried_as_expired_session(api, session):
+    router = FakeRouter(api, session)
+    router.save_responses.append(_json_response({"errorcode": "-40401"}))
+    _relogin(api)
+
+    with pytest.raises(UnexpectedApiException, match="-40401"):
+        await api.async_get_system_log()
+
+    api.async_login.assert_not_awaited()
+    assert len(router.builds) == 1
+
+
+@pytest.mark.asyncio
+async def test_outer_session_firmware_is_unsupported(api, session):
+    router = FakeRouter(api, session)
+    api._outer_id = "outer"
+
+    with pytest.raises(UnexpectedApiException, match="not supported"):
+        await api.async_get_system_log()
+
+    assert router.builds == []
+    assert router.saves == []
+
+
+@pytest.mark.asyncio
+async def test_cancelled_login_releases_lock(api, session):
+    FakeRouter(api, session)
     api.clear_auth()
-    api._async_login = AsyncMock(side_effect=_hang)
 
-    async with asyncio.timeout(1):
-        system_log = await api.async_get_system_log(deadline_seconds=0.05)
+    async def hang():
+        await asyncio.Event().wait()
 
-    assert system_log.complete is False
+    api._async_login = AsyncMock(side_effect=hang)
+
+    download = asyncio.create_task(api.async_get_system_log())
+    await asyncio.sleep(0)
+    download.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await download
+
     assert not api._operation_lock.locked()
     assert api._login_future is None
+    async with asyncio.timeout(1):
+        async with api._operation_lock:
+            pass

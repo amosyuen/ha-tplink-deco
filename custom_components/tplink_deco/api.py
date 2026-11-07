@@ -1,6 +1,5 @@
 import asyncio
 import base64
-from collections.abc import Hashable
 import hashlib
 import json
 import logging
@@ -30,14 +29,7 @@ from .exceptions import LoginInvalidException
 from .exceptions import TimeoutException
 from .exceptions import TransientConnectionException
 from .exceptions import UnexpectedApiException
-from .system_log import SYSTEM_LOG_DEADLINE_SECONDS
-from .system_log import SYSTEM_LOG_EMPTY_PAGE_RETRIES
-from .system_log import SYSTEM_LOG_PAGE_SIZE
-from .system_log import SystemLog
 from .system_log import SystemLogLevel
-from .system_log import SystemLogSnapshot
-from .system_log import parse_page_count
-from .system_log import parse_page_lines
 
 AES_KEY_BYTES = 16
 MIN_AES_KEY = 10 ** (AES_KEY_BYTES - 1)
@@ -344,95 +336,69 @@ class TplinkDecoApi:
         return usage_kib
 
     async def async_get_system_log(
-        self,
-        level: SystemLogLevel = SystemLogLevel.ALL,
-        deadline_seconds: float = SYSTEM_LOG_DEADLINE_SECONDS,
-    ) -> SystemLog:
-        """Return log lines of level or more severe.
+        self, level: SystemLogLevel = SystemLogLevel.ALL
+    ) -> str:
+        """Return the system log text at level or more severe."""
+        async with self._operation_lock:
+            return await self._async_call_with_retry(self._async_get_system_log, level)
 
-        The deadline includes time spent waiting for the operation lock, so
-        polling never waits longer than deadline_seconds behind a download.
-        Pages are read newest first, so a download cut short keeps the most
-        recent lines.
-        """
-        snapshot = SystemLogSnapshot()
-        try:
-            async with asyncio.timeout(deadline_seconds):
-                async with self._operation_lock:
-                    await self._async_call_with_retry(
-                        self._async_read_system_log, level, snapshot
-                    )
-        except TimeoutError:
-            _LOGGER.warning(
-                "%s reached its %s second deadline after %d pages; the log is"
-                " incomplete",
-                SYSTEM_LOG_CONTEXT,
-                deadline_seconds,
-                len(snapshot.pages),
-            )
-        return snapshot.result()
-
-    async def _async_read_system_log(
-        self, level: SystemLogLevel, snapshot: SystemLogSnapshot
-    ) -> None:
+    async def _async_get_system_log(self, level: SystemLogLevel) -> str:
         await self.async_login_if_needed()
+        if self._outer_id is not None:
+            raise UnexpectedApiException(
+                f"{SYSTEM_LOG_CONTEXT} is not supported on outer-session firmware"
+            )
 
-        # "build" snapshots the log buffer and "read" pages through it. A retry
-        # in the same session resumes the snapshot. A new session takes a new
-        # snapshot, whose page indexes can differ from the old one.
-        session = self._session_key()
-        if snapshot.session != session:
-            await self._async_build_system_log(level)
-            snapshot.reset(session)
-
-        if not snapshot.started:
-            result = await self._async_read_system_log_page(0)
-            snapshot.start(parse_page_count(result), parse_page_lines(result))
-
-        for index in snapshot.unread_page_indexes():
-            result = await self._async_read_system_log_page(index)
-            snapshot.add_page(index, parse_page_lines(result))
-
-        _LOGGER.debug("%s page_count=%d", SYSTEM_LOG_CONTEXT, snapshot.page_count)
-
-    def _session_key(self) -> Hashable:
-        return (self._stok, self._outer_id)
-
-    async def _async_post_system_log(self, payload: dict) -> dict:
-        return await self._async_post(
+        # This is the web UI's Save Log: "build" snapshots the log at level, and
+        # "save_log" returns that snapshot as one plain-text file.
+        response_json = await self._async_post(
             SYSTEM_LOG_CONTEXT,
             f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/log_export",
             params={"form": "feedback_log"},
-            data=self._encode_payload(payload),
+            data=self._encode_payload(
+                {"operation": "build", "params": {"level": level}}
+            ),
         )
-
-    def _decrypt_system_log_data(self, response_json: dict) -> dict:
         data = self._decrypt_data(SYSTEM_LOG_CONTEXT, response_json["data"])
         self._check_authenticated_data_error_code(SYSTEM_LOG_CONTEXT, data)
-        return data
+        return await self._async_save_system_log()
 
-    async def _async_build_system_log(self, level: SystemLogLevel) -> None:
-        response_json = await self._async_post_system_log(
-            {"operation": "build", "params": {"level": level}}
-        )
-        self._decrypt_system_log_data(response_json)
+    async def _async_save_system_log(self) -> str:
+        """Return the built snapshot. Unlike other calls, it is unencrypted."""
+        form = aiohttp.FormData()
+        form.add_field("operation", "save")
+        cookies = dict([self._cookie.split("=", 1)]) if self._cookie else {}
+        try:
+            async with asyncio.timeout(self._timeout_seconds):
+                response = await self._session.post(
+                    f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/log_export",
+                    params={"form": "save_log"},
+                    data=form,
+                    cookies=cookies,
+                    ssl=self._ssl_context,
+                )
+                response.raise_for_status()
+                if response.content_type == "text/plain":
+                    return await response.text()
+                error = await response.json(content_type=None)
+        except asyncio.TimeoutError as err:
+            raise TimeoutException(f"{SYSTEM_LOG_CONTEXT} timed out") from err
+        except aiohttp.ClientResponseError as err:
+            if err.status in (401, 403):
+                self.clear_auth()
+                raise ForbiddenException(f"{SYSTEM_LOG_CONTEXT} {err}") from err
+            raise err
+        except (aiohttp.ClientPayloadError, aiohttp.ServerDisconnectedError) as err:
+            raise TransientConnectionException(
+                f"{SYSTEM_LOG_CONTEXT} transient connection error: {err}"
+            ) from err
 
-    async def _async_read_system_log_page(self, index: int) -> dict:
-        payload = {
-            "operation": "read",
-            "params": {"index": index, "limit": SYSTEM_LOG_PAGE_SIZE},
-        }
-        # The Deco sometimes answers a page read with empty data while the
-        # session is still valid; retry the page before _decrypt_data treats
-        # it as an expired session.
-        for _ in range(SYSTEM_LOG_EMPTY_PAGE_RETRIES):
-            response_json = await self._async_post_system_log(payload)
-            if response_json.get("data") != "":
-                break
-            _LOGGER.debug("%s empty page index=%d, retrying", SYSTEM_LOG_CONTEXT, index)
-        data = self._decrypt_system_log_data(response_json)
-
-        return data["result"]
+        # LuCI answers an expired session with errorcode "timeout".
+        error_code = error.get("errorcode") or error.get("error_code")
+        if error_code == "timeout":
+            self.clear_auth()
+            raise EmptyDataException(f"{SYSTEM_LOG_CONTEXT} session expired")
+        raise UnexpectedApiException(f"{SYSTEM_LOG_CONTEXT} error_code={error_code}")
 
     # Return list of clients. Default lists clients for all decos.
     async def async_list_clients(

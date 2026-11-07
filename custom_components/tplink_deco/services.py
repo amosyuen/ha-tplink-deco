@@ -81,10 +81,10 @@ def _system_log_filename(filename: str | None) -> str:
     return filename
 
 
-def _write_lines(path: str, lines: list[str]) -> None:
+def _write_text(path: str, text: str) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8", newline="\n") as f:
-        f.write("".join(f"{line}\n" for line in lines))
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        f.write(text)
 
 
 def async_setup_services(hass: HomeAssistant) -> None:
@@ -94,14 +94,12 @@ def async_setup_services(hass: HomeAssistant) -> None:
         path = hass.config.path(SYSTEM_LOG_DIR, filename)
 
         api = hass.data[DOMAIN][entry.entry_id][COORDINATOR_DECOS_KEY].api
-        system_log = await api.async_get_system_log(
-            SystemLogLevel[call.data[ATTR_LOG_LEVEL]]
-        )
+        text = await api.async_get_system_log(SystemLogLevel[call.data[ATTR_LOG_LEVEL]])
 
-        await hass.async_add_executor_job(_write_lines, path, system_log.lines)
-        line_count = len(system_log.lines)
+        await hass.async_add_executor_job(_write_text, path, text)
+        line_count = len(text.splitlines())
         _LOGGER.info("Saved %d Deco system log lines to %s", line_count, path)
-        return {"path": path, "line_count": line_count, "complete": system_log.complete}
+        return {"path": path, "line_count": line_count}
 
     hass.services.async_register(
         DOMAIN,
