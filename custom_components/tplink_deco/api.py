@@ -1,5 +1,6 @@
 import asyncio
 import base64
+from collections.abc import Hashable
 import hashlib
 import json
 import logging
@@ -33,10 +34,10 @@ from .system_log import SYSTEM_LOG_DEADLINE_SECONDS
 from .system_log import SYSTEM_LOG_EMPTY_PAGE_RETRIES
 from .system_log import SYSTEM_LOG_PAGE_SIZE
 from .system_log import SystemLog
-from .system_log import SystemLogCheckpoint
 from .system_log import SystemLogLevel
-from .system_log import SystemLogPage
-from .system_log import parse_system_log_page
+from .system_log import SystemLogSnapshot
+from .system_log import parse_page_count
+from .system_log import parse_page_lines
 
 AES_KEY_BYTES = 16
 MIN_AES_KEY = 10 ** (AES_KEY_BYTES - 1)
@@ -354,12 +355,12 @@ class TplinkDecoApi:
         Pages are read newest first, so a download cut short keeps the most
         recent lines.
         """
-        checkpoint = SystemLogCheckpoint()
+        snapshot = SystemLogSnapshot()
         try:
             async with asyncio.timeout(deadline_seconds):
                 async with self._operation_lock:
                     await self._async_call_with_retry(
-                        self._async_read_system_log, level, checkpoint
+                        self._async_read_system_log, level, snapshot
                     )
         except TimeoutError:
             _LOGGER.warning(
@@ -367,30 +368,35 @@ class TplinkDecoApi:
                 " incomplete",
                 SYSTEM_LOG_CONTEXT,
                 deadline_seconds,
-                len(checkpoint.pages),
+                len(snapshot.pages),
             )
-        return checkpoint.result()
+        return snapshot.result()
 
     async def _async_read_system_log(
-        self, level: SystemLogLevel, checkpoint: SystemLogCheckpoint
+        self, level: SystemLogLevel, snapshot: SystemLogSnapshot
     ) -> None:
         await self.async_login_if_needed()
 
         # "build" snapshots the log buffer and "read" pages through it. A retry
-        # in the same session resumes from the checkpoint. A new session takes
-        # a new snapshot, whose page indexes can differ from the old one.
-        session = (self._stok, self._outer_id)
-        if checkpoint.session != session:
+        # in the same session resumes the snapshot. A new session takes a new
+        # snapshot, whose page indexes can differ from the old one.
+        session = self._session_key()
+        if snapshot.session != session:
             await self._async_build_system_log(level)
-            checkpoint.reset(session)
+            snapshot.reset(session)
 
-        if checkpoint.total_pages is None:
-            checkpoint.record_first_page(await self._async_read_system_log_page(0))
+        if not snapshot.started:
+            result = await self._async_read_system_log_page(0)
+            snapshot.start(parse_page_count(result), parse_page_lines(result))
 
-        for index in checkpoint.unread_pages():
-            checkpoint.record_page(index, await self._async_read_system_log_page(index))
+        for index in snapshot.unread_page_indexes():
+            result = await self._async_read_system_log_page(index)
+            snapshot.add_page(index, parse_page_lines(result))
 
-        _LOGGER.debug("%s page_count=%d", SYSTEM_LOG_CONTEXT, checkpoint.total_pages)
+        _LOGGER.debug("%s page_count=%d", SYSTEM_LOG_CONTEXT, snapshot.page_count)
+
+    def _session_key(self) -> Hashable:
+        return (self._stok, self._outer_id)
 
     async def _async_post_system_log(self, payload: dict) -> dict:
         return await self._async_post(
@@ -411,7 +417,7 @@ class TplinkDecoApi:
         )
         self._decrypt_system_log_data(response_json)
 
-    async def _async_read_system_log_page(self, index: int) -> SystemLogPage:
+    async def _async_read_system_log_page(self, index: int) -> dict:
         payload = {
             "operation": "read",
             "params": {"index": index, "limit": SYSTEM_LOG_PAGE_SIZE},
@@ -426,11 +432,7 @@ class TplinkDecoApi:
             _LOGGER.debug("%s empty page index=%d, retrying", SYSTEM_LOG_CONTEXT, index)
         data = self._decrypt_system_log_data(response_json)
 
-        try:
-            return parse_system_log_page(data["result"])
-        except Exception as err:
-            _LOGGER.error("%s parse response error=%s", SYSTEM_LOG_CONTEXT, err)
-            raise err
+        return data["result"]
 
     # Return list of clients. Default lists clients for all decos.
     async def async_list_clients(

@@ -152,7 +152,7 @@ async def test_empty_page_is_retried_without_relogin(api):
 
 
 @pytest.mark.asyncio
-async def test_retry_in_same_session_resumes_from_checkpoint(api):
+async def test_retry_in_same_session_resumes_snapshot(api):
     router = _serve(api, [["a"], ["b"], ["c"]])
     router.page_responses[1] = [TransientConnectionException("reset")]
 

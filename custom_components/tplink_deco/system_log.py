@@ -1,5 +1,6 @@
 """Deco system log data and paging state, independent of transport."""
 
+from collections.abc import Hashable
 from dataclasses import dataclass
 from dataclasses import field
 from enum import IntEnum
@@ -39,56 +40,55 @@ class SystemLog:
     complete: bool
 
 
-@dataclass
-class SystemLogPage:
-    lines: list[str]
-    total_pages: int
+def parse_page_lines(result: dict) -> list[str]:
+    return [entry.get("content", "") for entry in result.get("logList") or []]
 
 
-def parse_system_log_page(result: dict) -> SystemLogPage:
-    """Return the lines and snapshot page count from a "read" result."""
-    return SystemLogPage(
-        [entry.get("content", "") for entry in result.get("logList") or []],
-        int(result.get("totalNum") or 0),
-    )
+def parse_page_count(result: dict) -> int:
+    """Return the snapshot's page count, which every "read" result repeats."""
+    return int(result.get("totalNum") or 0)
 
 
 @dataclass
-class SystemLogCheckpoint:
-    """Pages read from one log snapshot, kept across retries of a download."""
+class SystemLogSnapshot:
+    """Pages read from one router log snapshot, kept across retries of a download."""
 
-    session: tuple | None = None
-    total_pages: int | None = None
+    session: Hashable = None
+    page_count: int | None = None
     pages: dict[int, list[str]] = field(default_factory=dict)
 
-    def reset(self, session: tuple) -> None:
+    def reset(self, session: Hashable) -> None:
         self.session = session
-        self.total_pages = None
+        self.page_count = None
         self.pages = {}
 
-    def record_first_page(self, page: SystemLogPage) -> None:
-        self.pages[0] = page.lines
-        self.total_pages = max(page.total_pages, 1)
+    @property
+    def started(self) -> bool:
+        return self.page_count is not None
 
-    def record_page(self, index: int, page: SystemLogPage) -> None:
-        self.pages[index] = page.lines
+    def start(self, page_count: int, first_lines: list[str]) -> None:
+        self.page_count = max(page_count, 1)
+        self.pages[0] = first_lines
 
-    def unread_pages(self) -> list[int]:
+    def add_page(self, index: int, lines: list[str]) -> None:
+        self.pages[index] = lines
+
+    def unread_page_indexes(self) -> list[int]:
         return [
             index
-            for index in range(self.total_pages - 1, 0, -1)
+            for index in range(self.page_count - 1, 0, -1)
             if index not in self.pages
         ]
 
     @property
     def complete(self) -> bool:
-        return self.total_pages is not None and len(self.pages) >= self.total_pages
+        return self.started and len(self.pages) >= self.page_count
 
     def newest_lines(self) -> list[str]:
         """Return lines from the newest pages, stopping at the first unread one."""
-        if self.total_pages is None:
+        if not self.started:
             return []
-        newest_first = range(self.total_pages - 1, -1, -1)
+        newest_first = range(self.page_count - 1, -1, -1)
         run = list(takewhile(lambda index: index in self.pages, newest_first))
         return [line for index in reversed(run) for line in self.pages[index]]
 
