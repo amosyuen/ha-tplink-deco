@@ -348,7 +348,7 @@ class TplinkDecoApi:
         level: int = SYSTEM_LOG_LEVELS[DEFAULT_SYSTEM_LOG_LEVEL],
         deadline_seconds: float = SYSTEM_LOG_DEADLINE_SECONDS,
     ) -> SystemLog:
-        """Return the system log at or above level (1=ALERT ... 7=DEBUG, 8=ALL).
+        """Return log lines of level or more severe (1=ALERT ... 7=DEBUG, 8=ALL).
 
         The deadline includes time spent waiting for the operation lock, so
         polling never waits longer than deadline_seconds behind a download.
@@ -364,11 +364,11 @@ class TplinkDecoApi:
                     )
         except TimeoutError:
             _LOGGER.warning(
-                "%s stopped after %s seconds with %d of %s pages",
+                "%s reached its %s second deadline after %d pages; the log is"
+                " incomplete",
                 SYSTEM_LOG_CONTEXT,
                 deadline_seconds,
                 len(checkpoint.pages),
-                checkpoint.total_pages,
             )
         return checkpoint.result()
 

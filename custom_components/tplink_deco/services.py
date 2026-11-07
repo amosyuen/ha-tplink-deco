@@ -1,7 +1,7 @@
 """Integration-wide actions for TP-Link Deco.
 
-Actions are registered once for the integration and resolve their target
-config entry at call time, so they work with any number of Deco entries.
+Actions are registered once and resolve their target config entry at call
+time, so they work with any number of Deco entries.
 """
 
 import logging

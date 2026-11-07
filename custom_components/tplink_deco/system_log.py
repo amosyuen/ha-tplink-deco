@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from itertools import takewhile
 
-# Deco system log levels, most severe first. Each level includes those above it.
+# Deco system log levels, most severe first. Each includes the levels before it.
 SYSTEM_LOG_LEVELS = {
     "ALERT": 1,
     "CRITICAL": 2,

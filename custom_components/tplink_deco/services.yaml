@@ -20,7 +20,7 @@ download_system_log:
   fields:
     config_entry_id:
       name: Deco
-      description: TP-Link Deco entry to download from. Required when more than one is loaded.
+      description: TP-Link Deco entry to download from. Required when more than one entry is loaded.
       required: false
       selector:
         config_entry:

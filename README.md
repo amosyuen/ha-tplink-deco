@@ -260,7 +260,7 @@ data:
 response_variable: system_log
 ```
 
-A download stops after 60 seconds so it doesn't hold up polling. A download cut
+Downloads stop after 60 seconds so they don't hold up polling. A download cut
 short keeps the most recent lines and returns `complete: false`.
 
 <!-- ha-marketplace:exclude-start -->
