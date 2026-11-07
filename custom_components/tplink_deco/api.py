@@ -353,7 +353,7 @@ class TplinkDecoApi:
         # "save_log" returns that snapshot as one plain-text file.
         response_json = await self._async_post(
             SYSTEM_LOG_CONTEXT,
-            f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/log_export",
+            self._log_export_url(),
             params={"form": "feedback_log"},
             data=self._encode_payload(
                 {"operation": "build", "params": {"level": level}}
@@ -363,6 +363,9 @@ class TplinkDecoApi:
         self._check_authenticated_data_error_code(SYSTEM_LOG_CONTEXT, data)
         return await self._async_save_system_log()
 
+    def _log_export_url(self) -> str:
+        return f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/log_export"
+
     async def _async_save_system_log(self) -> str:
         """Return the built snapshot. Unlike other calls, it is unencrypted."""
         form = aiohttp.FormData()
@@ -371,7 +374,7 @@ class TplinkDecoApi:
         try:
             async with asyncio.timeout(self._timeout_seconds):
                 response = await self._session.post(
-                    f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/log_export",
+                    self._log_export_url(),
                     params={"form": "save_log"},
                     data=form,
                     cookies=cookies,
@@ -380,7 +383,7 @@ class TplinkDecoApi:
                 response.raise_for_status()
                 if response.content_type == "text/plain":
                     return await response.text()
-                error = await response.json(content_type=None)
+                raise self._save_log_error(await response.json(content_type=None))
         except asyncio.TimeoutError as err:
             raise TimeoutException(f"{SYSTEM_LOG_CONTEXT} timed out") from err
         except aiohttp.ClientResponseError as err:
@@ -393,12 +396,14 @@ class TplinkDecoApi:
                 f"{SYSTEM_LOG_CONTEXT} transient connection error: {err}"
             ) from err
 
+    def _save_log_error(self, error: dict) -> Exception:
+        """Return the exception for a save_log error body."""
         # LuCI answers an expired session with errorcode "timeout".
         error_code = error.get("errorcode") or error.get("error_code")
         if error_code == "timeout":
             self.clear_auth()
-            raise EmptyDataException(f"{SYSTEM_LOG_CONTEXT} session expired")
-        raise UnexpectedApiException(f"{SYSTEM_LOG_CONTEXT} error_code={error_code}")
+            return EmptyDataException(f"{SYSTEM_LOG_CONTEXT} session expired")
+        return UnexpectedApiException(f"{SYSTEM_LOG_CONTEXT} error_code={error_code}")
 
     # Return list of clients. Default lists clients for all decos.
     async def async_list_clients(

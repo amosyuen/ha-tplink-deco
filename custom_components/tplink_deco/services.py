@@ -34,8 +34,8 @@ DOWNLOAD_SYSTEM_LOG_SCHEMA = vol.Schema(
     {
         vol.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
         vol.Optional(ATTR_FILENAME): cv.string,
-        vol.Optional(ATTR_LOG_LEVEL, default=SystemLogLevel.ALL.name): vol.In(
-            [level.name for level in SystemLogLevel]
+        vol.Optional(ATTR_LOG_LEVEL, default=SystemLogLevel.ALL.name): vol.All(
+            vol.In(SystemLogLevel.__members__), SystemLogLevel.__getitem__
         ),
     }
 )
@@ -94,7 +94,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
         path = hass.config.path(SYSTEM_LOG_DIR, filename)
 
         api = hass.data[DOMAIN][entry.entry_id][COORDINATOR_DECOS_KEY].api
-        text = await api.async_get_system_log(SystemLogLevel[call.data[ATTR_LOG_LEVEL]])
+        text = await api.async_get_system_log(call.data[ATTR_LOG_LEVEL])
 
         await hass.async_add_executor_job(_write_text, path, text)
         line_count = len(text.splitlines())

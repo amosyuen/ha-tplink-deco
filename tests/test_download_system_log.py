@@ -122,6 +122,15 @@ async def test_targets_selected_entry_when_two_are_loaded(hass, tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_defaults_to_all_levels(hass):
+    await _download(hass, config_entry_id="first")
+
+    _api(hass, "first").async_get_system_log.assert_awaited_once_with(
+        SystemLogLevel.ALL
+    )
+
+
+@pytest.mark.asyncio
 async def test_omitted_entry_is_ambiguous_when_two_are_loaded(hass):
     with pytest.raises(ServiceValidationError, match="config_entry_id"):
         await _download(hass)
