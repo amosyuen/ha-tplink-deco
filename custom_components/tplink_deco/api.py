@@ -53,8 +53,7 @@ LEGACY_ERROR_DECODING_PATTERN = re.compile(r"^<Error Decoding (.*)>$")
 class SystemLog:
     """Deco system log lines, oldest first.
 
-    complete is False when the download deadline passed first; lines then
-    holds the newest pages that were read.
+    complete is False if the deadline ended the download early.
     """
 
     lines: list[str]
@@ -79,7 +78,6 @@ class _SystemLogCheckpoint:
         self.total_pages = max(total_pages, 1)
 
     def unread_pages(self) -> list[int]:
-        """Return the indexes still to read after page 0, newest first."""
         return [
             index
             for index in range(self.total_pages - 1, 0, -1)
@@ -91,7 +89,7 @@ class _SystemLogCheckpoint:
         return self.total_pages is not None and len(self.pages) >= self.total_pages
 
     def newest_lines(self) -> list[str]:
-        """Return the unbroken run of pages that ends at the newest page."""
+        """Return lines from the newest pages, stopping at the first unread one."""
         if self.total_pages is None:
             return []
         newest_first = range(self.total_pages - 1, -1, -1)
@@ -398,9 +396,10 @@ class TplinkDecoApi:
     ) -> SystemLog:
         """Return the system log at or above level (1=ALERT ... 7=DEBUG, 8=ALL).
 
-        The deadline covers waiting for and holding the operation lock, so
-        polling waits behind a download for at most that long. Pages are read
-        newest first, so a download cut short keeps the most recent lines.
+        The deadline includes time spent waiting for the operation lock, so
+        polling never waits longer than deadline_seconds behind a download.
+        Pages are read newest first, so a download cut short keeps the most
+        recent lines.
         """
         checkpoint = _SystemLogCheckpoint()
         try:
@@ -425,8 +424,8 @@ class TplinkDecoApi:
         await self.async_login_if_needed()
 
         # "build" snapshots the log buffer and "read" pages through it. A retry
-        # in the same session resumes from the checkpoint; after a re-login,
-        # take a new snapshot rather than mixing pages from two.
+        # in the same session resumes from the checkpoint. A new session takes
+        # a new snapshot, whose page indexes can differ from the old one.
         session = (self._stok, self._outer_id)
         if checkpoint.session != session:
             await self._async_build_system_log(level)
@@ -587,8 +586,8 @@ class TplinkDecoApi:
             await self._async_login()
             self._login_future.set_result(True)
         except asyncio.CancelledError:
-            # Resolve the future so the finally below and any waiters don't
-            # block forever on a login that will never finish.
+            # Resolve the future so the finally block and other waiters don't
+            # wait forever.
             self._login_future.cancel()
             raise
         except Exception as err:

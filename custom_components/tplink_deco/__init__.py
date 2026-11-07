@@ -76,7 +76,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Register integration-wide actions once, independent of config entries."""
+    """Register actions once, shared by all config entries."""
     async_setup_services(hass)
     return True
 

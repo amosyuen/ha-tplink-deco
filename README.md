@@ -247,9 +247,9 @@ target:
 
 #### Download System Log Service
 
-Saves the Deco system log, the one the web UI shows under Advanced > System >
-System Log, to `<config>/tplink_deco_logs/<filename>`. The response holds the
-file path, the line count, and `complete`.
+Saves the Deco system log to `<config>/tplink_deco_logs/<filename>` and returns
+the file path and line count. This is the log the web UI shows under Advanced >
+System > System Log.
 
 ```yaml
 service: tplink_deco.download_system_log
@@ -260,9 +260,8 @@ data:
 response_variable: system_log
 ```
 
-A download stops after 60 seconds so that polling isn't held up behind it.
-Pages are read newest first, so a download cut short keeps the most recent
-lines and returns `complete: false`.
+A download stops after 60 seconds so it doesn't hold up polling. A download cut
+short keeps the most recent lines and returns `complete: false`.
 
 <!-- ha-marketplace:exclude-start -->
 

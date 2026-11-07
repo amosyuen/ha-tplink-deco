@@ -61,7 +61,7 @@ def _async_only_loaded_entry(hass: HomeAssistant) -> ConfigEntry:
 def async_get_target_entry(hass: HomeAssistant, entry_id: str | None) -> ConfigEntry:
     """Return the loaded entry an action targets.
 
-    entry_id may be omitted only when exactly one entry is loaded.
+    entry_id may be None only when exactly one entry is loaded.
     """
     if entry_id is None:
         return _async_only_loaded_entry(hass)
@@ -89,10 +89,7 @@ def _write_lines(path: str, lines: list[str]) -> None:
 
 
 def async_setup_services(hass: HomeAssistant) -> None:
-    """Register integration-wide actions."""
-
     async def async_download_system_log(call: ServiceCall) -> ServiceResponse:
-        """Save the Deco system log to a file in the config directory."""
         entry = async_get_target_entry(hass, call.data.get(ATTR_CONFIG_ENTRY_ID))
         filename = _system_log_filename(call.data.get(ATTR_FILENAME))
         path = hass.config.path(SYSTEM_LOG_DIR, filename)
