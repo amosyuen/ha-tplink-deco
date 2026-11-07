@@ -1,5 +1,7 @@
 import asyncio
 import base64
+from dataclasses import dataclass
+from dataclasses import field
 import hashlib
 import json
 import logging
@@ -36,8 +38,55 @@ MAX_AES_KEY = (10**AES_KEY_BYTES) - 1
 
 PKCS1_v1_5_HEADER_BYTES = 11
 
+SYSTEM_LOG_LEVEL_ALL = 8
+SYSTEM_LOG_PAGE_SIZE = 100
+SYSTEM_LOG_EMPTY_PAGE_RETRIES = 3
+SYSTEM_LOG_DEADLINE_SECONDS = 60
+
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 LEGACY_ERROR_DECODING_PATTERN = re.compile(r"^<Error Decoding (.*)>$")
+
+
+@dataclass
+class SystemLog:
+    """Deco system log lines, oldest first.
+
+    complete is False when the download deadline passed first; lines then
+    holds the newest pages that were read.
+    """
+
+    lines: list[str]
+    complete: bool
+
+
+@dataclass
+class _SystemLogCheckpoint:
+    """Pages read from one log snapshot, kept across retries of a download."""
+
+    session: tuple | None = None
+    total_pages: int | None = None
+    pages: dict[int, list[str]] = field(default_factory=dict)
+
+    def reset(self, session: tuple) -> None:
+        self.session = session
+        self.total_pages = None
+        self.pages = {}
+
+    @property
+    def complete(self) -> bool:
+        return self.total_pages is not None and len(self.pages) >= self.total_pages
+
+    def newest_lines(self) -> list[str]:
+        """Return the unbroken run of pages that ends at the newest page."""
+        if self.total_pages is None:
+            return []
+        run = []
+        for index in range(self.total_pages - 1, -1, -1):
+            page = self.pages.get(index)
+            if page is None:
+                break
+            run.append(page)
+        return [line for page in reversed(run) for line in page]
 
 
 def normalize_name(name: str):
@@ -332,6 +381,102 @@ class TplinkDecoApi:
         _LOGGER.debug("Mobile data usage is available")
         return usage_kib
 
+    async def async_get_system_log(
+        self,
+        level: int = SYSTEM_LOG_LEVEL_ALL,
+        deadline_seconds: float = SYSTEM_LOG_DEADLINE_SECONDS,
+    ) -> SystemLog:
+        """Return the system log at or above level (1=ALERT ... 7=DEBUG, 8=ALL).
+
+        The deadline covers waiting for and holding the operation lock, so
+        polling waits behind a download for at most that long. Pages are read
+        newest first, so a download cut short keeps the most recent lines.
+        """
+        checkpoint = _SystemLogCheckpoint()
+        try:
+            async with asyncio.timeout(deadline_seconds):
+                async with self._operation_lock:
+                    await self._async_call_with_retry(
+                        self._async_read_system_log, level, checkpoint
+                    )
+        except TimeoutError:
+            _LOGGER.warning(
+                "Get System Log stopped after %s seconds with %d of %s pages",
+                deadline_seconds,
+                len(checkpoint.pages),
+                checkpoint.total_pages,
+            )
+        return SystemLog(checkpoint.newest_lines(), checkpoint.complete)
+
+    async def _async_read_system_log(
+        self, level: int, checkpoint: _SystemLogCheckpoint
+    ) -> None:
+        await self.async_login_if_needed()
+
+        context = "Get System Log"
+        url = f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/log_export"
+        params = {"form": "feedback_log"}
+
+        # "build" snapshots the log buffer and "read" pages through it. A retry
+        # in the same session resumes from the checkpoint; after a re-login,
+        # take a new snapshot rather than mixing pages from two.
+        session = (self._stok, self._outer_id)
+        if checkpoint.session != session:
+            build_payload = {"operation": "build", "params": {"level": level}}
+            response_json = await self._async_post(
+                context, url, params=params, data=self._encode_payload(build_payload)
+            )
+            data = self._decrypt_data(context, response_json["data"])
+            self._check_authenticated_data_error_code(context, data)
+            checkpoint.reset(session)
+
+        if checkpoint.total_pages is None:
+            lines, total_pages = await self._async_read_system_log_page(
+                context, url, params, 0
+            )
+            checkpoint.pages[0] = lines
+            checkpoint.total_pages = max(total_pages, 1)
+
+        for index in range(checkpoint.total_pages - 1, 0, -1):
+            if index not in checkpoint.pages:
+                lines, _ = await self._async_read_system_log_page(
+                    context, url, params, index
+                )
+                checkpoint.pages[index] = lines
+
+        _LOGGER.debug("%s page_count=%d", context, checkpoint.total_pages)
+
+    async def _async_read_system_log_page(
+        self, context: str, url: str, params: dict, index: int
+    ) -> tuple[list[str], int]:
+        """Return one page of log lines and the snapshot's total page count."""
+        read_payload = {
+            "operation": "read",
+            "params": {"index": index, "limit": SYSTEM_LOG_PAGE_SIZE},
+        }
+        # The Deco sometimes answers a page read with empty data while the
+        # session is still valid; retry the page before _decrypt_data treats
+        # it as an expired session.
+        for _ in range(SYSTEM_LOG_EMPTY_PAGE_RETRIES):
+            response_json = await self._async_post(
+                context, url, params=params, data=self._encode_payload(read_payload)
+            )
+            if response_json.get("data") != "":
+                break
+            _LOGGER.debug("%s empty page index=%d, retrying", context, index)
+        data = self._decrypt_data(context, response_json["data"])
+        self._check_authenticated_data_error_code(context, data)
+
+        try:
+            result = data["result"]
+            log_list = result.get("logList") or []
+            total_pages = int(result.get("totalNum") or 0)
+        except Exception as err:
+            _LOGGER.error("%s parse response error=%s", context, err)
+            raise err
+
+        return [entry.get("content", "") for entry in log_list], total_pages
+
     # Return list of clients. Default lists clients for all decos.
     async def async_list_clients(
         self, deco_mac="default", timeout_error_retries: int | None = None
@@ -433,6 +578,11 @@ class TplinkDecoApi:
         try:
             await self._async_login()
             self._login_future.set_result(True)
+        except asyncio.CancelledError:
+            # Resolve the future so the finally below and any waiters don't
+            # block forever on a login that will never finish.
+            self._login_future.cancel()
+            raise
         except Exception as err:
             self._login_future.set_exception(err)
             raise err
@@ -440,7 +590,7 @@ class TplinkDecoApi:
             # Await future to suppress future exception was never retrieved error
             try:
                 await self._login_future
-            except Exception:
+            except (Exception, asyncio.CancelledError):
                 pass
             self._login_future = None
 
