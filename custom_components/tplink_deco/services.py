@@ -42,25 +42,29 @@ DOWNLOAD_SYSTEM_LOG_SCHEMA = vol.Schema(
 )
 
 
+def _async_only_loaded_entry(hass: HomeAssistant) -> ConfigEntry:
+    loaded = [
+        entry
+        for entry in hass.config_entries.async_entries(DOMAIN)
+        if entry.state is ConfigEntryState.LOADED
+    ]
+    if not loaded:
+        raise ServiceValidationError("No TP-Link Deco entry is loaded")
+    if len(loaded) > 1:
+        raise ServiceValidationError(
+            f"{len(loaded)} TP-Link Deco entries are loaded; set {ATTR_CONFIG_ENTRY_ID}"
+            " to choose one"
+        )
+    return loaded[0]
+
+
 def async_get_target_entry(hass: HomeAssistant, entry_id: str | None) -> ConfigEntry:
     """Return the loaded entry an action targets.
 
     entry_id may be omitted only when exactly one entry is loaded.
     """
     if entry_id is None:
-        loaded = [
-            entry
-            for entry in hass.config_entries.async_entries(DOMAIN)
-            if entry.state is ConfigEntryState.LOADED
-        ]
-        if len(loaded) == 1:
-            return loaded[0]
-        if not loaded:
-            raise ServiceValidationError("No TP-Link Deco entry is loaded")
-        raise ServiceValidationError(
-            f"{len(loaded)} TP-Link Deco entries are loaded; set {ATTR_CONFIG_ENTRY_ID}"
-            " to choose one"
-        )
+        return _async_only_loaded_entry(hass)
 
     entry = hass.config_entries.async_get_entry(entry_id)
     if entry is None or entry.domain != DOMAIN:
@@ -70,38 +74,41 @@ def async_get_target_entry(hass: HomeAssistant, entry_id: str | None) -> ConfigE
     return entry
 
 
+def _system_log_filename(filename: str | None) -> str:
+    """Return filename, or a timestamped default, refusing any directory part."""
+    filename = filename or f"deco-{dt_util.now():%Y%m%d-%H%M%S}.log"
+    if os.path.basename(filename) != filename or filename in (".", ".."):
+        raise ServiceValidationError(f"{ATTR_FILENAME} must not contain a directory")
+    return filename
+
+
+def _write_lines(path: str, lines: list[str]) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write("".join(f"{line}\n" for line in lines))
+
+
 def async_setup_services(hass: HomeAssistant) -> None:
     """Register integration-wide actions."""
 
     async def async_download_system_log(call: ServiceCall) -> ServiceResponse:
         """Save the Deco system log to a file in the config directory."""
         entry = async_get_target_entry(hass, call.data.get(ATTR_CONFIG_ENTRY_ID))
-
-        filename = call.data.get(ATTR_FILENAME) or (
-            f"deco-{dt_util.now():%Y%m%d-%H%M%S}.log"
-        )
-        if os.path.basename(filename) != filename or filename in (".", ".."):
-            raise ServiceValidationError(
-                f"{ATTR_FILENAME} must not contain a directory"
-            )
+        filename = _system_log_filename(call.data.get(ATTR_FILENAME))
         path = hass.config.path(SYSTEM_LOG_DIR, filename)
 
         api = hass.data[DOMAIN][entry.entry_id][COORDINATOR_DECOS_KEY].api
         system_log = await api.async_get_system_log(
             SYSTEM_LOG_LEVELS[call.data[ATTR_LOG_LEVEL]]
         )
-        lines = system_log.lines
 
-        def write_file():
-            os.makedirs(os.path.dirname(path), exist_ok=True)
-            with open(path, "w", encoding="utf-8", newline="\n") as f:
-                f.write("".join(f"{line}\n" for line in lines))
-
-        await hass.async_add_executor_job(write_file)
-        _LOGGER.info("Saved %d Deco system log lines to %s", len(lines), path)
+        await hass.async_add_executor_job(_write_lines, path, system_log.lines)
+        _LOGGER.info(
+            "Saved %d Deco system log lines to %s", len(system_log.lines), path
+        )
         return {
             "path": path,
-            "line_count": len(lines),
+            "line_count": len(system_log.lines),
             "complete": system_log.complete,
         }
 
