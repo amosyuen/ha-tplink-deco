@@ -346,11 +346,12 @@ class TplinkDecoApi:
         await self.async_login_if_needed()
         if self._outer_id is not None:
             raise UnexpectedApiException(
-                f"{SYSTEM_LOG_CONTEXT} is not supported on outer-session firmware"
+                f"{SYSTEM_LOG_CONTEXT} is not supported on firmware with the legacy"
+                " encrypted web session"
             )
 
-        # This is the web UI's Save Log: "build" snapshots the log at level, and
-        # "save_log" returns that snapshot as one plain-text file.
+        # These two calls are the web UI's Save Log: "build" snapshots the log at
+        # level, and "save_log" returns that snapshot as one plain-text file.
         response_json = await self._async_post(
             SYSTEM_LOG_CONTEXT,
             self._log_export_url(),
@@ -367,7 +368,7 @@ class TplinkDecoApi:
         return f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/log_export"
 
     async def _async_save_system_log(self) -> str:
-        """Return the built snapshot. Unlike other calls, it is unencrypted."""
+        """Return the built snapshot. Unlike other calls, save_log is unencrypted."""
         form = aiohttp.FormData()
         form.add_field("operation", "save")
         cookies = dict([self._cookie.split("=", 1)]) if self._cookie else {}
@@ -389,7 +390,9 @@ class TplinkDecoApi:
         except aiohttp.ClientResponseError as err:
             if err.status in (401, 403):
                 self.clear_auth()
-                raise ForbiddenException(f"{SYSTEM_LOG_CONTEXT} {err}") from err
+                raise ForbiddenException(
+                    f"{SYSTEM_LOG_CONTEXT} forbidden: {err}"
+                ) from err
             raise err
         except (aiohttp.ClientPayloadError, aiohttp.ServerDisconnectedError) as err:
             raise TransientConnectionException(
