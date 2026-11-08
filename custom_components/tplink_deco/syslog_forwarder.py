@@ -1,10 +1,7 @@
 """Forward the Deco system log to a syslog server.
 
-Each poll downloads the whole log and sends only the lines after the tail
-remembered from the previous poll. The tail is persisted per config entry, so
-lines logged while Home Assistant was stopped are forwarded on the next start.
-The first poll after forwarding is enabled only records a tail; the log
-history from before that is never sent.
+The tail is the end of the log as of the previous poll, saved per config
+entry. Each poll sends the lines that follow it.
 """
 
 import asyncio
@@ -46,7 +43,7 @@ from .system_log import SystemLogLevel
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 STORAGE_VERSION = 1
-# Long enough that a run of identical lines can't be mistaken for the tail.
+# Long enough that a run of identical lines is unlikely to match as the tail.
 TAIL_LINES = 20
 MAX_LINES_PER_POLL = 1000
 SEND_TIMEOUT_SECONDS = 10
@@ -96,11 +93,10 @@ def _store(hass: HomeAssistant, entry_id: str) -> Store:
 
 
 def lines_after(tail: list[str], fetched: list[str]) -> list[str] | None:
-    """Return the lines in fetched after the last occurrence of tail.
+    """Return the lines of fetched that follow tail, or None without overlap.
 
-    fetched may start with only the end of tail when the oldest tail lines
-    have rolled out of the Deco's buffer; that counts as a match too. Returns
-    None when there's no overlap: the Deco rebooted or its buffer wrapped.
+    The oldest tail lines may have rolled out of the Deco's buffer, so a
+    fetched log that begins partway through tail also matches.
     """
     if not tail:
         return fetched
@@ -117,7 +113,7 @@ def lines_after(tail: list[str], fetched: list[str]) -> list[str] | None:
 def _parse_deco_line(line: str) -> tuple[datetime, int, str, str, str] | None:
     """Return the timestamp, priority, app, PID and message of a Deco line.
 
-    Deco timestamps have no time zone, so they're read as Home Assistant's.
+    Deco timestamps have no time zone, so they're taken as Home Assistant's.
     """
     match = DECO_LINE_PATTERN.match(line)
     if match is None:
@@ -142,7 +138,8 @@ def _parse_deco_line(line: str) -> tuple[datetime, int, str, str, str] | None:
 def format_rfc5424(line: str, hostname: str | None, now: datetime) -> str:
     """Convert a Deco log line into an RFC 5424 syslog message.
 
-    A line that doesn't parse is sent whole as user.notice, stamped with now.
+    A line that doesn't parse becomes the whole message, as user.notice
+    stamped with now.
     """
     timestamp, pri, app, pid, msg = _parse_deco_line(line) or (
         now,
@@ -200,7 +197,7 @@ class SyslogServer:
 
         UDP sends one datagram per message (RFC 5426). TCP frames each message
         with a newline (RFC 6587). Name resolution, connecting and sending
-        share one deadline; closing a TCP connection has its own.
+        share one deadline. Closing a TCP connection has its own.
         """
         payloads = [message.encode("utf-8", errors="replace") for message in messages]
         async with asyncio.timeout(SEND_TIMEOUT_SECONDS):
@@ -267,7 +264,7 @@ class TplinkDecoSyslogForwarder:
     @callback
     def _async_schedule_poll(self, _now: datetime | None = None) -> None:
         if self._task is not None and not self._task.done():
-            _LOGGER.debug("Previous Deco syslog forward still running, skipping")
+            _LOGGER.debug("Previous Deco syslog run still in progress, skipping")
             return
         self._task = self._config_entry.async_create_background_task(
             self._hass, self.async_poll(), name="tplink_deco syslog forward"
@@ -280,8 +277,8 @@ class TplinkDecoSyslogForwarder:
         try:
             await self.async_forward_new_lines()
         except Exception as err:
-            # The failed lines stay after the saved tail, so the next poll
-            # retries them.
+            # The tail advances only after a successful send, so the next poll
+            # retries these lines.
             _LOGGER.warning(
                 "Failed to forward Deco system log to syslog: %s", describe_error(err)
             )
@@ -342,7 +339,7 @@ async def async_setup_syslog_forwarder(
     store = _store(hass, config_entry.entry_id)
     data = config_entry.data
     if not data.get(CONF_SYSLOG_ENABLED, DEFAULT_SYSLOG_ENABLED):
-        # Re-enabling later starts from a fresh tail instead of a stale one.
+        # A stale tail would resend old lines if forwarding is re-enabled.
         await store.async_remove()
         return None
 

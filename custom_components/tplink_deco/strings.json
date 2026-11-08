@@ -24,7 +24,7 @@
           "syslog_port": "Syslog server port",
           "syslog_protocol": "Syslog protocol",
           "syslog_log_level": "Minimum system log level to forward",
-          "syslog_interval": "Seconds between syslog forwards"
+          "syslog_interval": "Syslog forwarding interval in seconds"
         }
       },
       "reauth_confirm": {
@@ -71,7 +71,7 @@
           "syslog_port": "Syslog server port",
           "syslog_protocol": "Syslog protocol",
           "syslog_log_level": "Minimum system log level to forward",
-          "syslog_interval": "Seconds between syslog forwards"
+          "syslog_interval": "Syslog forwarding interval in seconds"
         }
       }
     },

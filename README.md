@@ -135,6 +135,37 @@ delay integration setup when the optional endpoint is slow or unavailable.
 Changing WiFi settings is not supported because the local write API is not
 reliable across Deco models and firmware versions.
 
+### Syslog forwarding
+
+Forwarding sends new Deco system log lines to a syslog server as RFC 5424
+messages. It's off by default. To turn it on, enable **Forward the Deco system
+log to a syslog server** in the integration options and enter the server's
+host. Each config entry forwards its own Deco's log.
+
+The port defaults to 514. UDP sends one datagram per line, and TCP ends each
+line with a newline (RFC 6587).
+
+Each run downloads the whole log at the chosen level. A download can take
+several seconds, and other polling waits until it finishes. The interval
+defaults to 300 seconds, with a minimum of 60.
+
+Which lines are sent:
+
+- Lines already in the log when forwarding is enabled or the level changes
+  are not sent.
+- Lines logged while Home Assistant is stopped are sent on the next start.
+- Lines from a failed send are retried on the next run.
+- If the log no longer contains the last lines seen, for example after the
+  Deco reboots, the whole log is sent.
+- A run sends at most the newest 1000 lines.
+
+The log contains client names and MAC and IP addresses. Syslog sends it
+unencrypted, so use a server on a network you trust.
+
+Forwarding isn't available on firmware that uses the legacy encrypted web
+session, such as the Deco S7 firmware listed under
+[Tested Devices](#tested-devices).
+
 ---
 
 ## 🔧 Services
@@ -266,32 +297,6 @@ response_variable: system_log
 The action isn't available on firmware that uses the legacy encrypted web
 session, such as the Deco S7 firmware listed under
 [Tested Devices](#tested-devices).
-
-#### Syslog Forwarding
-
-Forwarding sends new Deco system log lines to a syslog server as RFC 5424
-messages. It's off by default. To turn it on, enable **Forward the Deco system
-log to a syslog server** in the integration options and enter the server's
-host. Each config entry forwards its own Deco independently.
-
-- Port defaults to 514. UDP sends one datagram per line; TCP separates lines
-  with a newline.
-- Each forward downloads the whole log at the chosen level, which can take
-  several seconds and delays other polling meanwhile. Forwards run every 300
-  seconds by default and no more often than every 60.
-- The first forward after enabling only marks where the log ends. Lines logged
-  before then are never sent.
-- Lines logged while Home Assistant is stopped are sent on the next start. If
-  the Deco reboots or its log wraps between forwards, the newest lines are
-  sent. A single forward sends at most 1000 lines.
-- A failed send is retried on the next forward.
-- Changing the level starts again from the end of the log.
-
-The log contains client names and MAC and IP addresses. Syslog sends it
-unencrypted, so use a server on a network you trust.
-
-Forwarding isn't available on firmware that uses the legacy encrypted web
-session.
 
 <!-- ha-marketplace:exclude-start -->
 
