@@ -10,6 +10,7 @@ history from before that is never sent.
 import asyncio
 from collections.abc import Callable
 import contextlib
+from dataclasses import dataclass
 from datetime import datetime
 from datetime import timedelta
 import logging
@@ -171,21 +172,25 @@ async def _async_send_tcp(host: str, port: int, payloads: list[bytes]) -> None:
             writer.transport.abort()
 
 
-async def async_send_syslog(
-    host: str, port: int, protocol: str, messages: list[str]
-) -> None:
-    """Send messages to a syslog server.
+_SENDERS = {SYSLOG_PROTOCOL_TCP: _async_send_tcp, SYSLOG_PROTOCOL_UDP: _async_send_udp}
 
-    UDP sends one datagram per message (RFC 5426). TCP frames each message
-    with a newline (RFC 6587). Name resolution, connecting and sending share
-    one deadline; closing a TCP connection has its own.
-    """
-    payloads = [message.encode("utf-8", errors="replace") for message in messages]
-    send = {SYSLOG_PROTOCOL_TCP: _async_send_tcp, SYSLOG_PROTOCOL_UDP: _async_send_udp}[
-        protocol
-    ]
-    async with asyncio.timeout(SEND_TIMEOUT_SECONDS):
-        await send(host, port, payloads)
+
+@dataclass(frozen=True)
+class SyslogServer:
+    host: str
+    port: int
+    protocol: str
+
+    async def async_send(self, messages: list[str]) -> None:
+        """Send messages to the server.
+
+        UDP sends one datagram per message (RFC 5426). TCP frames each message
+        with a newline (RFC 6587). Name resolution, connecting and sending
+        share one deadline; closing a TCP connection has its own.
+        """
+        payloads = [message.encode("utf-8", errors="replace") for message in messages]
+        async with asyncio.timeout(SEND_TIMEOUT_SECONDS):
+            await _SENDERS[self.protocol](self.host, self.port, payloads)
 
 
 def describe_error(err: Exception) -> str:
@@ -204,9 +209,7 @@ class TplinkDecoSyslogForwarder:
         store: Store,
         *,
         hostname: str | None,
-        host: str,
-        port: int,
-        protocol: str,
+        server: SyslogServer,
         level: SystemLogLevel,
         interval: timedelta,
         is_paused: Callable[[], bool],
@@ -216,9 +219,7 @@ class TplinkDecoSyslogForwarder:
         self._api = api
         self._store = store
         self._hostname = hostname
-        self._host = host
-        self._port = port
-        self._protocol = protocol
+        self._server = server
         self._level = level
         self._interval = interval
         self._is_paused = is_paused
@@ -302,11 +303,8 @@ class TplinkDecoSyslogForwarder:
 
         if new:
             now = dt_util.now()
-            await async_send_syslog(
-                self._host,
-                self._port,
-                self._protocol,
-                [format_rfc5424(line, self._hostname, now) for line in new],
+            await self._server.async_send(
+                [format_rfc5424(line, self._hostname, now) for line in new]
             )
         await self._async_save_tail(fetched)
         _LOGGER.debug("Forwarded %d Deco system log lines to syslog", len(new))
@@ -337,9 +335,11 @@ async def async_setup_syslog_forwarder(
         api,
         store,
         hostname=urlparse(data[CONF_HOST]).hostname,
-        host=data[CONF_SYSLOG_HOST],
-        port=data.get(CONF_SYSLOG_PORT, DEFAULT_SYSLOG_PORT),
-        protocol=data.get(CONF_SYSLOG_PROTOCOL, DEFAULT_SYSLOG_PROTOCOL),
+        server=SyslogServer(
+            data[CONF_SYSLOG_HOST],
+            data.get(CONF_SYSLOG_PORT, DEFAULT_SYSLOG_PORT),
+            data.get(CONF_SYSLOG_PROTOCOL, DEFAULT_SYSLOG_PROTOCOL),
+        ),
         level=SystemLogLevel[data.get(CONF_SYSLOG_LOG_LEVEL, DEFAULT_SYSLOG_LOG_LEVEL)],
         interval=timedelta(
             seconds=data.get(CONF_SYSLOG_INTERVAL, DEFAULT_SYSLOG_INTERVAL)

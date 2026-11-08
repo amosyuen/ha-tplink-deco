@@ -25,8 +25,8 @@ from custom_components.tplink_deco.const import DOMAIN
 from custom_components.tplink_deco.const import SYSLOG_FORWARDER_KEY
 from custom_components.tplink_deco.const import SYSLOG_PROTOCOL_TCP
 from custom_components.tplink_deco.const import SYSLOG_PROTOCOL_UDP
+from custom_components.tplink_deco.syslog_forwarder import SyslogServer
 from custom_components.tplink_deco.syslog_forwarder import TplinkDecoSyslogForwarder
-from custom_components.tplink_deco.syslog_forwarder import async_send_syslog
 from custom_components.tplink_deco.syslog_forwarder import async_setup_syslog_forwarder
 from custom_components.tplink_deco.syslog_forwarder import format_rfc5424
 from custom_components.tplink_deco.syslog_forwarder import lines_after
@@ -74,9 +74,7 @@ def _forwarder(
         api,
         store if store is not None else FakeStore(),
         hostname="192.168.0.1",
-        host="syslog.example",
-        port=514,
-        protocol=SYSLOG_PROTOCOL_UDP,
+        server=SyslogServer("syslog.example", 514, SYSLOG_PROTOCOL_UDP),
         level=level,
         interval=timedelta(seconds=300),
         is_paused=lambda: paused,
@@ -85,12 +83,12 @@ def _forwarder(
 
 @pytest.fixture
 def send():
-    with patch.object(syslog_forwarder, "async_send_syslog", AsyncMock()) as send:
+    with patch.object(SyslogServer, "async_send", AsyncMock()) as send:
         yield send
 
 
 def _sent_messages(send):
-    return [message for call in send.await_args_list for message in call.args[3]]
+    return [message for call in send.await_args_list for message in call.args[0]]
 
 
 @pytest.mark.parametrize(
@@ -274,7 +272,9 @@ async def test_send_udp_delivers_one_datagram_per_message():
     )
     port = transport.get_extra_info("sockname")[1]
     try:
-        await async_send_syslog("127.0.0.1", port, SYSLOG_PROTOCOL_UDP, ["one", "two"])
+        await SyslogServer("127.0.0.1", port, SYSLOG_PROTOCOL_UDP).async_send(
+            ["one", "two"]
+        )
         assert [await received.get(), await received.get()] == [b"one", b"two"]
     finally:
         transport.close()
@@ -291,7 +291,9 @@ async def test_send_tcp_frames_messages_with_newlines():
     server = await asyncio.start_server(handle, "127.0.0.1", 0)
     port = server.sockets[0].getsockname()[1]
     async with server:
-        await async_send_syslog("127.0.0.1", port, SYSLOG_PROTOCOL_TCP, ["one", "two"])
+        await SyslogServer("127.0.0.1", port, SYSLOG_PROTOCOL_TCP).async_send(
+            ["one", "two"]
+        )
         assert await received == b"one\ntwo\n"
 
 
@@ -305,7 +307,7 @@ async def test_send_tcp_times_out_on_unresponsive_server():
         patch.object(syslog_forwarder.asyncio, "open_connection", never_connects),
         pytest.raises(TimeoutError),
     ):
-        await async_send_syslog("192.0.2.1", 514, SYSLOG_PROTOCOL_TCP, ["one"])
+        await SyslogServer("192.0.2.1", 514, SYSLOG_PROTOCOL_TCP).async_send(["one"])
 
 
 @pytest.mark.asyncio
@@ -323,7 +325,7 @@ async def test_send_tcp_aborts_connection_that_does_not_close():
             AsyncMock(return_value=(None, writer)),
         ),
     ):
-        await async_send_syslog("192.0.2.1", 514, SYSLOG_PROTOCOL_TCP, ["one"])
+        await SyslogServer("192.0.2.1", 514, SYSLOG_PROTOCOL_TCP).async_send(["one"])
 
     writer.transport.abort.assert_called_once_with()
 
