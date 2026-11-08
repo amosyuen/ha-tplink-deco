@@ -2,6 +2,7 @@
 
 [![GitHub Release](https://img.shields.io/github/v/release/amosyuen/ha-tplink-deco?style=for-the-badge)](https://github.com/amosyuen/ha-tplink-deco/releases)
 [![GitHub Activity](https://img.shields.io/github/commit-activity/y/amosyuen/ha-tplink-deco?style=for-the-badge)](https://github.com/amosyuen/ha-tplink-deco/commits/main)
+[![Wiki](https://img.shields.io/badge/docs-wiki-blue?style=for-the-badge)](https://github.com/amosyuen/ha-tplink-deco/wiki)
 [![License](https://img.shields.io/github/license/amosyuen/ha-tplink-deco?style=for-the-badge)](LICENSE)
 
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?style=for-the-badge)](https://github.com/pre-commit/pre-commit)
@@ -16,6 +17,8 @@
 ## 🚀 Overview
 
 This integration provides local polling control and diagnostics for TP-Link Deco systems within Home Assistant.
+
+For installation, configuration, troubleshooting, diagnostics, and firmware notes, see the [TP-Link Deco Wiki](https://github.com/amosyuen/ha-tplink-deco/wiki).
 
 ---
 
