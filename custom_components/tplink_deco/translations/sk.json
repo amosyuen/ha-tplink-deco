@@ -7,11 +7,14 @@
           "host": "Host",
           "username": "užívateľské meno",
           "password": "Heslo",
-          "interval_seconds": "Sekúnd medzi aktualizáciami",
+          "scan_interval": "Sekúnd medzi aktualizáciami",
+          "device_list_interval": "Počet sekúnd medzi aktualizáciami stavu zariadenia Deco (hodnota 0 vypne automatické aktualizácie po spustení)",
           "consider_home": "Sekundy čakania, kým sa sledovač zariadenia označí ako neprítomný po tom, čo ho nikto nevidel.",
           "timeout_seconds": "Timeout sekundy",
           "timeout_error_retries": "Timeout error počet opakovaní",
           "verify_ssl": "Skontrolujte, či je certifikát SSL platný",
+          "link_client_devices": "Prepojte sledovacie nástroje klientov so zariadeniami pomocou MAC adresy",
+          "expose_wifi_ssids": "Zobraziť názvy sietí WiFi na snímačoch stavu WiFi",
           "client_prefix": "Klient názov predpony",
           "client_postfix": "Klient názov koncovky",
           "deco_prefix": "Deco názov predpony",
@@ -44,17 +47,23 @@
           "host": "Host",
           "username": "Užívateľské meno",
           "password": "Heslo",
-          "interval_seconds": "Sekúnd medzi aktualizáciami",
+          "scan_interval": "Sekúnd medzi aktualizáciami",
+          "device_list_interval": "Seconds between Deco status updates (0 disables automatic updates after startup)",
           "consider_home": "Sekundy čakania, kým sa sledovač zariadenia označí ako neprítomný po tom, čo ho nikto nevidel.",
           "timeout_seconds": "Timeout sekundy",
           "timeout_error_retries": "Timeout error počet opakovaní",
           "verify_ssl": "Skontrolujte, či je certifikát SSL platný",
+          "link_client_devices": "Prepojte sledovacie nástroje klientov so zariadeniami pomocou MAC adresy",
+          "expose_wifi_ssids": "Zobraziť názvy sietí WiFi na snímačoch stavu WiFi",
           "client_prefix": "Klient názov predpony",
           "client_postfix": "Klient názov koncovky",
           "deco_prefix": "Deco názov predpony",
           "deco_postfix": "Deco názov koncovky"
         }
       }
+    },
+    "abort": {
+      "reauth_successful": "Opätovné overenie bolo úspešné"
     },
     "error": {
       "invalid_auth": "Neplatné overenie",
