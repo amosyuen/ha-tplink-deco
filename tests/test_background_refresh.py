@@ -49,9 +49,15 @@ async def test_initial_optional_refreshes_remain_background_tasks():
         services=SimpleNamespace(async_register=MagicMock()),
     )
 
-    with patch(
-        "custom_components.tplink_deco.async_create_config_data",
-        new=AsyncMock(return_value=coordinator_data),
+    with (
+        patch(
+            "custom_components.tplink_deco.async_create_config_data",
+            new=AsyncMock(return_value=coordinator_data),
+        ),
+        patch(
+            "custom_components.tplink_deco.async_setup_syslog_forwarder",
+            new=AsyncMock(return_value=None),
+        ),
     ):
         assert await async_setup_entry(hass, config_entry) is True
 

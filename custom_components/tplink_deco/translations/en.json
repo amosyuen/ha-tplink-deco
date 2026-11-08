@@ -18,7 +18,13 @@
           "client_prefix": "Client name prefix",
           "client_postfix": "Client name postfix",
           "deco_prefix": "Deco name prefix",
-          "deco_postfix": "Deco name postfix"
+          "deco_postfix": "Deco name postfix",
+          "syslog_enabled": "Forward the Deco system log to a syslog server",
+          "syslog_host": "Syslog server host",
+          "syslog_port": "Syslog server port",
+          "syslog_protocol": "Syslog protocol",
+          "syslog_log_level": "Minimum system log level to forward",
+          "syslog_interval": "Seconds between syslog forwards"
         }
       },
       "reauth_confirm": {
@@ -36,7 +42,8 @@
       "invalid_auth": "Invalid authentication",
       "invalid_host": "Unable to connect to host.",
       "timeout_connect": "Timeout establishing connection",
-      "unknown": "Unexpected error"
+      "unknown": "Unexpected error",
+      "syslog_host_required": "Enter a syslog server host to enable forwarding."
     }
   },
   "options": {
@@ -58,7 +65,13 @@
           "client_prefix": "Client name prefix",
           "client_postfix": "Client name postfix",
           "deco_prefix": "Deco name prefix",
-          "deco_postfix": "Deco name postfix"
+          "deco_postfix": "Deco name postfix",
+          "syslog_enabled": "Forward the Deco system log to a syslog server",
+          "syslog_host": "Syslog server host",
+          "syslog_port": "Syslog server port",
+          "syslog_protocol": "Syslog protocol",
+          "syslog_log_level": "Minimum system log level to forward",
+          "syslog_interval": "Seconds between syslog forwards"
         }
       }
     },
@@ -69,7 +82,8 @@
       "invalid_auth": "Invalid authentication",
       "invalid_host": "Unable to connect to host.",
       "timeout_connect": "Timeout establishing connection",
-      "unknown": "Unexpected error"
+      "unknown": "Unexpected error",
+      "syslog_host_required": "Enter a syslog server host to enable forwarding."
     }
   }
 }
