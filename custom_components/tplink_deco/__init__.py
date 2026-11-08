@@ -305,7 +305,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     )
 
     syslog_forwarder = await async_setup_syslog_forwarder(
-        hass, config_entry, deco_coordinator.api, lambda: deco_coordinator.paused
+        hass, config_entry, deco_coordinator
     )
     if syslog_forwarder is not None:
         data[SYSLOG_FORWARDER_KEY] = syslog_forwarder

@@ -349,7 +349,7 @@ async def test_disabled_entry_removes_stale_tail():
 
     with patch.object(syslog_forwarder, "Store", return_value=store):
         forwarder = await async_setup_syslog_forwarder(
-            MagicMock(), _config_entry(), MagicMock(), lambda: False
+            MagicMock(), _config_entry(), MagicMock()
         )
 
     assert forwarder is None
@@ -390,7 +390,7 @@ async def test_entries_forward_independently_and_unload_separately(send):
                 },
             )
             forwarder = await async_setup_syslog_forwarder(
-                hass, entries[entry_id], apis[entry_id], lambda: False
+                hass, entries[entry_id], MagicMock(api=apis[entry_id], paused=False)
             )
             await forwarder._task
             hass.data[DOMAIN][entry_id] = {

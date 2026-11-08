@@ -40,6 +40,7 @@ from .const import DEFAULT_SYSLOG_PROTOCOL
 from .const import DOMAIN
 from .const import SYSLOG_PROTOCOL_TCP
 from .const import SYSLOG_PROTOCOL_UDP
+from .coordinator import TplinkDecoUpdateCoordinator
 from .system_log import SystemLogLevel
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -90,8 +91,8 @@ DECO_LINE_PATTERN = re.compile(
 STOK_PATTERN = re.compile(r"stok=[^/?&'\"\s]*")
 
 
-def storage_key(entry_id: str) -> str:
-    return f"{DOMAIN}.{entry_id}.syslog"
+def _store(hass: HomeAssistant, entry_id: str) -> Store:
+    return Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry_id}.syslog")
 
 
 def lines_after(tail: list[str], fetched: list[str]) -> list[str] | None:
@@ -335,11 +336,10 @@ class TplinkDecoSyslogForwarder:
 async def async_setup_syslog_forwarder(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
-    api: TplinkDecoApi,
-    is_paused: Callable[[], bool],
+    deco_coordinator: TplinkDecoUpdateCoordinator,
 ) -> TplinkDecoSyslogForwarder | None:
     """Start forwarding for config_entry, or return None when it's disabled."""
-    store = Store(hass, STORAGE_VERSION, storage_key(config_entry.entry_id))
+    store = _store(hass, config_entry.entry_id)
     data = config_entry.data
     if not data.get(CONF_SYSLOG_ENABLED, DEFAULT_SYSLOG_ENABLED):
         # Re-enabling later starts from a fresh tail instead of a stale one.
@@ -349,7 +349,7 @@ async def async_setup_syslog_forwarder(
     forwarder = TplinkDecoSyslogForwarder(
         hass,
         config_entry,
-        api,
+        deco_coordinator.api,
         store,
         hostname=urlparse(data[CONF_HOST]).hostname,
         server=SyslogServer(
@@ -361,11 +361,11 @@ async def async_setup_syslog_forwarder(
         interval=timedelta(
             seconds=data.get(CONF_SYSLOG_INTERVAL, DEFAULT_SYSLOG_INTERVAL)
         ),
-        is_paused=is_paused,
+        is_paused=lambda: deco_coordinator.paused,
     )
     await forwarder.async_start()
     return forwarder
 
 
 async def async_remove_syslog_store(hass: HomeAssistant, entry_id: str) -> None:
-    await Store(hass, STORAGE_VERSION, storage_key(entry_id)).async_remove()
+    await _store(hass, entry_id).async_remove()
