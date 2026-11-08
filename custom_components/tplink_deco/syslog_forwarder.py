@@ -113,30 +113,43 @@ def lines_after(tail: list[str], fetched: list[str]) -> list[str] | None:
     return None
 
 
+def _parse_deco_line(line: str) -> tuple[datetime, int, str, str, str] | None:
+    """Return the timestamp, priority, app, PID and message of a Deco line.
+
+    Deco timestamps have no time zone, so they're read as Home Assistant's.
+    """
+    match = DECO_LINE_PATTERN.match(line)
+    if match is None:
+        return None
+    try:
+        timestamp = datetime.strptime(
+            " ".join(match["ts"].split()), "%b %d %H:%M:%S %Y"
+        )
+    except ValueError:
+        return None
+    facility = FACILITIES.get(match["facility"], FACILITIES["user"])
+    severity = SEVERITIES.get(match["severity"], SEVERITIES["notice"])
+    return (
+        timestamp.replace(tzinfo=dt_util.get_default_time_zone()),
+        facility * 8 + severity,
+        (match["app"] or "-")[:48],
+        match["pid"] or "-",
+        match["msg"],
+    )
+
+
 def format_rfc5424(line: str, hostname: str | None, now: datetime) -> str:
     """Convert a Deco log line into an RFC 5424 syslog message.
 
-    Deco timestamps have no time zone, so they're read as Home Assistant's.
     A line that doesn't parse is sent whole as user.notice, stamped with now.
     """
-    match = DECO_LINE_PATTERN.match(line)
-    timestamp = now
-    if match:
-        try:
-            timestamp = datetime.strptime(
-                " ".join(match["ts"].split()), "%b %d %H:%M:%S %Y"
-            ).replace(tzinfo=dt_util.get_default_time_zone())
-        except ValueError:
-            match = None
-    if match is None:
-        pri, app, pid, msg = DEFAULT_PRI, "-", "-", line
-    else:
-        facility = FACILITIES.get(match["facility"], FACILITIES["user"])
-        severity = SEVERITIES.get(match["severity"], SEVERITIES["notice"])
-        pri = facility * 8 + severity
-        app = (match["app"] or "-")[:48]
-        pid = match["pid"] or "-"
-        msg = match["msg"]
+    timestamp, pri, app, pid, msg = _parse_deco_line(line) or (
+        now,
+        DEFAULT_PRI,
+        "-",
+        "-",
+        line,
+    )
     return (
         f"<{pri}>1 {timestamp.isoformat(timespec='seconds')} {hostname or '-'} "
         f"{app} {pid} - - {msg}"
@@ -286,6 +299,18 @@ class TplinkDecoSyslogForwarder:
             await self._async_save_tail(fetched)
             return 0
 
+        new = self._lines_after_tail(fetched)
+        if new:
+            now = dt_util.now()
+            await self._server.async_send(
+                [format_rfc5424(line, self._hostname, now) for line in new]
+            )
+        await self._async_save_tail(fetched)
+        _LOGGER.debug("Forwarded %d Deco system log lines to syslog", len(new))
+        return len(new)
+
+    def _lines_after_tail(self, fetched: list[str]) -> list[str]:
+        """Return the newest lines after the saved tail, up to the poll cap."""
         new = lines_after(self._tail, fetched)
         if new is None:
             _LOGGER.warning(
@@ -300,15 +325,7 @@ class TplinkDecoSyslogForwarder:
                 len(new),
             )
             new = new[-MAX_LINES_PER_POLL:]
-
-        if new:
-            now = dt_util.now()
-            await self._server.async_send(
-                [format_rfc5424(line, self._hostname, now) for line in new]
-            )
-        await self._async_save_tail(fetched)
-        _LOGGER.debug("Forwarded %d Deco system log lines to syslog", len(new))
-        return len(new)
+        return new
 
     async def _async_save_tail(self, fetched: list[str]) -> None:
         self._tail = fetched[-TAIL_LINES:]
