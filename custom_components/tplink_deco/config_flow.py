@@ -180,7 +180,7 @@ def _get_schema(data: dict[str:Any]):
             vol.Optional(
                 CONF_SYSLOG_HOST,
                 description={"suggested_value": data.get(CONF_SYSLOG_HOST, "")},
-            ): str,
+            ): vol.All(str, vol.Strip),
             vol.Required(
                 CONF_SYSLOG_PORT,
                 default=data.get(CONF_SYSLOG_PORT, DEFAULT_SYSLOG_PORT),
@@ -213,9 +213,8 @@ def _get_schema(data: dict[str:Any]):
 
 
 def _validate_syslog(data: dict[str:Any]) -> dict[str, str]:
-    """Strip the syslog host and require one when forwarding is enabled."""
-    data[CONF_SYSLOG_HOST] = data.get(CONF_SYSLOG_HOST, "").strip()
-    if data.get(CONF_SYSLOG_ENABLED) and not data[CONF_SYSLOG_HOST]:
+    """Require a syslog host when forwarding is enabled."""
+    if data.get(CONF_SYSLOG_ENABLED) and not data.get(CONF_SYSLOG_HOST):
         return {CONF_SYSLOG_HOST: "syslog_host_required"}
     return {}
 

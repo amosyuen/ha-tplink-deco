@@ -13,10 +13,12 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
+import voluptuous as vol
 
 from custom_components.tplink_deco import async_remove_entry
 from custom_components.tplink_deco import async_unload_entry
 from custom_components.tplink_deco import syslog_forwarder
+from custom_components.tplink_deco.config_flow import _get_schema
 from custom_components.tplink_deco.config_flow import _validate_syslog
 from custom_components.tplink_deco.const import CONF_SYSLOG_ENABLED
 from custom_components.tplink_deco.const import CONF_SYSLOG_HOST
@@ -331,16 +333,23 @@ async def test_send_tcp_aborts_connection_that_does_not_close():
 
 
 @pytest.mark.parametrize(
-    ("data", "errors", "host"),
+    ("data", "errors"),
     [
-        ({CONF_SYSLOG_ENABLED: True, CONF_SYSLOG_HOST: "  "}, True, ""),
-        ({CONF_SYSLOG_ENABLED: True, CONF_SYSLOG_HOST: " log.lan "}, False, "log.lan"),
-        ({CONF_SYSLOG_ENABLED: False, CONF_SYSLOG_HOST: ""}, False, ""),
+        ({CONF_SYSLOG_ENABLED: True}, True),
+        ({CONF_SYSLOG_ENABLED: True, CONF_SYSLOG_HOST: ""}, True),
+        ({CONF_SYSLOG_ENABLED: True, CONF_SYSLOG_HOST: "log.lan"}, False),
+        ({CONF_SYSLOG_ENABLED: False, CONF_SYSLOG_HOST: ""}, False),
     ],
 )
-def test_validate_syslog_requires_host_when_enabled(data, errors, host):
+def test_validate_syslog_requires_host_when_enabled(data, errors):
     assert bool(_validate_syslog(data)) is errors
-    assert data[CONF_SYSLOG_HOST] == host
+
+
+def test_syslog_host_is_stripped_so_blank_hosts_fail_validation():
+    schema = vol.Schema(_get_schema({}), extra=vol.ALLOW_EXTRA)
+
+    assert schema({CONF_SYSLOG_HOST: " log.lan "})[CONF_SYSLOG_HOST] == "log.lan"
+    assert schema({CONF_SYSLOG_HOST: "  "})[CONF_SYSLOG_HOST] == ""
 
 
 @pytest.mark.asyncio
