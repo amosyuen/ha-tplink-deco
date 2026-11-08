@@ -370,13 +370,7 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     deco_coordinator = data.get(COORDINATOR_DECOS_KEY)
     clients_coordinator = data.get(COORDINATOR_CLIENTS_KEY)
     mobile_coordinator = data.get(COORDINATOR_MOBILE_KEY)
-
-    if deco_coordinator is not None:
-        await deco_coordinator.async_close()
-    if clients_coordinator is not None:
-        await clients_coordinator.async_close()
-    if mobile_coordinator is not None:
-        await mobile_coordinator.async_shutdown()
+    wireless_coordinator = data.get(COORDINATOR_WIRELESS_KEY)
 
     unloaded = all(
         await asyncio.gather(
@@ -387,12 +381,30 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
         )
     )
 
-    if unloaded:
-        hass.data[DOMAIN].pop(config_entry.entry_id, None)
-        hass.services.async_remove(DOMAIN, SERVICE_PAUSE_POLLING)
-        hass.services.async_remove(DOMAIN, SERVICE_RESUME_POLLING)
+    if not unloaded:
+        return False
 
-    return unloaded
+    for coordinator in (
+        deco_coordinator,
+        clients_coordinator,
+        mobile_coordinator,
+        wireless_coordinator,
+    ):
+        if coordinator is not None:
+            await coordinator.async_shutdown()
+
+    if deco_coordinator is not None:
+        await deco_coordinator.async_close()
+    if clients_coordinator is not None:
+        await clients_coordinator.async_close()
+    if deco_coordinator is not None:
+        await deco_coordinator.api.async_logout()
+
+    hass.data[DOMAIN].pop(config_entry.entry_id, None)
+    hass.services.async_remove(DOMAIN, SERVICE_PAUSE_POLLING)
+    hass.services.async_remove(DOMAIN, SERVICE_RESUME_POLLING)
+
+    return True
 
 
 async def update_listener(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
