@@ -94,7 +94,7 @@ def _sent_messages(send):
 
 
 @pytest.mark.parametrize(
-    ("anchor", "fetched", "expected"),
+    ("tail", "fetched", "expected"),
     [
         ([], ["a", "b"], ["a", "b"]),
         (["b", "c"], ["a", "b", "c", "d", "e"], ["d", "e"]),
@@ -104,8 +104,8 @@ def _sent_messages(send):
         (["a", "b"], ["a", "b"], []),
     ],
 )
-def test_lines_after(anchor, fetched, expected):
-    assert lines_after(anchor, fetched) == expected
+def test_lines_after(tail, fetched, expected):
+    assert lines_after(tail, fetched) == expected
 
 
 def test_format_rfc5424_parses_deco_line():
@@ -138,7 +138,7 @@ async def test_first_poll_records_tail_without_sending_history(send):
 
     assert await forwarder.async_forward_new_lines() == 0
     send.assert_not_awaited()
-    assert store.data == {"level": SystemLogLevel.ALL, "anchor": ["a", "b"]}
+    assert store.data == {"level": SystemLogLevel.ALL, "tail": ["a", "b"]}
 
     api.async_get_system_log.return_value = _log("a", "b", "c")
     assert await forwarder.async_forward_new_lines() == 1
@@ -148,7 +148,7 @@ async def test_first_poll_records_tail_without_sending_history(send):
 @pytest.mark.asyncio
 async def test_stored_tail_resumes_after_restart(send):
     api = MagicMock(async_get_system_log=AsyncMock(return_value=_log("a", "b", "c")))
-    store = FakeStore({"level": SystemLogLevel.ALL, "anchor": ["a"]})
+    store = FakeStore({"level": SystemLogLevel.ALL, "tail": ["a"]})
     forwarder = _forwarder(api, store)
 
     with patch.object(syslog_forwarder, "async_track_time_interval"):
@@ -156,13 +156,13 @@ async def test_stored_tail_resumes_after_restart(send):
     await forwarder._task
 
     assert [m.rsplit(" ", 1)[1] for m in _sent_messages(send)] == ["b", "c"]
-    assert store.data["anchor"] == ["a", "b", "c"]
+    assert store.data["tail"] == ["a", "b", "c"]
 
 
 @pytest.mark.asyncio
 async def test_stored_tail_from_another_level_is_ignored(send):
     api = MagicMock(async_get_system_log=AsyncMock(return_value=_log("x", "y")))
-    store = FakeStore({"level": SystemLogLevel.ALL, "anchor": ["a"]})
+    store = FakeStore({"level": SystemLogLevel.ALL, "tail": ["a"]})
     forwarder = _forwarder(api, store, level=SystemLogLevel.ERROR)
 
     with patch.object(syslog_forwarder, "async_track_time_interval"):
@@ -170,7 +170,7 @@ async def test_stored_tail_from_another_level_is_ignored(send):
     await forwarder._task
 
     send.assert_not_awaited()
-    assert store.data == {"level": SystemLogLevel.ERROR, "anchor": ["x", "y"]}
+    assert store.data == {"level": SystemLogLevel.ERROR, "tail": ["x", "y"]}
 
 
 @pytest.mark.asyncio
@@ -179,7 +179,7 @@ async def test_no_overlap_forwards_newest_lines_up_to_cap(send, caplog):
         async_get_system_log=AsyncMock(return_value=_log("v", "w", "x", "y", "z"))
     )
     forwarder = _forwarder(api)
-    forwarder._anchor = ["a"]
+    forwarder._tail = ["a"]
 
     with patch.object(syslog_forwarder, "MAX_LINES_PER_POLL", 3):
         assert await forwarder.async_forward_new_lines() == 3
@@ -191,18 +191,18 @@ async def test_no_overlap_forwards_newest_lines_up_to_cap(send, caplog):
 @pytest.mark.asyncio
 async def test_failed_send_keeps_tail_so_next_poll_retries(send):
     api = MagicMock(async_get_system_log=AsyncMock(return_value=_log("a", "b")))
-    store = FakeStore({"level": SystemLogLevel.ALL, "anchor": ["a"]})
+    store = FakeStore({"level": SystemLogLevel.ALL, "tail": ["a"]})
     forwarder = _forwarder(api, store)
-    forwarder._anchor = ["a"]
+    forwarder._tail = ["a"]
     send.side_effect = OSError("unreachable")
 
     await forwarder.async_poll()
 
-    assert store.data["anchor"] == ["a"]
+    assert store.data["tail"] == ["a"]
     send.side_effect = None
     await forwarder.async_poll()
     assert [m.rsplit(" ", 1)[1] for m in _sent_messages(send)] == ["b", "b"]
-    assert store.data["anchor"] == ["a", "b"]
+    assert store.data["tail"] == ["a", "b"]
 
 
 @pytest.mark.asyncio
@@ -343,7 +343,7 @@ def test_validate_syslog_requires_host_when_enabled(data, errors, host):
 
 @pytest.mark.asyncio
 async def test_disabled_entry_removes_stale_tail():
-    store = FakeStore({"level": SystemLogLevel.ALL, "anchor": ["a"]})
+    store = FakeStore({"level": SystemLogLevel.ALL, "tail": ["a"]})
 
     with patch.object(syslog_forwarder, "Store", return_value=store):
         forwarder = await async_setup_syslog_forwarder(
@@ -400,8 +400,8 @@ async def test_entries_forward_independently_and_unload_separately(send):
                 SYSLOG_FORWARDER_KEY: forwarder,
             }
 
-    assert stores["tplink_deco.first.syslog"].data["anchor"] == ["first"]
-    assert stores["tplink_deco.second.syslog"].data["anchor"] == ["second"]
+    assert stores["tplink_deco.first.syslog"].data["tail"] == ["first"]
+    assert stores["tplink_deco.second.syslog"].data["tail"] == ["second"]
 
     assert await async_unload_entry(hass, entries["first"]) is True
 
@@ -412,7 +412,7 @@ async def test_entries_forward_independently_and_unload_separately(send):
 
 @pytest.mark.asyncio
 async def test_removing_entry_deletes_its_tail():
-    store = FakeStore({"level": SystemLogLevel.ALL, "anchor": ["a"]})
+    store = FakeStore({"level": SystemLogLevel.ALL, "tail": ["a"]})
 
     with patch.object(syslog_forwarder, "Store", return_value=store) as store_cls:
         await async_remove_entry(MagicMock(), SimpleNamespace(entry_id="entry"))

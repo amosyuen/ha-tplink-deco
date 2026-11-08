@@ -45,7 +45,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 STORAGE_VERSION = 1
 # Long enough that a run of identical lines can't be mistaken for the tail.
-ANCHOR_LINES = 20
+TAIL_LINES = 20
 MAX_LINES_PER_POLL = 1000
 SEND_TIMEOUT_SECONDS = 10
 CLOSE_TIMEOUT_SECONDS = 5
@@ -93,21 +93,21 @@ def storage_key(entry_id: str) -> str:
     return f"{DOMAIN}.{entry_id}.syslog"
 
 
-def lines_after(anchor: list[str], fetched: list[str]) -> list[str] | None:
-    """Return the lines in fetched after the last occurrence of anchor.
+def lines_after(tail: list[str], fetched: list[str]) -> list[str] | None:
+    """Return the lines in fetched after the last occurrence of tail.
 
-    fetched may start with only the end of anchor when the oldest anchor lines
+    fetched may start with only the end of tail when the oldest tail lines
     have rolled out of the Deco's buffer; that counts as a match too. Returns
     None when there's no overlap: the Deco rebooted or its buffer wrapped.
     """
-    if not anchor:
+    if not tail:
         return fetched
-    n = len(anchor)
+    n = len(tail)
     for i in range(len(fetched) - n, -1, -1):
-        if fetched[i : i + n] == anchor:
+        if fetched[i : i + n] == tail:
             return fetched[i + n :]
     for k in range(min(n, len(fetched)) - 1, 0, -1):
-        if fetched[:k] == anchor[-k:]:
+        if fetched[:k] == tail[-k:]:
             return fetched[k:]
     return None
 
@@ -222,7 +222,7 @@ class TplinkDecoSyslogForwarder:
         self._level = level
         self._interval = interval
         self._is_paused = is_paused
-        self._anchor: list[str] | None = None
+        self._tail: list[str] | None = None
         self._task: asyncio.Task | None = None
         self._unsub_interval: Callable[[], None] | None = None
 
@@ -230,7 +230,7 @@ class TplinkDecoSyslogForwarder:
         stored = await self._store.async_load()
         # A tail taken at another level may not appear at this one.
         if stored is not None and stored.get("level") == self._level:
-            self._anchor = stored["anchor"]
+            self._tail = stored["tail"]
         self._unsub_interval = async_track_time_interval(
             self._hass,
             self._async_schedule_poll,
@@ -276,16 +276,16 @@ class TplinkDecoSyslogForwarder:
         text = await self._api.async_get_system_log(self._level)
         fetched = [line for line in text.splitlines() if line]
 
-        if self._anchor is None:
+        if self._tail is None:
             _LOGGER.info(
                 "Deco syslog forwarding will send lines logged from now on; the"
                 " %d existing lines are not sent",
                 len(fetched),
             )
-            await self._async_save_anchor(fetched)
+            await self._async_save_tail(fetched)
             return 0
 
-        new = lines_after(self._anchor, fetched)
+        new = lines_after(self._tail, fetched)
         if new is None:
             _LOGGER.warning(
                 "Deco system log has no overlap with the last forwarded lines;"
@@ -308,13 +308,13 @@ class TplinkDecoSyslogForwarder:
                 self._protocol,
                 [format_rfc5424(line, self._hostname, now) for line in new],
             )
-        await self._async_save_anchor(fetched)
+        await self._async_save_tail(fetched)
         _LOGGER.debug("Forwarded %d Deco system log lines to syslog", len(new))
         return len(new)
 
-    async def _async_save_anchor(self, fetched: list[str]) -> None:
-        self._anchor = fetched[-ANCHOR_LINES:]
-        await self._store.async_save({"level": self._level, "anchor": self._anchor})
+    async def _async_save_tail(self, fetched: list[str]) -> None:
+        self._tail = fetched[-TAIL_LINES:]
+        await self._store.async_save({"level": self._level, "tail": self._tail})
 
 
 async def async_setup_syslog_forwarder(
