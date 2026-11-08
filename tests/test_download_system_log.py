@@ -61,8 +61,16 @@ def _entry_data(lines):
     api.async_get_system_log = AsyncMock(
         return_value="".join(f"{line}\n" for line in lines)
     )
-    deco_coordinator = MagicMock(api=api, async_close=AsyncMock())
-    clients_coordinator = MagicMock(async_close=AsyncMock())
+    api.async_logout = AsyncMock()
+    deco_coordinator = MagicMock(
+        api=api,
+        async_close=AsyncMock(),
+        async_shutdown=AsyncMock(),
+    )
+    clients_coordinator = MagicMock(
+        async_close=AsyncMock(),
+        async_shutdown=AsyncMock(),
+    )
     return {
         COORDINATOR_DECOS_KEY: deco_coordinator,
         COORDINATOR_CLIENTS_KEY: clients_coordinator,
