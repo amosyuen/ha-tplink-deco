@@ -89,8 +89,13 @@ def send():
         yield send
 
 
-def _sent_messages(send):
-    return [message for call in send.await_args_list for message in call.args[0]]
+def _sent_lines(send):
+    """Return the Deco lines sent, without their syslog headers."""
+    return [
+        message.rsplit(" ", 1)[1]
+        for call in send.await_args_list
+        for message in call.args[0]
+    ]
 
 
 @pytest.mark.parametrize(
@@ -142,7 +147,7 @@ async def test_first_poll_records_tail_without_sending_history(send):
 
     api.async_get_system_log.return_value = _log("a", "b", "c")
     assert await forwarder.async_forward_new_lines() == 1
-    assert [m.rsplit(" ", 1)[1] for m in _sent_messages(send)] == ["c"]
+    assert _sent_lines(send) == ["c"]
 
 
 @pytest.mark.asyncio
@@ -155,7 +160,7 @@ async def test_stored_tail_resumes_after_restart(send):
         await forwarder.async_start()
     await forwarder._task
 
-    assert [m.rsplit(" ", 1)[1] for m in _sent_messages(send)] == ["b", "c"]
+    assert _sent_lines(send) == ["b", "c"]
     assert store.data["tail"] == ["a", "b", "c"]
 
 
@@ -184,7 +189,7 @@ async def test_no_overlap_forwards_newest_lines_up_to_cap(send, caplog):
     with patch.object(syslog_forwarder, "MAX_LINES_PER_POLL", 3):
         assert await forwarder.async_forward_new_lines() == 3
 
-    assert [m.rsplit(" ", 1)[1] for m in _sent_messages(send)] == ["x", "y", "z"]
+    assert _sent_lines(send) == ["x", "y", "z"]
     assert "no overlap" in caplog.text
 
 
@@ -201,7 +206,7 @@ async def test_failed_send_keeps_tail_so_next_poll_retries(send):
     assert store.data["tail"] == ["a"]
     send.side_effect = None
     await forwarder.async_poll()
-    assert [m.rsplit(" ", 1)[1] for m in _sent_messages(send)] == ["b", "b"]
+    assert _sent_lines(send) == ["b", "b"]
     assert store.data["tail"] == ["a", "b"]
 
 
