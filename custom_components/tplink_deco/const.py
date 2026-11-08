@@ -63,6 +63,7 @@ SIGNAL_DECO_ADDED = f"{DOMAIN}-deco-added"
 SERVICE_REBOOT_DECO = "reboot_deco"
 SERVICE_PAUSE_POLLING = "pause_polling"
 SERVICE_RESUME_POLLING = "resume_polling"
+SERVICE_DOWNLOAD_SYSTEM_LOG = "download_system_log"
 # Platforms
 PLATFORMS = [
     "device_tracker",
