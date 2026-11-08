@@ -206,7 +206,6 @@ class TplinkDecoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for tplink_deco."""
 
     VERSION = 7
-    CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
     reauth_entry: ConfigEntry = None
 
     def __init__(self):
