@@ -5,5 +5,5 @@ homeassistant==2025.12.0
 isort==7.0.0
 pip>=26.3,<26.4
 pre-commit==4.7.0
-pycares<5
+pycares<6
 ruff==0.17.4
