@@ -38,6 +38,7 @@ from .const import DOMAIN
 from .const import SYSLOG_PROTOCOL_TCP
 from .const import SYSLOG_PROTOCOL_UDP
 from .coordinator import TplinkDecoUpdateCoordinator
+from .exceptions import UnsupportedFirmwareException
 from .system_log import SystemLogLevel
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -252,14 +253,17 @@ class TplinkDecoSyslogForwarder:
         self._async_schedule_poll()
 
     async def async_stop(self) -> None:
-        if self._unsub_interval is not None:
-            self._unsub_interval()
-            self._unsub_interval = None
+        self._cancel_interval()
         if self._task is not None:
             self._task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await self._task
             self._task = None
+
+    def _cancel_interval(self) -> None:
+        if self._unsub_interval is not None:
+            self._unsub_interval()
+            self._unsub_interval = None
 
     @callback
     def _async_schedule_poll(self, _now: datetime | None = None) -> None:
@@ -276,6 +280,12 @@ class TplinkDecoSyslogForwarder:
             return
         try:
             await self.async_forward_new_lines()
+        except UnsupportedFirmwareException as err:
+            self._cancel_interval()
+            _LOGGER.warning(
+                "Stopped Deco syslog forwarding until the integration is reloaded: %s",
+                describe_error(err),
+            )
         except Exception as err:
             # The tail advances only after a successful send, so the next poll
             # retries these lines.

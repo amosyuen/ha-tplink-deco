@@ -164,7 +164,8 @@ unencrypted, so use a server on a network you trust.
 
 Forwarding isn't available on firmware that uses the legacy encrypted web
 session, such as the Deco S7 firmware listed under
-[Tested Devices](#tested-devices).
+[Tested Devices](#tested-devices). On that firmware, the integration logs one
+warning and stops forwarding until it's reloaded.
 
 ---
 

@@ -27,6 +27,7 @@ from custom_components.tplink_deco.const import DOMAIN
 from custom_components.tplink_deco.const import SYSLOG_FORWARDER_KEY
 from custom_components.tplink_deco.const import SYSLOG_PROTOCOL_TCP
 from custom_components.tplink_deco.const import SYSLOG_PROTOCOL_UDP
+from custom_components.tplink_deco.exceptions import UnsupportedFirmwareException
 from custom_components.tplink_deco.syslog_forwarder import SyslogServer
 from custom_components.tplink_deco.syslog_forwarder import TplinkDecoSyslogForwarder
 from custom_components.tplink_deco.syslog_forwarder import async_setup_syslog_forwarder
@@ -226,6 +227,29 @@ async def test_poll_error_log_redacts_session_token(caplog):
 
     assert "abc123" not in caplog.text
     assert "stok=REDACTED/admin" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_unsupported_firmware_stops_forwarding_with_one_warning(caplog):
+    api = MagicMock(
+        async_get_system_log=AsyncMock(
+            side_effect=UnsupportedFirmwareException("not supported")
+        )
+    )
+    forwarder = _forwarder(api)
+    unsub = MagicMock()
+
+    with (
+        patch.object(syslog_forwarder, "async_track_time_interval", return_value=unsub),
+        caplog.at_level(logging.WARNING),
+    ):
+        await forwarder.async_start()
+        await forwarder._task
+
+    unsub.assert_called_once_with()
+    assert len(caplog.records) == 1
+    await forwarder.async_stop()
+    unsub.assert_called_once_with()
 
 
 @pytest.mark.asyncio
