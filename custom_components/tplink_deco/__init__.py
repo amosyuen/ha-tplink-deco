@@ -61,6 +61,7 @@ from .const import PLATFORMS
 from .const import SERVICE_PAUSE_POLLING
 from .const import SERVICE_REBOOT_DECO
 from .const import SERVICE_RESUME_POLLING
+from .const import SYSLOG_FORWARDER_KEY
 from .coordinator import TpLinkDeco
 from .coordinator import TpLinkDecoClient
 from .coordinator import TpLinkDecoData
@@ -68,6 +69,8 @@ from .coordinator import TplinkDecoClientUpdateCoordinator
 from .coordinator import TplinkDecoUpdateCoordinator
 from .mobile import TplinkDecoMobileDataUpdateCoordinator
 from .services import async_setup_services
+from .syslog_forwarder import async_remove_syslog_store
+from .syslog_forwarder import async_setup_syslog_forwarder
 from .wireless import TplinkDecoWirelessUpdateCoordinator
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -301,6 +304,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         name="tplink_deco initial mobile data refresh",
     )
 
+    syslog_forwarder = await async_setup_syslog_forwarder(
+        hass, config_entry, deco_coordinator
+    )
+    if syslog_forwarder is not None:
+        data[SYSLOG_FORWARDER_KEY] = syslog_forwarder
+
     async def async_reboot_deco(service: ServiceCall) -> None:
         dr = device_registry.async_get(hass=hass)
         device_ids = cast([str], service.data.get(ATTR_DEVICE_ID))
@@ -384,6 +393,10 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     if not unloaded:
         return False
 
+    syslog_forwarder = data.get(SYSLOG_FORWARDER_KEY)
+    if syslog_forwarder is not None:
+        await syslog_forwarder.async_stop()
+
     for coordinator in (
         deco_coordinator,
         clients_coordinator,
@@ -411,6 +424,11 @@ async def update_listener(hass: HomeAssistant, config_entry: ConfigEntry) -> Non
     """Update options."""
     _LOGGER.debug("update_listener: Reloading %s", config_entry.entry_id)
     await hass.config_entries.async_reload(config_entry.entry_id)
+
+
+async def async_remove_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+    """Delete stored state when an entry is deleted."""
+    await async_remove_syslog_store(hass, config_entry.entry_id)
 
 
 async def async_remove_config_entry_device(

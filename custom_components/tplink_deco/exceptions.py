@@ -39,3 +39,7 @@ class TransientConnectionException(Exception):
 
 class UnexpectedApiException(Exception):
     """Unexpected API exception"""
+
+
+class UnsupportedFirmwareException(UnexpectedApiException):
+    """The Deco firmware doesn't support the requested call."""
