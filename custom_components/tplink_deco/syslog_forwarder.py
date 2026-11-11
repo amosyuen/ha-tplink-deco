@@ -344,12 +344,14 @@ class TplinkDecoSyslogForwarder:
         if new is None:
             return 0
         if new:
+            # new is always the end of fetched.
+            logged_before = fetched[: len(fetched) - len(new)]
             await self._server.async_send(
                 format_rfc5424(
                     new,
                     self._hostname,
                     dt_util.now(),
-                    previous=fetched[: len(fetched) - len(new)][-TAIL_LINES:],
+                    previous=logged_before[-TAIL_LINES:],
                 )
             )
         await self._async_save_tail(fetched)
@@ -362,20 +364,20 @@ class TplinkDecoSyslogForwarder:
         Return None to skip this poll.
         """
         new = lines_after(self._tail, fetched)
-        if new is None and not self._missed_tail:
-            # The Deco sometimes returns a stale or partial log, and the next
-            # poll's log matches the tail again.
-            self._missed_tail = True
-            _LOGGER.debug("Deco system log has no overlap with the tail, skipping")
-            return None
-        self._missed_tail = False
         if new is None:
+            if not self._missed_tail:
+                # The Deco sometimes returns a stale or partial log, and the
+                # next poll's log matches the tail again.
+                self._missed_tail = True
+                _LOGGER.debug("Deco system log has no overlap with the tail, skipping")
+                return None
             _LOGGER.warning(
                 "Deco system log has no overlap with the last forwarded lines"
                 " for two polls; the Deco may have rebooted or lines may have"
                 " been missed"
             )
             new = fetched
+        self._missed_tail = False
         if len(new) > MAX_LINES_PER_POLL:
             _LOGGER.warning(
                 "Forwarding only the newest %d of %d Deco system log lines",
