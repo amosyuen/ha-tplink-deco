@@ -135,6 +135,42 @@ delay integration setup when the optional endpoint is slow or unavailable.
 Changing WiFi settings is not supported because the local write API is not
 reliable across Deco models and firmware versions.
 
+### Syslog forwarding
+
+Forwarding sends new Deco system log lines to a syslog server as RFC 5424
+messages. It's off by default. To turn it on, enable **Forward the Deco system
+log to a syslog server** in the integration options and enter the server's
+host. Each config entry forwards its own Deco's log.
+
+The port defaults to 514. UDP sends one datagram per line, and TCP ends each
+line with a newline (RFC 6587).
+
+Each run downloads the whole log at the chosen level. A download can take
+several seconds, and other polling waits until it finishes. The interval
+defaults to 300 seconds, with a minimum of 60.
+
+Which lines are sent:
+
+- Lines already in the log when forwarding is enabled or the level changes
+  are not sent.
+- Lines logged while Home Assistant is stopped are sent on the next start.
+- Lines from a failed send are retried on the next run.
+- The Deco sometimes returns an empty or stale log, so a run that gets an
+  empty log or can't find the last lines seen sends nothing.
+- If the next run can't find the last lines seen either, for example after
+  the Deco reboots, the whole log is sent.
+- A run sends at most the newest 1000 lines.
+- A line without a Deco timestamp, such as the rest of a command's output, is
+  sent with the timestamp and priority of the last timestamped line before it.
+
+The log contains client names and MAC and IP addresses. Syslog sends it
+unencrypted, so use a server on a network you trust.
+
+Forwarding isn't available on firmware that uses the legacy encrypted web
+session, such as the Deco S7 firmware listed under
+[Tested Devices](#tested-devices). On that firmware, the integration logs one
+warning and stops forwarding until it's reloaded.
+
 ---
 
 ## 🔧 Services

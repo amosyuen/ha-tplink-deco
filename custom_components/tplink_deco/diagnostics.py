@@ -10,6 +10,7 @@ from homeassistant.const import CONF_PASSWORD
 from homeassistant.const import CONF_USERNAME
 from homeassistant.core import HomeAssistant
 
+from .const import CONF_SYSLOG_HOST
 from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
 from .const import COORDINATOR_MOBILE_KEY
@@ -24,6 +25,7 @@ from .wireless import TplinkDecoWirelessUpdateCoordinator
 TO_REDACT = {
     CONF_HOST,
     CONF_PASSWORD,
+    CONF_SYSLOG_HOST,
     CONF_USERNAME,
     "access_token",
     "cookie",

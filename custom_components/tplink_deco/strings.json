@@ -18,7 +18,13 @@
           "client_prefix": "Client name prefix",
           "client_postfix": "Client name postfix",
           "deco_prefix": "Deco name prefix",
-          "deco_postfix": "Deco name postfix"
+          "deco_postfix": "Deco name postfix",
+          "syslog_enabled": "Forward the Deco system log to a syslog server",
+          "syslog_host": "Syslog server host",
+          "syslog_port": "Syslog server port",
+          "syslog_protocol": "Syslog protocol",
+          "syslog_log_level": "Minimum system log level to forward",
+          "syslog_interval": "Syslog forwarding interval in seconds"
         }
       },
       "reauth_confirm": {
@@ -33,7 +39,8 @@
       "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
       "invalid_host": "[%key:common::config_flow::error::invalid_host%]",
       "timeout_connect": "[%key:common::config_flow::error::timeout_connect%]",
-      "unknown": "[%key:common::config_flow::error::unknown%]"
+      "unknown": "[%key:common::config_flow::error::unknown%]",
+      "syslog_host_required": "Enter a syslog server host to enable forwarding."
     },
     "abort": {
       "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
@@ -58,7 +65,13 @@
           "client_prefix": "Client name prefix",
           "client_postfix": "Client name postfix",
           "deco_prefix": "Deco name prefix",
-          "deco_postfix": "Deco name postfix"
+          "deco_postfix": "Deco name postfix",
+          "syslog_enabled": "Forward the Deco system log to a syslog server",
+          "syslog_host": "Syslog server host",
+          "syslog_port": "Syslog server port",
+          "syslog_protocol": "Syslog protocol",
+          "syslog_log_level": "Minimum system log level to forward",
+          "syslog_interval": "Syslog forwarding interval in seconds"
         }
       }
     },
@@ -69,7 +82,8 @@
       "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
       "invalid_host": "[%key:common::config_flow::error::invalid_host%]",
       "timeout_connect": "[%key:common::config_flow::error::timeout_connect%]",
-      "unknown": "[%key:common::config_flow::error::unknown%]"
+      "unknown": "[%key:common::config_flow::error::unknown%]",
+      "syslog_host_required": "Enter a syslog server host to enable forwarding."
     }
   }
 }

@@ -29,6 +29,7 @@ from .exceptions import LoginInvalidException
 from .exceptions import TimeoutException
 from .exceptions import TransientConnectionException
 from .exceptions import UnexpectedApiException
+from .exceptions import UnsupportedFirmwareException
 from .system_log import SystemLogLevel
 
 AES_KEY_BYTES = 16
@@ -345,7 +346,7 @@ class TplinkDecoApi:
     async def _async_get_system_log(self, level: SystemLogLevel) -> str:
         await self.async_login_if_needed()
         if self._outer_id is not None:
-            raise UnexpectedApiException(
+            raise UnsupportedFirmwareException(
                 f"{SYSTEM_LOG_CONTEXT} is not supported on firmware with the legacy"
                 " encrypted web session"
             )
