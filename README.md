@@ -155,12 +155,13 @@ Which lines are sent:
   are not sent.
 - Lines logged while Home Assistant is stopped are sent on the next start.
 - Lines from a failed send are retried on the next run.
-- If the log no longer contains the last lines seen for two runs in a row,
-  for example after the Deco reboots, the whole log is sent. One such run is
-  skipped, because the Deco sometimes returns an empty or stale log.
+- The Deco sometimes returns an empty or stale log, so a run that gets an
+  empty log or can't find the last lines seen sends nothing.
+- If the next run can't find the last lines seen either, for example after
+  the Deco reboots, the whole log is sent.
 - A run sends at most the newest 1000 lines.
 - A line without a Deco timestamp, such as the rest of a command's output, is
-  sent with the timestamp and priority of the line before it.
+  sent with the timestamp and priority of the last timestamped line before it.
 
 The log contains client names and MAC and IP addresses. Syslog sends it
 unencrypted, so use a server on a network you trust.

@@ -156,10 +156,10 @@ def format_rfc5424(
 ) -> list[str]:
     """Convert Deco log lines into RFC 5424 syslog messages.
 
-    A line without a Deco header continues the line before it, such as the
-    rest of a command's output, so it takes that line's timestamp, priority
-    and app. previous holds the lines logged just before lines. Without a
-    header to follow, a line is sent as user.notice stamped with now.
+    A line without a Deco header, such as the rest of a command's output,
+    takes the timestamp, priority and app of the nearest header before it.
+    previous holds the lines logged before the first of lines. A line with
+    no header before it is sent as user.notice stamped with now.
     """
     header = _Header(now, DEFAULT_PRI, "-", "-")
     for line in previous:
@@ -344,7 +344,6 @@ class TplinkDecoSyslogForwarder:
         if new is None:
             return 0
         if new:
-            # new is always the end of fetched.
             logged_before = fetched[: len(fetched) - len(new)]
             await self._server.async_send(
                 format_rfc5424(
@@ -369,7 +368,9 @@ class TplinkDecoSyslogForwarder:
                 # The Deco sometimes returns a stale or partial log, and the
                 # next poll's log matches the tail again.
                 self._missed_tail = True
-                _LOGGER.debug("Deco system log has no overlap with the tail, skipping")
+                _LOGGER.debug(
+                    "Deco system log has no overlap with the last forwarded lines, skipping"
+                )
                 return None
             _LOGGER.warning(
                 "Deco system log has no overlap with the last forwarded lines"
