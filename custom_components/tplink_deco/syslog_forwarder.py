@@ -13,6 +13,7 @@ from datetime import datetime
 from datetime import timedelta
 import logging
 import re
+from typing import NamedTuple
 from urllib.parse import urlparse
 
 from homeassistant.config_entries import ConfigEntry
@@ -115,8 +116,15 @@ def lines_after(tail: list[str], fetched: list[str]) -> list[str] | None:
     return None
 
 
-def _parse_deco_line(line: str) -> tuple[datetime, int, str, str, str] | None:
-    """Return the timestamp, priority, app, PID and message of a Deco line.
+class _Header(NamedTuple):
+    timestamp: datetime
+    pri: int
+    app: str
+    pid: str
+
+
+def _parse_deco_line(line: str) -> tuple[_Header, str] | None:
+    """Return the header and message of a Deco line.
 
     Deco timestamps have no time zone, so they're taken as Home Assistant's.
     """
@@ -131,13 +139,13 @@ def _parse_deco_line(line: str) -> tuple[datetime, int, str, str, str] | None:
         return None
     facility = FACILITIES.get(match["facility"], FACILITIES["user"])
     severity = SEVERITIES.get(match["severity"], SEVERITIES["notice"])
-    return (
+    header = _Header(
         timestamp.replace(tzinfo=dt_util.get_default_time_zone()),
         facility * 8 + severity,
         (match["app"] or "-")[:48],
         match["pid"] or "-",
-        match["msg"],
     )
+    return header, match["msg"]
 
 
 def format_rfc5424(
@@ -153,20 +161,19 @@ def format_rfc5424(
     and app. previous holds the lines logged just before lines. Without a
     header to follow, a line is sent as user.notice stamped with now.
     """
-    header = (now, DEFAULT_PRI, "-", "-")
+    header = _Header(now, DEFAULT_PRI, "-", "-")
     for line in previous:
         if (parsed := _parse_deco_line(line)) is not None:
-            header = parsed[:4]
+            header, _ = parsed
     messages = []
     for line in lines:
         if (parsed := _parse_deco_line(line)) is not None:
-            header, msg = parsed[:4], parsed[4]
+            header, msg = parsed
         else:
             msg = line
-        timestamp, pri, app, pid = header
         messages.append(
-            f"<{pri}>1 {timestamp.isoformat(timespec='seconds')} {hostname or '-'} "
-            f"{app} {pid} - - {msg}"
+            f"<{header.pri}>1 {header.timestamp.isoformat(timespec='seconds')}"
+            f" {hostname or '-'} {header.app} {header.pid} - - {msg}"
         )
     return messages
 
