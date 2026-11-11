@@ -114,26 +114,50 @@ def test_lines_after(tail, fetched, expected):
     assert lines_after(tail, fetched) == expected
 
 
-def test_format_rfc5424_parses_deco_line():
-    line = "Thu Oct 15 18:19:19 2026 daemon.err udhcpd[14146]: Sending ACK"
-
+@pytest.fixture
+def utc():
     with patch.object(
         syslog_forwarder.dt_util, "get_default_time_zone", return_value=timezone.utc
     ):
-        message = format_rfc5424(line, "deco", NOW)
+        yield
 
-    assert message == (
-        "<27>1 2026-10-15T18:19:19+00:00 deco udhcpd 14146 - - Sending ACK"
-    )
+
+@pytest.mark.parametrize(
+    ("line", "expected"),
+    [
+        (
+            "Thu Oct 15 18:19:19 2026 daemon.err udhcpd[14146]: Sending ACK",
+            "<27>1 2026-10-15T18:19:19+00:00 deco udhcpd 14146 - - Sending ACK",
+        ),
+        (
+            "Sat Nov  7 12:19:32 2026 user.info : PRIVACY_ASSETS_INFO",
+            "<14>1 2026-11-07T12:19:32+00:00 deco - - - - PRIVACY_ASSETS_INFO",
+        ),
+    ],
+)
+def test_format_rfc5424_parses_deco_line(utc, line, expected):
+    assert format_rfc5424([line], "deco", NOW) == [expected]
 
 
 @pytest.mark.parametrize(
     "line", ["free-form text", "Thu Feb 30 18:19:19 2026 daemon.err udhcpd: x"]
 )
-def test_format_rfc5424_sends_unparsed_line_whole(line):
-    assert format_rfc5424(line, None, NOW) == (
+def test_format_rfc5424_sends_line_without_header_whole(line):
+    assert format_rfc5424([line], None, NOW) == [
         f"<13>1 2026-11-08T12:00:00+00:00 - - - - - {line}"
-    )
+    ]
+
+
+def test_format_rfc5424_continuation_lines_follow_previous_header(utc):
+    header = "Sat Nov  7 12:19:42 2026 user.err fan[7]: at+qtemp"
+
+    assert format_rfc5424(
+        ['+QTEMP:"a","53"', header, '+QTEMP:"b","0"'], "deco", NOW, previous=[header]
+    ) == [
+        '<11>1 2026-11-07T12:19:42+00:00 deco fan 7 - - +QTEMP:"a","53"',
+        "<11>1 2026-11-07T12:19:42+00:00 deco fan 7 - - at+qtemp",
+        '<11>1 2026-11-07T12:19:42+00:00 deco fan 7 - - +QTEMP:"b","0"',
+    ]
 
 
 @pytest.mark.asyncio
@@ -149,6 +173,20 @@ async def test_first_poll_records_tail_without_sending_history(send):
     api.async_get_system_log.return_value = _log("a", "b", "c")
     assert await forwarder.async_forward_new_lines() == 1
     assert _sent_lines(send) == ["c"]
+
+
+@pytest.mark.asyncio
+async def test_continuation_at_start_of_poll_follows_header_in_tail(send):
+    header = "Sat Nov  7 12:19:42 2026 user.err fan[7]: at+qtemp"
+    api = MagicMock(
+        async_get_system_log=AsyncMock(return_value=_log(header, '+QTEMP:"a","53"'))
+    )
+    forwarder = _forwarder(api)
+    forwarder._tail = [header]
+
+    await forwarder.async_forward_new_lines()
+
+    assert send.await_args.args[0][0].startswith("<11>1 2026-11-07T12:19:42")
 
 
 @pytest.mark.asyncio
@@ -180,7 +218,7 @@ async def test_stored_tail_from_another_level_is_ignored(send):
 
 
 @pytest.mark.asyncio
-async def test_no_overlap_forwards_newest_lines_up_to_cap(send, caplog):
+async def test_no_overlap_twice_forwards_newest_lines_up_to_cap(send, caplog):
     api = MagicMock(
         async_get_system_log=AsyncMock(return_value=_log("v", "w", "x", "y", "z"))
     )
@@ -188,10 +226,43 @@ async def test_no_overlap_forwards_newest_lines_up_to_cap(send, caplog):
     forwarder._tail = ["a"]
 
     with patch.object(syslog_forwarder, "MAX_LINES_PER_POLL", 3):
+        assert await forwarder.async_forward_new_lines() == 0
+        send.assert_not_awaited()
         assert await forwarder.async_forward_new_lines() == 3
 
     assert _sent_lines(send) == ["x", "y", "z"]
     assert "no overlap" in caplog.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("bad_log", [_log(), _log("stale")])
+async def test_one_bad_log_keeps_tail(send, bad_log):
+    api = MagicMock(async_get_system_log=AsyncMock(return_value=bad_log))
+    store = FakeStore({"level": SystemLogLevel.ALL, "tail": ["a", "b"]})
+    forwarder = _forwarder(api, store)
+    forwarder._tail = ["a", "b"]
+
+    assert await forwarder.async_forward_new_lines() == 0
+    assert store.data["tail"] == ["a", "b"]
+
+    api.async_get_system_log.return_value = _log("a", "b", "c")
+    assert await forwarder.async_forward_new_lines() == 1
+    assert _sent_lines(send) == ["c"]
+
+
+@pytest.mark.asyncio
+async def test_empty_log_on_first_poll_records_no_tail(send):
+    api = MagicMock(async_get_system_log=AsyncMock(return_value=_log()))
+    store = FakeStore()
+    forwarder = _forwarder(api, store)
+
+    await forwarder.async_forward_new_lines()
+
+    assert store.data is None
+    api.async_get_system_log.return_value = _log("a")
+    await forwarder.async_forward_new_lines()
+    send.assert_not_awaited()
+    assert store.data["tail"] == ["a"]
 
 
 @pytest.mark.asyncio
@@ -287,6 +358,32 @@ async def test_poll_is_skipped_while_previous_runs_and_stop_cancels_it():
     await forwarder.async_stop()
     unsub.assert_called_once_with()
     assert task.cancelled()
+
+
+@pytest.mark.asyncio
+async def test_send_udp_pauses_between_bursts():
+    transport = MagicMock(get_write_buffer_size=MagicMock(return_value=0))
+    sent_before_pause = []
+
+    async def pause(_seconds):
+        sent_before_pause.append(transport.sendto.call_count)
+
+    loop = asyncio.get_running_loop()
+    with (
+        patch.object(
+            loop,
+            "create_datagram_endpoint",
+            AsyncMock(return_value=(transport, None)),
+        ),
+        patch.object(syslog_forwarder, "UDP_BURST_DATAGRAMS", 2),
+        patch.object(syslog_forwarder.asyncio, "sleep", pause),
+    ):
+        await SyslogServer("127.0.0.1", 514, SYSLOG_PROTOCOL_UDP).async_send(
+            ["1", "2", "3", "4", "5"]
+        )
+
+    assert sent_before_pause == [2, 4]
+    assert transport.sendto.call_count == 5
 
 
 @pytest.mark.asyncio

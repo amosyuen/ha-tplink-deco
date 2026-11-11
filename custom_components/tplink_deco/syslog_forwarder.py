@@ -6,6 +6,7 @@ entry. Each poll sends the lines that follow it.
 
 import asyncio
 from collections.abc import Callable
+from collections.abc import Sequence
 import contextlib
 from dataclasses import dataclass
 from datetime import datetime
@@ -49,6 +50,8 @@ TAIL_LINES = 20
 MAX_LINES_PER_POLL = 1000
 SEND_TIMEOUT_SECONDS = 10
 CLOSE_TIMEOUT_SECONDS = 5
+UDP_BURST_DATAGRAMS = 100
+UDP_BURST_PAUSE_SECONDS = 0.02
 
 FACILITIES = {
     "kern": 0,
@@ -79,10 +82,11 @@ SEVERITIES = {
 DEFAULT_PRI = FACILITIES["user"] * 8 + SEVERITIES["notice"]
 
 # e.g. "Thu Oct 15 18:19:19 2026 daemon.err udhcpd[14146]: Sending ACK to 10.0.0.19"
+# or, with an empty tag, "Sat Nov  7 12:19:32 2026 user.info : PRIVACY_ASSETS_INFO"
 DECO_LINE_PATTERN = re.compile(
     r"^\w{3} (?P<ts>\w{3} +\d{1,2} \d{2}:\d{2}:\d{2} \d{4}) "
     r"(?P<facility>\w+)\.(?P<severity>\w+) "
-    r"(?:(?P<app>[^\s:\[]+)(?:\[(?P<pid>\d+)\])?: )?"
+    r"(?:(?P<app>[^\s:\[]*)(?:\[(?P<pid>\d+)\])?: )?"
     r"(?P<msg>.*)$"
 )
 # Request URLs carry the session token, and aiohttp errors quote the URL.
@@ -136,23 +140,35 @@ def _parse_deco_line(line: str) -> tuple[datetime, int, str, str, str] | None:
     )
 
 
-def format_rfc5424(line: str, hostname: str | None, now: datetime) -> str:
-    """Convert a Deco log line into an RFC 5424 syslog message.
+def format_rfc5424(
+    lines: list[str],
+    hostname: str | None,
+    now: datetime,
+    previous: Sequence[str] = (),
+) -> list[str]:
+    """Convert Deco log lines into RFC 5424 syslog messages.
 
-    A line that doesn't parse becomes the whole message, as user.notice
-    stamped with now.
+    A line without a Deco header continues the line before it, such as the
+    rest of a command's output, so it takes that line's timestamp, priority
+    and app. previous holds the lines logged just before lines. Without a
+    header to follow, a line is sent as user.notice stamped with now.
     """
-    timestamp, pri, app, pid, msg = _parse_deco_line(line) or (
-        now,
-        DEFAULT_PRI,
-        "-",
-        "-",
-        line,
-    )
-    return (
-        f"<{pri}>1 {timestamp.isoformat(timespec='seconds')} {hostname or '-'} "
-        f"{app} {pid} - - {msg}"
-    )
+    header = (now, DEFAULT_PRI, "-", "-")
+    for line in previous:
+        if (parsed := _parse_deco_line(line)) is not None:
+            header = parsed[:4]
+    messages = []
+    for line in lines:
+        if (parsed := _parse_deco_line(line)) is not None:
+            header, msg = parsed[:4], parsed[4]
+        else:
+            msg = line
+        timestamp, pri, app, pid = header
+        messages.append(
+            f"<{pri}>1 {timestamp.isoformat(timespec='seconds')} {hostname or '-'} "
+            f"{app} {pid} - - {msg}"
+        )
+    return messages
 
 
 async def _async_send_udp(host: str, port: int, payloads: list[bytes]) -> None:
@@ -161,7 +177,11 @@ async def _async_send_udp(host: str, port: int, payloads: list[bytes]) -> None:
         asyncio.DatagramProtocol, remote_addr=(host, port)
     )
     try:
-        for payload in payloads:
+        for i, payload in enumerate(payloads):
+            # A receive buffer holds a few hundred datagrams, so pause between
+            # bursts to give the server time to drain it.
+            if i and i % UDP_BURST_DATAGRAMS == 0:
+                await asyncio.sleep(UDP_BURST_PAUSE_SECONDS)
             transport.sendto(payload)
         # Closing drops datagrams the socket hasn't accepted yet.
         while transport.get_write_buffer_size():
@@ -236,6 +256,7 @@ class TplinkDecoSyslogForwarder:
         self._interval = interval
         self._is_paused = is_paused
         self._tail: list[str] | None = None
+        self._missed_tail = False
         self._task: asyncio.Task | None = None
         self._unsub_interval: Callable[[], None] | None = None
 
@@ -297,6 +318,11 @@ class TplinkDecoSyslogForwarder:
         """Send the lines logged since the last poll and return how many."""
         text = await self._api.async_get_system_log(self._level)
         fetched = [line for line in text.splitlines() if line]
+        if not fetched:
+            # The Deco sometimes returns an empty log. Saving it as the tail
+            # would make the next poll resend the whole log.
+            _LOGGER.debug("Deco returned an empty system log, skipping")
+            return 0
 
         if self._tail is None:
             _LOGGER.info(
@@ -308,22 +334,39 @@ class TplinkDecoSyslogForwarder:
             return 0
 
         new = self._lines_after_tail(fetched)
+        if new is None:
+            return 0
         if new:
-            now = dt_util.now()
             await self._server.async_send(
-                [format_rfc5424(line, self._hostname, now) for line in new]
+                format_rfc5424(
+                    new,
+                    self._hostname,
+                    dt_util.now(),
+                    previous=fetched[: len(fetched) - len(new)][-TAIL_LINES:],
+                )
             )
         await self._async_save_tail(fetched)
         _LOGGER.debug("Forwarded %d Deco system log lines to syslog", len(new))
         return len(new)
 
-    def _lines_after_tail(self, fetched: list[str]) -> list[str]:
-        """Return the newest lines after the saved tail, up to the poll cap."""
+    def _lines_after_tail(self, fetched: list[str]) -> list[str] | None:
+        """Return the newest lines after the saved tail, up to the poll cap.
+
+        Return None to skip this poll.
+        """
         new = lines_after(self._tail, fetched)
+        if new is None and not self._missed_tail:
+            # The Deco sometimes returns a stale or partial log, and the next
+            # poll's log matches the tail again.
+            self._missed_tail = True
+            _LOGGER.debug("Deco system log has no overlap with the tail, skipping")
+            return None
+        self._missed_tail = False
         if new is None:
             _LOGGER.warning(
-                "Deco system log has no overlap with the last forwarded lines;"
-                " the Deco may have rebooted or lines may have been missed"
+                "Deco system log has no overlap with the last forwarded lines"
+                " for two polls; the Deco may have rebooted or lines may have"
+                " been missed"
             )
             new = fetched
         if len(new) > MAX_LINES_PER_POLL:
