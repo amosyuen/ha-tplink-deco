@@ -68,10 +68,22 @@ def _log(*lines):
     return "".join(f"{line}\n" for line in lines)
 
 
+def _api(*lines):
+    """Return an API whose system log holds lines."""
+    return MagicMock(async_get_system_log=AsyncMock(return_value=_log(*lines)))
+
+
 def _forwarder(
-    api, store=None, *, level=SystemLogLevel.ALL, paused=False, entry_id="entry"
+    api,
+    store=None,
+    *,
+    tail=None,
+    level=SystemLogLevel.ALL,
+    paused=False,
+    entry_id="entry",
 ):
-    return TplinkDecoSyslogForwarder(
+    """Return a forwarder that resumes after tail, or a new one without it."""
+    forwarder = TplinkDecoSyslogForwarder(
         MagicMock(),
         _config_entry(entry_id),
         api,
@@ -82,6 +94,8 @@ def _forwarder(
         interval=timedelta(seconds=300),
         is_paused=lambda: paused,
     )
+    forwarder._tail = tail
+    return forwarder
 
 
 @pytest.fixture
@@ -162,7 +176,7 @@ def test_format_rfc5424_continuation_lines_follow_previous_header(utc):
 
 @pytest.mark.asyncio
 async def test_first_poll_records_tail_without_sending_history(send):
-    api = MagicMock(async_get_system_log=AsyncMock(return_value=_log("a", "b")))
+    api = _api("a", "b")
     store = FakeStore()
     forwarder = _forwarder(api, store)
 
@@ -178,11 +192,7 @@ async def test_first_poll_records_tail_without_sending_history(send):
 @pytest.mark.asyncio
 async def test_continuation_at_start_of_poll_follows_header_in_tail(send):
     header = "Sat Nov  7 12:19:42 2026 user.err fan[7]: at+qtemp"
-    api = MagicMock(
-        async_get_system_log=AsyncMock(return_value=_log(header, '+QTEMP:"a","53"'))
-    )
-    forwarder = _forwarder(api)
-    forwarder._tail = [header]
+    forwarder = _forwarder(_api(header, '+QTEMP:"a","53"'), tail=[header])
 
     await forwarder.async_forward_new_lines()
 
@@ -191,7 +201,7 @@ async def test_continuation_at_start_of_poll_follows_header_in_tail(send):
 
 @pytest.mark.asyncio
 async def test_stored_tail_resumes_after_restart(send):
-    api = MagicMock(async_get_system_log=AsyncMock(return_value=_log("a", "b", "c")))
+    api = _api("a", "b", "c")
     store = FakeStore({"level": SystemLogLevel.ALL, "tail": ["a"]})
     forwarder = _forwarder(api, store)
 
@@ -205,7 +215,7 @@ async def test_stored_tail_resumes_after_restart(send):
 
 @pytest.mark.asyncio
 async def test_stored_tail_from_another_level_is_ignored(send):
-    api = MagicMock(async_get_system_log=AsyncMock(return_value=_log("x", "y")))
+    api = _api("x", "y")
     store = FakeStore({"level": SystemLogLevel.ALL, "tail": ["a"]})
     forwarder = _forwarder(api, store, level=SystemLogLevel.ERROR)
 
@@ -219,11 +229,7 @@ async def test_stored_tail_from_another_level_is_ignored(send):
 
 @pytest.mark.asyncio
 async def test_no_overlap_twice_forwards_newest_lines_up_to_cap(send, caplog):
-    api = MagicMock(
-        async_get_system_log=AsyncMock(return_value=_log("v", "w", "x", "y", "z"))
-    )
-    forwarder = _forwarder(api)
-    forwarder._tail = ["a"]
+    forwarder = _forwarder(_api("v", "w", "x", "y", "z"), tail=["a"])
 
     with patch.object(syslog_forwarder, "MAX_LINES_PER_POLL", 3):
         assert await forwarder.async_forward_new_lines() == 0
@@ -235,24 +241,27 @@ async def test_no_overlap_twice_forwards_newest_lines_up_to_cap(send, caplog):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("bad_log", [_log(), _log("stale")])
-async def test_one_bad_log_keeps_tail(send, bad_log):
-    api = MagicMock(async_get_system_log=AsyncMock(return_value=bad_log))
-    store = FakeStore({"level": SystemLogLevel.ALL, "tail": ["a", "b"]})
-    forwarder = _forwarder(api, store)
-    forwarder._tail = ["a", "b"]
+@pytest.mark.parametrize("bad_lines", [(), ("stale",)])
+async def test_one_bad_log_keeps_tail(send, bad_lines):
+    api = _api(*bad_lines)
+    store = FakeStore()
+    forwarder = _forwarder(api, store, tail=["a", "b"])
 
     assert await forwarder.async_forward_new_lines() == 0
-    assert store.data["tail"] == ["a", "b"]
+    assert store.data is None
 
     api.async_get_system_log.return_value = _log("a", "b", "c")
     assert await forwarder.async_forward_new_lines() == 1
     assert _sent_lines(send) == ["c"]
 
+    api.async_get_system_log.return_value = _log(*bad_lines)
+    assert await forwarder.async_forward_new_lines() == 0
+    assert _sent_lines(send) == ["c"]
+
 
 @pytest.mark.asyncio
 async def test_empty_log_on_first_poll_records_no_tail(send):
-    api = MagicMock(async_get_system_log=AsyncMock(return_value=_log()))
+    api = _api()
     store = FakeStore()
     forwarder = _forwarder(api, store)
 
@@ -267,15 +276,13 @@ async def test_empty_log_on_first_poll_records_no_tail(send):
 
 @pytest.mark.asyncio
 async def test_failed_send_keeps_tail_so_next_poll_retries(send):
-    api = MagicMock(async_get_system_log=AsyncMock(return_value=_log("a", "b")))
-    store = FakeStore({"level": SystemLogLevel.ALL, "tail": ["a"]})
-    forwarder = _forwarder(api, store)
-    forwarder._tail = ["a"]
+    store = FakeStore()
+    forwarder = _forwarder(_api("a", "b"), store, tail=["a"])
     send.side_effect = OSError("unreachable")
 
     await forwarder.async_poll()
 
-    assert store.data["tail"] == ["a"]
+    assert store.data is None
     send.side_effect = None
     await forwarder.async_poll()
     assert _sent_lines(send) == ["b", "b"]
@@ -513,9 +520,7 @@ async def test_entries_forward_independently_and_unload_separately(send):
         patch.object(syslog_forwarder, "async_track_time_interval", side_effect=track),
     ):
         for entry_id in ("first", "second"):
-            apis[entry_id] = MagicMock(
-                async_get_system_log=AsyncMock(return_value=_log(entry_id))
-            )
+            apis[entry_id] = _api(entry_id)
             entries[entry_id] = _config_entry(
                 entry_id,
                 {
