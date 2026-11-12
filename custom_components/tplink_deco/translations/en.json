@@ -43,7 +43,8 @@
       "invalid_host": "Unable to connect to host.",
       "timeout_connect": "Timeout establishing connection",
       "unknown": "Unexpected error",
-      "syslog_host_required": "Enter a syslog server host to enable forwarding."
+      "syslog_host_required": "Enter a syslog server host to enable forwarding.",
+      "invalid_device_list_interval": "Enter 0 to disable automatic Deco status updates, or an interval of at least 10 seconds."
     }
   },
   "options": {
@@ -83,7 +84,8 @@
       "invalid_host": "Unable to connect to host.",
       "timeout_connect": "Timeout establishing connection",
       "unknown": "Unexpected error",
-      "syslog_host_required": "Enter a syslog server host to enable forwarding."
+      "syslog_host_required": "Enter a syslog server host to enable forwarding.",
+      "invalid_device_list_interval": "Enter 0 to disable automatic Deco status updates, or an interval of at least 10 seconds."
     }
   }
 }
