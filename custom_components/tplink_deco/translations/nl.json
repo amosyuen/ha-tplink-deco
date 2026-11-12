@@ -26,7 +26,8 @@
     "error": {
       "invalid_auth": "Incorrecte authenticatie",
       "timeout_connect": "Timeout tijdens maken van verbinding",
-      "unknown": "Onbekende fout"
+      "unknown": "Onbekende fout",
+      "invalid_device_list_interval": "Vul 0 in om automatische Deco-statusupdates uit te schakelen, of een interval van minstens 10 seconden."
     }
   },
   "options": {
@@ -49,7 +50,8 @@
     "error": {
       "invalid_auth": "Incorrecte authenticatie",
       "timeout_connect": "Timeout tijdens maken van verbinding",
-      "unknown": "Onbekende fout"
+      "unknown": "Onbekende fout",
+      "invalid_device_list_interval": "Vul 0 in om automatische Deco-statusupdates uit te schakelen, of een interval van minstens 10 seconden."
     }
   }
 }

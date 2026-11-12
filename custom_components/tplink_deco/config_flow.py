@@ -89,6 +89,14 @@ def _normalize_intervals(data: dict[str:Any]) -> None:
         data[CONF_DEVICE_LIST_INTERVAL] = int(data[CONF_DEVICE_LIST_INTERVAL])
 
 
+def _validate_intervals(data: dict[str:Any]) -> dict[str, str]:
+    """Keep the disjoint interval constraint out of the serialized schema."""
+    interval = data.get(CONF_DEVICE_LIST_INTERVAL)
+    if interval is not None and interval != 0 and interval < 10:
+        return {CONF_DEVICE_LIST_INTERVAL: "invalid_device_list_interval"}
+    return {}
+
+
 def _get_auth_schema(data: dict[str:Any]):
     if data is None:
         data = {}
@@ -108,7 +116,7 @@ def _get_schema(data: dict[str:Any]):
         device_list_interval = int(device_list_interval)
     except (TypeError, ValueError):
         device_list_interval = int(scan_interval)
-    if device_list_interval != 0 and device_list_interval < 10:
+    if device_list_interval < 0:
         device_list_interval = int(scan_interval)
 
     schema.update(
@@ -128,7 +136,7 @@ def _get_schema(data: dict[str:Any]):
             vol.Required(
                 CONF_DEVICE_LIST_INTERVAL,
                 default=device_list_interval,
-            ): vol.All(vol.Coerce(int), vol.Any(0, vol.Range(min=10))),
+            ): vol.All(vol.Coerce(int), vol.Range(min=0)),
             vol.Required(
                 CONF_CONSIDER_HOME,
                 default=data.get(CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME),
@@ -275,9 +283,11 @@ class TplinkDecoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             _normalize_intervals(user_input)
-            self._errors = _validate_syslog(
+            self._errors = _validate_intervals(user_input) | _validate_syslog(
                 user_input
-            ) or await _async_test_credentials(self.hass, user_input)
+            )
+            if not self._errors:
+                self._errors = await _async_test_credentials(self.hass, user_input)
             if len(self._errors) == 0:
                 _ensure_user_input_optionals(user_input)
                 return self.async_create_entry(
@@ -346,7 +356,7 @@ class TplinkDecoOptionsFlowHandler(config_entries.OptionsFlow):
             )
             self.data.update(user_input)
 
-            self._errors = _validate_syslog(self.data)
+            self._errors = _validate_intervals(self.data) | _validate_syslog(self.data)
             if connection_settings_changed and not self._errors:
                 self._errors = await _async_test_credentials(self.hass, self.data)
             if len(self._errors) == 0:

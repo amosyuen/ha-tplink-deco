@@ -40,7 +40,8 @@
       "invalid_host": "[%key:common::config_flow::error::invalid_host%]",
       "timeout_connect": "[%key:common::config_flow::error::timeout_connect%]",
       "unknown": "[%key:common::config_flow::error::unknown%]",
-      "syslog_host_required": "Enter a syslog server host to enable forwarding."
+      "syslog_host_required": "Enter a syslog server host to enable forwarding.",
+      "invalid_device_list_interval": "Enter 0 to disable automatic Deco status updates, or an interval of at least 10 seconds."
     },
     "abort": {
       "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
@@ -83,7 +84,8 @@
       "invalid_host": "[%key:common::config_flow::error::invalid_host%]",
       "timeout_connect": "[%key:common::config_flow::error::timeout_connect%]",
       "unknown": "[%key:common::config_flow::error::unknown%]",
-      "syslog_host_required": "Enter a syslog server host to enable forwarding."
+      "syslog_host_required": "Enter a syslog server host to enable forwarding.",
+      "invalid_device_list_interval": "Enter 0 to disable automatic Deco status updates, or an interval of at least 10 seconds."
     }
   }
 }
