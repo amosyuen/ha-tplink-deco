@@ -1,11 +1,14 @@
 import asyncio
 import base64
+import gzip
 import hashlib
+import io
 import json
 import logging
 import math
 import re
 import secrets
+import tarfile
 from typing import Any
 from urllib.parse import quote_plus
 
@@ -42,6 +45,30 @@ SYSTEM_LOG_CONTEXT = "Get System Log"
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 LEGACY_ERROR_DECODING_PATTERN = re.compile(r"^<Error Decoding (.*)>$")
+
+
+def _decode_system_log(body: bytes) -> str:
+    """Return the system log text from a save_log response body.
+
+    Some firmware returns the snapshot as a gzipped tar holding syslog.log
+    instead of plain text.
+    """
+    if body[:2] == b"\x1f\x8b":
+        body = gzip.decompress(body)
+    stream = io.BytesIO(body)
+    if tarfile.is_tarfile(stream):
+        stream.seek(0)
+        with tarfile.open(fileobj=stream) as archive:
+            members = [member for member in archive.getmembers() if member.isfile()]
+            member = next(
+                (m for m in members if m.name.endswith("syslog.log")),
+                members[0] if members else None,
+            )
+            if member is not None:
+                extracted = archive.extractfile(member)
+                if extracted is not None:
+                    return extracted.read().decode("utf-8", errors="replace")
+    return body.decode("utf-8", errors="replace")
 
 
 def normalize_name(name: str):
@@ -384,7 +411,7 @@ class TplinkDecoApi:
                 )
                 response.raise_for_status()
                 if response.content_type == "text/plain":
-                    return await response.text()
+                    return _decode_system_log(await response.read())
                 raise self._save_log_error(await response.json(content_type=None))
         except asyncio.TimeoutError as err:
             raise TimeoutException(f"{SYSTEM_LOG_CONTEXT} timed out") from err

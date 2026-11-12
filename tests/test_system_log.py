@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import gzip
+import io
+import tarfile
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 
@@ -68,11 +71,25 @@ class FakeRouter:
 
 
 def _text_response(text):
+    return _bytes_response(text.encode())
+
+
+def _bytes_response(body):
     response = MagicMock()
     response.content_type = "text/plain"
     response.raise_for_status = MagicMock()
-    response.text = AsyncMock(return_value=text)
+    response.read = AsyncMock(return_value=body)
     return response
+
+
+def _tar_gz(name, payload):
+    """Return a gzipped tar holding one file, as some firmware serves it."""
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w") as archive:
+        info = tarfile.TarInfo(name)
+        info.size = len(payload)
+        archive.addfile(info, io.BytesIO(payload))
+    return gzip.compress(buffer.getvalue())
 
 
 def _json_response(payload):
@@ -112,6 +129,25 @@ async def test_builds_at_level_then_saves_snapshot(api, session):
             {"sysauth": "abc"},
         )
     ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("body", "expected"),
+    [
+        (LOG_TEXT.encode(), LOG_TEXT),
+        (gzip.compress(LOG_TEXT.encode()), LOG_TEXT),
+        (_tar_gz("./syslog.log", LOG_TEXT.encode()), LOG_TEXT),
+        (_tar_gz("deco.log", LOG_TEXT.encode()), LOG_TEXT),
+    ],
+    ids=["plain", "gzip", "gzip-tar", "gzip-tar-other-name"],
+)
+async def test_decodes_save_log_bodies(api, session, body, expected):
+    router = FakeRouter(api, session)
+    router.save_responses.append(_bytes_response(body))
+
+    assert await api.async_get_system_log() == expected
+    assert len(router.saves) == 1
 
 
 @pytest.mark.asyncio
