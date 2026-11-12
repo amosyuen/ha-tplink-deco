@@ -10,10 +10,10 @@ from homeassistant.components.device_tracker.const import CONF_SCAN_INTERVAL
 from homeassistant.const import CONF_HOST
 from homeassistant.const import CONF_PASSWORD
 from homeassistant.const import CONF_USERNAME
-from homeassistant.helpers import config_validation as cv
+from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers.data_entry_flow import _BaseFlowManagerView
 import pytest
 import voluptuous as vol
-import voluptuous_serialize
 
 from custom_components.tplink_deco import config_flow
 from custom_components.tplink_deco.const import CONF_DEVICE_LIST_INTERVAL
@@ -54,12 +54,13 @@ async def _step(flow, kind, data=None):
 
 
 def _serialize(schema):
-    # Use the serializer callback used by HA's data-entry-flow HTTP view.
-    result = voluptuous_serialize.convert(
-        schema, custom_serializer=cv.custom_serializer
+    # Exercise HA's actual HTTP conversion, including its version-specific serializer.
+    view = _BaseFlowManagerView(MagicMock())
+    result = view._prepare_result_json(
+        {"type": FlowResultType.FORM, "data_schema": schema}
     )
     json.dumps(result)
-    return result
+    return result["data_schema"]
 
 
 @pytest.mark.parametrize("interval", [0, 5, 10, 11, 30, 3600])
@@ -73,6 +74,10 @@ def test_full_schema_is_serializable(interval):
 
 
 def test_old_disjoint_interval_schema_reproduces_serialization_error():
+    legacy_serializer = pytest.importorskip(
+        "voluptuous_serialize",
+        reason="Only older HA versions use the legacy serializer",
+    )
     schema = vol.Schema(
         {
             vol.Required(CONF_DEVICE_LIST_INTERVAL): vol.All(
@@ -82,7 +87,7 @@ def test_old_disjoint_interval_schema_reproduces_serialization_error():
     )
 
     with pytest.raises(ValueError, match="Unable to convert schema"):
-        _serialize(schema)
+        legacy_serializer.convert(schema)
 
 
 @pytest.mark.asyncio
