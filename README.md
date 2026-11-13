@@ -322,6 +322,13 @@ The action isn't available on firmware that uses the legacy encrypted web
 session, such as the Deco S7 firmware listed under
 [Tested Devices](#tested-devices).
 
+Since v3.15.2, plain-text, gzip-compressed and tar-packaged log snapshots are
+decoded automatically, including compressed responses without a correct
+`Content-Encoding` header. This applies to both manual downloads and syslog
+forwarding, including the reported BE65 and BE9300 firmware variants. Only
+the selected regular log file is read from an archive; nothing is extracted
+to disk. No configuration changes are required.
+
 <!-- ha-marketplace:exclude-start -->
 
 {% if not installed %}
