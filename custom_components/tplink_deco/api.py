@@ -1,13 +1,18 @@
 import asyncio
 import base64
+import gzip
 import hashlib
+import io
 import json
 import logging
 import math
+from pathlib import PurePosixPath
 import re
 import secrets
+import tarfile
 from typing import Any
 from urllib.parse import quote_plus
+import zlib
 
 from Crypto.Cipher import PKCS1_v1_5
 from Crypto.PublicKey import RSA
@@ -42,6 +47,47 @@ SYSTEM_LOG_CONTEXT = "Get System Log"
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 LEGACY_ERROR_DECODING_PATTERN = re.compile(r"^<Error Decoding (.*)>$")
+
+
+def _decode_system_log(body: bytes) -> str:
+    """Decode firmware-dependent snapshots without extracting files to disk."""
+    if body.startswith(b"\x1f\x8b"):
+        try:
+            body = gzip.decompress(body)
+        except (OSError, EOFError, zlib.error) as err:
+            raise UnexpectedApiException(
+                f"{SYSTEM_LOG_CONTEXT} returned invalid gzip data"
+            ) from err
+
+    stream = io.BytesIO(body)
+    if not tarfile.is_tarfile(stream):
+        if body[257:262] == b"ustar":
+            raise UnexpectedApiException(
+                f"{SYSTEM_LOG_CONTEXT} returned an invalid tar archive"
+            )
+        return body.decode("utf-8", errors="replace")
+
+    stream.seek(0)
+    try:
+        with tarfile.open(fileobj=stream, mode="r:") as archive:
+            members = [member for member in archive.getmembers() if member.isfile()]
+            if not members:
+                return ""
+            member = next(
+                (m for m in members if PurePosixPath(m.name).name == "syslog.log"),
+                members[0],
+            )
+            extracted = archive.extractfile(member)
+            if extracted is None:
+                raise UnexpectedApiException(
+                    f"{SYSTEM_LOG_CONTEXT} could not read the archived log"
+                )
+            with extracted:
+                return extracted.read().decode("utf-8", errors="replace")
+    except (tarfile.TarError, OSError, EOFError) as err:
+        raise UnexpectedApiException(
+            f"{SYSTEM_LOG_CONTEXT} returned an invalid tar archive"
+        ) from err
 
 
 def normalize_name(name: str):
@@ -384,7 +430,8 @@ class TplinkDecoApi:
                 )
                 response.raise_for_status()
                 if response.content_type == "text/plain":
-                    return await response.text()
+                    body = await response.read()
+                    return await asyncio.to_thread(_decode_system_log, body)
                 raise self._save_log_error(await response.json(content_type=None))
         except asyncio.TimeoutError as err:
             raise TimeoutException(f"{SYSTEM_LOG_CONTEXT} timed out") from err
