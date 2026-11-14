@@ -71,8 +71,6 @@ def test_satellite_keeps_master_registry_link_when_name_is_missing() -> None:
 
     device_info = device.create_device_info(satellite, master)
 
-    assert device_info["identifiers"] == {
-        ("tplink_deco", "11:22:33:44:55:66")
-    }
+    assert device_info["identifiers"] == {("tplink_deco", "11:22:33:44:55:66")}
     assert device_info["via_device"] == ("tplink_deco", MAC)
     assert device_info["name"] == "11:22:33:44:55:66 Deco"
