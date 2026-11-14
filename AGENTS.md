@@ -146,6 +146,10 @@ policy for AI-assisted development.
   `.github/workflows/tests.yaml` without a duplicate pytest job. Verify
   Home Assistant installation and required imports before test collection.
   Missing or skipped runtime tests do not count as successful CI validation.
+- Keep version-specific transitive dependency constraints local to their
+  affected matrix entry. Home Assistant 2025.12 uses `aiodns==3.5.0`,
+  which cannot import `pycares>=5`; use `pycares<5` for that test
+  entry only, without downgrading the newer Home Assistant 2026.11 entry.
 - Run `python -m pytest --no-cov tests/` for focused regression tests:
   `setup.cfg` enables coverage reporting with a 100% threshold by
   default. Do not report a successful full-coverage run when only the
