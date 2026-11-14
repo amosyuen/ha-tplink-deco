@@ -95,7 +95,7 @@ def _async_setup_decos(
 ):
     tracked_decos = set()
 
-    # Add master deco first because via_device checks that the providing device (master) exists.
+    # Register the master before satellites so its device registry ID exists.
     master_deco = coordinator.data.master_deco
     if master_deco is not None:
         _LOGGER.debug("_async_setup_decos: Adding master deco mac=%s", master_deco.mac)
@@ -284,7 +284,9 @@ class TplinkDecoDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device info."""
-        return create_device_info(self._deco, self.coordinator.data.master_deco)
+        return create_device_info(
+            self._deco, self.coordinator.data.master_deco, self.coordinator
+        )
 
     @callback
     async def async_on_demand_update(self):
@@ -421,7 +423,9 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
     def device_info(self) -> DeviceInfo:
         """Return device info."""
         deco = self._coordinator_decos.data.decos.get(self._attr_deco_mac)
-        return create_device_info(deco, self._coordinator_decos.data.master_deco)
+        return create_device_info(
+            deco, self._coordinator_decos.data.master_deco, self._coordinator_decos
+        )
 
     @callback
     async def async_on_demand_update(self):
