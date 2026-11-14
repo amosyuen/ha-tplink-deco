@@ -537,9 +537,11 @@ class TplinkDecoApi:
             # Truncated responses and disconnects can be retried without
             # invalidating a previously authenticated session.
             _LOGGER.debug("Deco API incomplete response: %s", type(err).__name__)
+            # Suppress raw aiohttp error context: it can contain tokens in
+            # an automatically formatted Home Assistant traceback.
             raise TransientConnectionException(
                 "Deco API response was incomplete"
-            ) from err
+            ) from None
         except aiohttp.ClientConnectorError as err:
             # Network failures do not prove authentication expired.
             _LOGGER.error("%s connection error: %s", context, err)
