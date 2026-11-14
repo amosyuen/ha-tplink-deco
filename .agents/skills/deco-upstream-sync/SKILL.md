@@ -34,5 +34,6 @@ description: "Use when comparing, backporting, reviewing, or implementing change
 - Confirm no existing fork-specific entities or services were removed.
 - Identify the tests actually executed, pending CI, and any blocked checks.
 - Check current merge conflicts and unresolved review threads before reporting completion.
+- Evaluate verified lessons from the change/review; update `AGENTS.md` or the relevant skill on this branch when reusable, otherwise state that no guidance update was needed.
 
 `AGENTS.md` remains the source of repository-wide policy and quality requirements.
