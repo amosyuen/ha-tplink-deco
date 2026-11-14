@@ -19,6 +19,25 @@ These skills are task-specific procedures. This file remains the source of
 repository-wide implementation rules; `AI_POLICY.md` remains the governing
 policy for AI-assisted development.
 
+## Mandatory lessons-learned capture
+
+- After each substantive bug fix, upstream backport, review resolution, or
+  regression investigation, assess whether a verified, reusable lesson should
+  become repository guidance before calling the work complete.
+- Put stable, repository-wide implementation standards and testing requirements
+  in `AGENTS.md`. Put repeatable task-specific procedures in the relevant
+  `.agents/skills/*/SKILL.md` file, or create a new skill when appropriate.
+  Keep `AI_POLICY.md` for governing policy rather than detailed procedures.
+- State the triggering failure mode, required prevention or validation step,
+  and scope of the rule. Preserve existing instructions, avoid duplication,
+  and record only lessons supported by code review, tests, or other evidence.
+- Commit any necessary guidance change to the same working branch and
+  describe it in the PR. If there is no broadly reusable lesson, leave
+  instructions unchanged; do not manufacture rules to satisfy a checklist.
+- Report unverified tests and incomplete work accurately. Do not mark a
+  review thread resolved or a tracking-issue task complete merely because
+  its lesson has been documented.
+
 ## Preserve fork compatibility
 
 - Treat upstream synchronization (tracking issue #2) as a series of small,
