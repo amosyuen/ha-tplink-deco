@@ -121,6 +121,9 @@ class MergeReferenceSyncTests(unittest.TestCase):
             "Part of #2, #3\n"
             "Related to HiDiHo01/ha-tplink-deco#4\n"
             "https://github.com/HiDiHo01/ha-tplink-deco/issues/5\n"
+            "**Related to #6**\n"
+            "- **Part of #7**\n"
+            "> Related to #8\n"
             "https://github.com/amosyuen/ha-tplink-deco/issues/590\n"
             "https://github.com/amosyuen/ha-tplink-deco/pull/590\n"
             + chr(96) * 3
@@ -128,7 +131,7 @@ class MergeReferenceSyncTests(unittest.TestCase):
             + chr(96) * 3
             + "\n<!-- Related to #700 -->\n"
         )
-        self.assertEqual(sync.issue_references(body, REPOSITORY), {2, 3, 4, 5})
+        self.assertEqual(sync.issue_references(body, REPOSITORY), {2, 3, 4, 5, 6, 7, 8})
 
     def test_does_not_treat_pr_urls_as_issue_references(self) -> None:
         """A pull request URL is never an issue link, even with matching ID."""
