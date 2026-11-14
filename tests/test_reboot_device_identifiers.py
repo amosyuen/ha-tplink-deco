@@ -39,6 +39,7 @@ async def _get_reboot_service() -> tuple[object, AsyncMock]:
     """Set up the integration with mocked coordinators and capture the handler."""
     hass = MagicMock()
     hass.data = {}
+    hass.config_entries.async_forward_entry_setups = AsyncMock()
     config_entry = MagicMock()
     config_entry.entry_id = "entry_1"
     reboot_api = AsyncMock()
