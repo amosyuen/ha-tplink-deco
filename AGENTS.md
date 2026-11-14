@@ -157,6 +157,24 @@ policy for AI-assisted development.
   retained instructions and exclusion markers without changing the
   minimum HA version, existing runtime platforms or configuration data.
 
+## Same-router HTTPS redirects and session cookies (upstream PR #539)
+
+- Newer aiohttp versions drop per-request cookies when an HTTP-to-HTTPS
+  redirect crosses origins. Some Deco firmware returns HTTP 307 for every
+  request, causing authenticated API calls to receive an empty response.
+- When a successful redirect starts with HTTP 307 and ends at HTTPS on the
+  **same configured router hostname**, upgrade the API's runtime base URL to
+  the destination HTTPS origin (including a nondefault port). Subsequent
+  calls should avoid redirecting and carry their ordinary session cookie.
+- Never rewrite the API host after an unrelated HTTP status, no redirect,
+  a redirect to a different host, or when the configured URL is already
+  HTTPS. Do not edit persisted configuration or create a new admin session
+  merely to handle a trusted scheme upgrade.
+- Exercise the actual `_async_post` path in regressions with simulated
+  aiohttp redirect history, follow-up authenticated requests, custom
+  ports, cross-host/invalid redirects and privacy-safe logging. Do not log
+  the redirected request URL, session tokens or cookies.
+
 ## Transport errors versus expired authentication (upstream PR #598)
 
 - A disconnected HTTP transport or connector failure does not by itself
