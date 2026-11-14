@@ -78,3 +78,7 @@ final responsibility for approving and merging changes.
 - Update translations, README, changelog, and relevant instructions when
   behavior or development requirements change. Put detailed workflows in
   `AGENTS.md` or repository-local skills rather than duplicating them here.
+- After substantive changes or review resolutions, evaluate verified
+  lessons for reuse and update `AGENTS.md` or relevant repository skills as
+  appropriate. Avoid speculative or redundant rules and document why no
+  guidance change was necessary when that is material to the handoff.
