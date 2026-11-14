@@ -32,9 +32,7 @@ COOKIE = "sysauth=private-cookie"
 def _response_error(status: int = 500) -> aiohttp.ClientResponseError:
     """Create a real HTTP error containing a sensitive LuCI request URL."""
     request_info = MagicMock()
-    request_info.real_url = (
-        f"http://192.0.2.1/cgi-bin/luci/;stok={STOK}/admin/client"
-    )
+    request_info.real_url = f"http://192.0.2.1/cgi-bin/luci/;stok={STOK}/admin/client"
     return aiohttp.ClientResponseError(
         request_info=request_info,
         history=(),
@@ -89,7 +87,9 @@ async def test_http_5xx_starts_backoff_without_losing_known_clients(
     coordinator, api = _coordinator(old_clients={old.mac: old})
     api.async_list_clients = AsyncMock(side_effect=_response_error(status))
 
-    with patch("custom_components.tplink_deco.coordinator.monotonic", return_value=1000):
+    with patch(
+        "custom_components.tplink_deco.coordinator.monotonic", return_value=1000
+    ):
         with caplog.at_level(logging.DEBUG):
             result = await coordinator._async_update_data()
 
@@ -110,10 +110,14 @@ async def test_backoff_skips_requests_and_preserves_last_known_state() -> None:
     coordinator, api = _coordinator(old_clients={old.mac: old})
     api.async_list_clients = AsyncMock(side_effect=_response_error())
 
-    with patch("custom_components.tplink_deco.coordinator.monotonic", return_value=1000):
+    with patch(
+        "custom_components.tplink_deco.coordinator.monotonic", return_value=1000
+    ):
         coordinator.data = await coordinator._async_update_data()
 
-    with patch("custom_components.tplink_deco.coordinator.monotonic", return_value=1011):
+    with patch(
+        "custom_components.tplink_deco.coordinator.monotonic", return_value=1011
+    ):
         result = await coordinator._async_update_data()
         assert coordinator.remaining_backoff_seconds == 19
 
@@ -161,16 +165,22 @@ async def test_successful_recovery_resets_backoff_and_next_failure_restarts() ->
         ]
     )
 
-    with patch("custom_components.tplink_deco.coordinator.monotonic", return_value=1000):
+    with patch(
+        "custom_components.tplink_deco.coordinator.monotonic", return_value=1000
+    ):
         coordinator.data = await coordinator._async_update_data()
-    with patch("custom_components.tplink_deco.coordinator.monotonic", return_value=1031):
+    with patch(
+        "custom_components.tplink_deco.coordinator.monotonic", return_value=1031
+    ):
         coordinator.data = await coordinator._async_update_data()
 
     assert coordinator._client_backoff_seconds == 0
     assert coordinator._client_backoff_until == 0.0
     assert coordinator.data[MASTER_CLIENT].online is True
 
-    with patch("custom_components.tplink_deco.coordinator.monotonic", return_value=1050):
+    with patch(
+        "custom_components.tplink_deco.coordinator.monotonic", return_value=1050
+    ):
         coordinator.data = await coordinator._async_update_data()
 
     assert coordinator._client_backoff_seconds == 30
@@ -181,9 +191,7 @@ async def test_successful_recovery_resets_backoff_and_next_failure_restarts() ->
 async def test_partial_node_success_preserved_during_500_backoff() -> None:
     """One faulty node cannot discard clients returned by a healthy peer."""
     old = _old_client(MASTER_CLIENT, MASTER_MAC)
-    coordinator, api = _coordinator(
-        two_decos=True, old_clients={old.mac: old}
-    )
+    coordinator, api = _coordinator(two_decos=True, old_clients={old.mac: old})
 
     async def _per_node_clients(deco_mac: str) -> list[dict[str, object]]:
         """Simulate a master 500 and successful satellite client list."""
@@ -193,7 +201,9 @@ async def test_partial_node_success_preserved_during_500_backoff() -> None:
 
     api.async_list_clients = AsyncMock(side_effect=_per_node_clients)
 
-    with patch("custom_components.tplink_deco.coordinator.monotonic", return_value=1000):
+    with patch(
+        "custom_components.tplink_deco.coordinator.monotonic", return_value=1000
+    ):
         result = await coordinator._async_update_data()
 
     assert result[MASTER_CLIENT] is old
@@ -209,18 +219,27 @@ async def test_all_nodes_failing_preserves_last_known_data() -> None:
     """Do not mark clients offline even if last activity is stale."""
     master = _old_client(MASTER_CLIENT, MASTER_MAC)
     satellite = _old_client(SATELLITE_CLIENT, SATELLITE_MAC)
+    unassigned = _old_client(NEW_CLIENT, MASTER_MAC)
+    unassigned.deco_mac = None
     coordinator, api = _coordinator(
         two_decos=True,
-        old_clients={master.mac: master, satellite.mac: satellite},
+        old_clients={
+            master.mac: master,
+            satellite.mac: satellite,
+            unassigned.mac: unassigned,
+        },
     )
     api.async_list_clients = AsyncMock(side_effect=_response_error())
 
-    with patch("custom_components.tplink_deco.coordinator.monotonic", return_value=1000):
+    with patch(
+        "custom_components.tplink_deco.coordinator.monotonic", return_value=1000
+    ):
         result = await coordinator._async_update_data()
 
-    assert set(result) == {MASTER_CLIENT, SATELLITE_CLIENT}
+    assert set(result) == {MASTER_CLIENT, SATELLITE_CLIENT, NEW_CLIENT}
     assert result[MASTER_CLIENT] is master
     assert result[SATELLITE_CLIENT] is satellite
+    assert result[NEW_CLIENT] is unassigned
     assert all(client.online for client in result.values())
     assert coordinator._client_backoff_seconds == 30
 
@@ -262,7 +281,9 @@ async def test_successful_empty_node_response_resets_backoff() -> None:
     coordinator._client_backoff_until = 1000
     api.async_list_clients = AsyncMock(return_value=[])
 
-    with patch("custom_components.tplink_deco.coordinator.monotonic", return_value=1031):
+    with patch(
+        "custom_components.tplink_deco.coordinator.monotonic", return_value=1031
+    ):
         result = await coordinator._async_update_data()
 
     assert result[MASTER_CLIENT].online is False
@@ -277,7 +298,9 @@ async def test_backoff_is_isolated_per_config_entry() -> None:
     failing_api.async_list_clients = AsyncMock(side_effect=_response_error())
     healthy_api.async_list_clients = AsyncMock(return_value=[])
 
-    with patch("custom_components.tplink_deco.coordinator.monotonic", return_value=1000):
+    with patch(
+        "custom_components.tplink_deco.coordinator.monotonic", return_value=1000
+    ):
         await failing._async_update_data()
         await healthy._async_update_data()
 
