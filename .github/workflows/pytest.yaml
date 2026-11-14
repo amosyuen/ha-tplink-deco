@@ -64,4 +64,3 @@ jobs:
       - name: Run regression tests
         run: |
           python -m pytest --no-cov -ra tests/
-
