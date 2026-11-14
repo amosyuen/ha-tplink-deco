@@ -90,6 +90,8 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Remove the deprecated config-flow connection class; keep `local_polling` metadata in the manifest.
+
 - Preserve plain-text and UTF-8 encoded Deco/client names, including names from legacy firmware.
 - Fall back to the firmware nickname or MAC address when custom Deco nicknames are missing.
 - Fix config/options polling interval selection: 10, 30, 60, or 120 seconds.
