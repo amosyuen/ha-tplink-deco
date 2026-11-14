@@ -136,6 +136,27 @@ policy for AI-assisted development.
   updates that remove a band, and preservation of existing BSSID attributes.
   Avoid logging raw wireless identifiers or other sensitive network metadata.
 
+## Home Assistant Marketplace and HACS metadata (upstream PR #638)
+
+- In custom integration manifests, use an officially supported product
+  category such as `computers_network.routers_network`. Do not use
+  entity-platform categories for a Deco router integration. Validate with
+  HACS and Hassfest; unknown categories fail HACS validation.
+- Repository installation badges, `documentation` and `issue_tracker`
+  metadata for this maintained fork must lead to
+  `HiDiHo01/ha-tplink-deco`, not to the original upstream project.
+  Preserve author attribution separately from installation/support links.
+- Explain Marketplace's `Add from link` workflow for HA 2026.11+ and
+  custom repositories in HACS for earlier versions; do not imply that
+  the fork is automatically listed in either catalog.
+- Keep the compatible `hacs_repository` redirect for both versions.
+  Maintain one installation section, preserve manual installation and
+  local regression test instructions, and exclude install-only prose from
+  the Marketplace README view with balanced `ha-marketplace` markers.
+- Test the manifest, redirect owner, duplicate installation headings,
+  retained instructions and exclusion markers without changing the
+  minimum HA version, existing runtime platforms or configuration data.
+
 ## Await Home Assistant platform setup (upstream PR #540)
 
 - In `async_setup_entry`, await
