@@ -18,6 +18,8 @@ reading these instructions:
   validate Deco device selections, batch actions and service regression tests.
 - [Deco device-registry parent links](.agents/skills/deco-device-registry-parent-links/SKILL.md):
   validate master/satellite `DeviceInfo` relationships, legacy/modern API compatibility and existing regression assumptions.
+- [Deco truncated-response and client-state validation](.agents/skills/deco-transient-response-validation/SKILL.md):
+  validate bounded retries, retained authentication, per-node clients and optional performance data.
 - [Deco runtime lifecycle validation](.agents/skills/deco-lifecycle-validation/SKILL.md):
   validate entry setup/unload, coordinator shutdown, callbacks and safe logout.
 
@@ -248,6 +250,28 @@ policy for AI-assisted development.
   `-5002` stopping after one relogin, login/unrelated-host exclusions,
   generic API errors and unaffected HTTP errors. Do not assume that the
   fork already supports upstream legacy outer-session encryption.
+
+## Retry incomplete API responses without losing client state (upstream PR #590)
+
+- Treat `aiohttp.ClientPayloadError` and `aiohttp.ServerDisconnectedError`
+  as incomplete responses eligible for bounded retries; do not copy upstream
+  behavior that clears valid authentication on a disconnect. HTTP 401/403 and
+  authenticated `-5002` remain the explicit authentication-expiry cases.
+- Use the configured `timeout_error_retries` value, including zero, as the
+  upper bound on extra transient-response attempts. Count them independently
+  from timeout and one-time relogin retries. Do not retry cancellations.
+- For a transient per-node client poll failure after retries, preserve clients
+  associated with that Deco, their online state, last activity and device
+  mapping. Distinguish failed responses from successful empty lists so other
+  nodes update normally and retain the existing `consider_home` policy.
+- Treat performance polling as optional when a response remains incomplete:
+  preserve cached CPU/memory values while still updating the discovered
+  Decos. Do not silence unrelated errors or HTTP status failures.
+- Never log raw transport exception messages or router payloads that may
+  contain authentication or network identifiers. Cover request and response
+  body failures, retry exhaustion, zero retries, multi-node partial success,
+  successful empty lists, privacy and previous regression expectations.
+  Follow the transient-response validation skill for the complete workflow.
 
 ## Transport errors versus expired authentication (upstream PR #598)
 
