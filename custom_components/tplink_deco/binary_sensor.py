@@ -105,6 +105,7 @@ class TplinkDecoInternetOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity
         return create_device_info(
             deco,
             self.coordinator.data.master_deco,
+            self.coordinator,
         )
 
 
@@ -144,4 +145,5 @@ class TplinkDecoOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity):
         return create_device_info(
             deco,
             self.coordinator.data.master_deco,
+            self.coordinator,
         )
