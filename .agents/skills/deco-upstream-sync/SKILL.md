@@ -35,6 +35,20 @@ When porting Home Assistant services that consume device registry IDs, follow
 It covers domain-specific identifier lookup, validating all selected devices
 before router calls, real service-handler tests and preservation of stable IDs.
 
+## Master/satellite device-registry migrations (upstream #579, fork PR #18)
+
+For changes to entity `device_info` parent relationships, follow
+[Deco device-registry parent-link validation](../deco-device-registry-parent-links/SKILL.md).
+This is distinct from the service-action registry validation workflow.
+
+The PR #18 regression showed that updating `create_device_info` and adding
+new tests does **not** guarantee a passing full suite: an existing nickname
+test still expected `via_device` on a Home Assistant version exposing
+`via_device_id`. Search existing tests and all entity-platform callers,
+preserve the original identity/name assertions, and run **both** supported
+Home Assistant versions after updating stale expectations. Keep the main
+tracking issue open until the PR has actually been merged.
+
 ## Coordinator and session lifecycle backports (upstream #656)
 
 For setup/unload, scheduled-refresh cleanup and router logout, follow
