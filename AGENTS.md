@@ -53,6 +53,18 @@ policy for AI-assisted development.
 - Test changes against incomplete firmware responses, offline devices,
   multiple Decos, and multiple configuration entries where relevant.
 
+## Device-registry service identifier handling
+
+- Home Assistant devices may have zero, one or multiple registry identifiers.
+  Select identifiers by the integration's domain rather than assuming a
+  singleton set; unrelated identifiers must not prevent a valid Deco action.
+- A missing or empty Deco MAC must produce a descriptive service error before
+  sending a router command. Validate all requested devices before rebooting,
+  so a selection failure does not cause a partial reboot.
+- Regressions must exercise both identifier extraction and the actual service
+  handler: a valid Deco identifier alongside other identifiers, multiple
+  selected Decos, missing devices and invalid identifiers.
+
 ## Name decoding and privacy lessons (PR #3)
 
 - Firmware may return Base64-encoded UTF-8 names, plain-text names, empty
