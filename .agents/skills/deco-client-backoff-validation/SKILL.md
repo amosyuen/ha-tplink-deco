@@ -13,7 +13,7 @@ description: "Use when porting, reviewing, or debugging capped HTTP 5xx Deco cli
    `coordinator.py`, existing transport and multi-node tests, plus
    [upstream PR #624](https://github.com/amosyuen/ha-tplink-deco/pull/624).
    Upstream has global-list fallback and health structures that are not
-   yet present in this fork: port the *behavior*, not its architecture.
+   yet present in this fork: port the _behavior_, not its architecture.
 2. Preserve the fork's token/cookie and the existing separate
    reauthentication, timeout and truncated-response handling. An HTTP
    5xx client-list response is not proof that the session has expired;
@@ -31,7 +31,7 @@ description: "Use when porting, reviewing, or debugging capped HTTP 5xx Deco cli
    partial multi-node failure, keep results from successful nodes and
    previous clients assigned to failed nodes. If every node fails,
    return the whole previous inventory, including unassigned clients.
-5. A *successful empty list* is not a failed poll: retain the existing
+5. A _successful empty list_ is not a failed poll: retain the existing
    `consider_home` policy and reset the delay once **all** requested
    nodes return valid results. A transient or authentication failure
    must not count as a successful HTTP 5xx recovery.
