@@ -1,7 +1,7 @@
 """Regression tests for serializable scan-interval setup and options flows."""
 
-from types import SimpleNamespace
 import json
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
@@ -12,8 +12,8 @@ from homeassistant.const import CONF_HOST
 from homeassistant.const import CONF_PASSWORD
 from homeassistant.const import CONF_USERNAME
 from homeassistant.data_entry_flow import FlowResultType
-from homeassistant.helpers.data_entry_flow import _BaseFlowManagerView
 from homeassistant.helpers import selector
+from homeassistant.helpers.data_entry_flow import _BaseFlowManagerView
 import pytest
 import voluptuous as vol
 
@@ -49,9 +49,7 @@ def _mock_flow(kind: str) -> tuple[Any, SimpleNamespace]:
     return flow, entry
 
 
-async def _submit(
-    flow: Any, kind: str, data: dict[str, Any] | None
-) -> dict[str, Any]:
+async def _submit(flow: Any, kind: str, data: dict[str, Any] | None) -> dict[str, Any]:
     """Submit data to the user or options step."""
     if kind == "user":
         return await flow.async_step_user(data)
@@ -121,9 +119,7 @@ def test_normalize_valid_scan_interval(interval: int, as_string: bool) -> None:
     assert isinstance(data[CONF_SCAN_INTERVAL], int)
 
 
-@pytest.mark.parametrize(
-    "invalid", ["bad", "15", 15, 0, -1, 121, None, True, 10.5]
-)
+@pytest.mark.parametrize("invalid", ["bad", "15", 15, 0, -1, 121, None, True, 10.5])
 def test_reject_invalid_scan_interval_without_mutating(invalid: object) -> None:
     """Reject unsupported values and leave caller-owned data unchanged."""
     data = {CONF_SCAN_INTERVAL: invalid}
