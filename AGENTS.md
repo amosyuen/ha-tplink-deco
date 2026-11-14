@@ -175,6 +175,27 @@ policy for AI-assisted development.
   ports, cross-host/invalid redirects and privacy-safe logging. Do not log
   the redirected request URL, session tokens or cookies.
 
+## Coordinator shutdown and router logout (upstream PR #656)
+
+- Never shut down coordinators or unsubscribe their callbacks before Home
+  Assistant reports that **all** forwarded platforms unloaded successfully.
+  A failed or raising platform unload must retain the live entry, polling
+  coordinators, callbacks and authentication for a subsequent retry.
+- Once platform unload succeeds, await each existing Deco and client
+  `DataUpdateCoordinator.async_shutdown()` before running its custom
+  `async_close()` callbacks. The Home Assistant coordinator shutdown
+  cancels scheduled refreshes; custom close releases dispatcher listeners.
+- Perform the router's best-effort logout after coordinator cleanup and
+  always clear locally held auth, even when the router is offline or rejects
+  logout. Do not close Home Assistant's shared aiohttp client session.
+- Avoid logging raw router logout errors, credentials, tokens or cookies.
+  Do not swallow task cancellation. A missing/partial login should not
+  generate a logout request.
+- Test ordering, failed/raising unloads, absent coordinators/entries,
+  multiple entries retaining their own data, successful logout, missing
+  auth, transport errors, cancellation and safe diagnostic logging in
+  actual async entry and API paths.
+
 ## Transport errors versus expired authentication (upstream PR #598)
 
 - A disconnected HTTP transport or connector failure does not by itself
