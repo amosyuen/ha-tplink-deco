@@ -90,6 +90,8 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Expose optional wireless-backhaul BSSIDs (`backhaul_bssid_band2_4` and `backhaul_bssid_band5`) as read-only Deco tracker attributes, separately from the existing access-point BSSIDs. Absent firmware fields remain `None`; no device or entity identifiers change.
+
 - Expose readable client names (including configured prefixes and postfixes) as tracker hostnames, so Home Assistant can name client devices instead of showing only their MAC addresses. Existing MAC identity and user-defined names are preserved.
 
 - Fix `reboot_deco` when a device has multiple registry identifiers; reject missing Deco MACs cleanly without calling the router.
