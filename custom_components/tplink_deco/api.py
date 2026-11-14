@@ -536,9 +536,7 @@ class TplinkDecoApi:
         except (aiohttp.ClientPayloadError, aiohttp.ServerDisconnectedError) as err:
             # Truncated responses and disconnects can be retried without
             # invalidating a previously authenticated session.
-            _LOGGER.debug(
-                "Deco API incomplete response: %s", type(err).__name__
-            )
+            _LOGGER.debug("Deco API incomplete response: %s", type(err).__name__)
             raise TransientConnectionException(
                 "Deco API response was incomplete"
             ) from err
