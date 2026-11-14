@@ -14,6 +14,20 @@ description: "Use when comparing, backporting, reviewing, or implementing change
 7. Add focused tests for the change and run the available checks. For test setup and HA form regressions, use the related `deco-config-flow-validation` skill. Report test limitations explicitly; do not say tests passed merely because they are present.
 8. Open or update a **small PR** linked as `Part of #2`, not `Fixes #2`. Address valid review findings and resolve threads only after the corresponding change is committed or an explanation is supplied. Update issue #2's checklist only after the relevant scope has been merged; leave unported items open.
 
+## Sensor and throughput backports (PR #6)
+
+- Read the fork's sensor/coordinator behavior before applying an upstream
+  change; the fork has extra diagnostics and different entity definitions.
+- For throughput, filter using the existing client `online` state **before**
+  summing cached rates. Network totals span all nodes; per-Deco totals also
+  filter by the client's `deco_mac`. Do not change client-count sensors,
+  tracker presence or `consider_home` semantics as a side effect.
+- Verify both directions, stale offline rates, unknown status, multiple
+  Decos, empty inventories, reconnects and stable sensor unique IDs.
+- Add targeted runtime regression tests and distinguish successful tests
+  from unexecuted Home Assistant-dependent checks. See `AGENTS.md` for
+  the repository-wide constraints.
+
 ## Handoff checklist
 
 - State exactly which upstream change was ported and which behaviors remain out of scope.
