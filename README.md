@@ -88,6 +88,12 @@ Configurable:
 
 ## 📝 Changelog
 
+### Unreleased — upstream sync (issue #2)
+
+- Preserve plain-text and UTF-8 encoded Deco/client names, including names from legacy firmware.
+- Fall back to the firmware nickname or MAC address when custom Deco nicknames are missing.
+- Avoid logging client names from decode failures; existing MAC-based identifiers remain unchanged.
+
 ### v3.7.4
 
 - Added CPU usage sensors (raw and smoothed)
