@@ -273,7 +273,7 @@ class TplinkTotalClientDataRateSensor(CoordinatorEntity, SensorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device info."""
         master = self._coordinator_decos.data.master_deco
-        return create_device_info(self._deco or master, master)
+        return create_device_info(self._deco or master, master, self._coordinator_decos)
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -319,7 +319,9 @@ class TplinkDecoClientCountSensor(CoordinatorEntity, SensorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device info."""
-        return create_device_info(self._deco, self._coordinator_decos.data.master_deco)
+        return create_device_info(
+            self._deco, self._coordinator_decos.data.master_deco, self._coordinator_decos
+        )
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -362,7 +364,9 @@ class TplinkDecoDiagnosticSensor(CoordinatorEntity, SensorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device info."""
-        return create_device_info(self._deco, self.coordinator.data.master_deco)
+        return create_device_info(
+            self._deco, self.coordinator.data.master_deco, self.coordinator
+        )
 
     @property
     def native_value(self) -> Any:
