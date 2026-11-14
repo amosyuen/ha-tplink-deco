@@ -70,7 +70,6 @@ def _normalize_scan_interval(data: dict[str, Any]) -> bool:
     return True
 
 
-
 def _get_auth_schema(data: dict[str:Any]):
     if data is None:
         data = {}
