@@ -23,7 +23,8 @@
     "error": {
       "invalid_auth": "Incorrecte authenticatie",
       "timeout_connect": "Timeout tijdens maken van verbinding",
-      "unknown": "Onbekende fout"
+      "unknown": "Onbekende fout",
+      "invalid_scan_interval": "Kies een pollinginterval van 10, 30, 60 of 120 seconden."
     }
   },
   "options": {
@@ -43,7 +44,8 @@
     "error": {
       "invalid_auth": "Incorrecte authenticatie",
       "timeout_connect": "Timeout tijdens maken van verbinding",
-      "unknown": "Onbekende fout"
+      "unknown": "Onbekende fout",
+      "invalid_scan_interval": "Kies een pollinginterval van 10, 30, 60 of 120 seconden."
     }
   }
 }
