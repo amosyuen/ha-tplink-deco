@@ -494,8 +494,8 @@ class TplinkDecoApi:
                 raise ForbiddenException(message) from err
             raise err
         except (aiohttp.ClientConnectorError, aiohttp.ServerDisconnectedError) as err:
-            # Clear auth in case deco rebooted and auth is invalid
-            self.clear_auth()
+            # Transport failures do not prove an authenticated session has expired.
+            # A later HTTP 401/403 still invalidates and refreshes stale auth.
             _LOGGER.error(
                 "%s connection error: %s",
                 context,
