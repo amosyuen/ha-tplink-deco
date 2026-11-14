@@ -7,31 +7,27 @@ from dataclasses import dataclass
 import logging
 from typing import Any
 
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorEntity,
-    SensorEntityDescription,
-    SensorStateClass,
-)
+from homeassistant.components.sensor import SensorDeviceClass
+from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorEntityDescription
+from homeassistant.components.sensor import SensorStateClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory, UnitOfDataRate
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.const import EntityCategory
+from homeassistant.const import UnitOfDataRate
+from homeassistant.core import HomeAssistant
+from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import (
-    COORDINATOR_CLIENTS_KEY,
-    COORDINATOR_DECOS_KEY,
-    DOMAIN,
-    SIGNAL_DECO_ADDED,
-)
-from .coordinator import (
-    TpLinkDeco,
-    TplinkDecoClientUpdateCoordinator,
-    TplinkDecoUpdateCoordinator,
-)
+from .const import COORDINATOR_CLIENTS_KEY
+from .const import COORDINATOR_DECOS_KEY
+from .const import DOMAIN
+from .const import SIGNAL_DECO_ADDED
+from .coordinator import TpLinkDeco
+from .coordinator import TplinkDecoClientUpdateCoordinator
+from .coordinator import TplinkDecoUpdateCoordinator
 from .device import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
@@ -145,7 +141,9 @@ async def async_setup_entry(
     """Set up the sensor platform."""
     data = hass.data[DOMAIN][entry.entry_id]
     coordinator_decos: TplinkDecoUpdateCoordinator = data[COORDINATOR_DECOS_KEY]
-    coordinator_clients: TplinkDecoClientUpdateCoordinator = data[COORDINATOR_CLIENTS_KEY]
+    coordinator_clients: TplinkDecoClientUpdateCoordinator = data[
+        COORDINATOR_CLIENTS_KEY
+    ]
 
     tracked_macs: set[str] = set()
 
@@ -154,9 +152,7 @@ async def async_setup_entry(
         if deco is None:
             master = coordinator_decos.data.master_deco
             if master is None:
-                _LOGGER.warning(
-                    "Master Deco not found; skipping total sensor creation"
-                )
+                _LOGGER.warning("Master Deco not found; skipping total sensor creation")
                 return []
             name_prefix = "Total"
             unique_id_prefix = f"{master.mac}_total"
