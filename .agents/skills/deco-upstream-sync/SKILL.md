@@ -28,6 +28,24 @@ description: "Use when comparing, backporting, reviewing, or implementing change
   from unexecuted Home Assistant-dependent checks. See `AGENTS.md` for
   the repository-wide constraints.
 
+## Device-registry service backports (PR #8)
+
+- Inspect the registered service callback and registry lookup, not just a
+  standalone identifier helper. Home Assistant devices can carry multiple
+  identifiers from different integrations; identify the Deco MAC by the
+  `tplink_deco` domain rather than requiring a singleton identifier set.
+- For a batch service such as `reboot_deco`, resolve and validate every
+  selected device before making the router API call. Missing devices, absent
+  Deco identifiers and empty MACs must produce a clear error and must not
+  trigger a partial action. Do not change stable MAC-based entity/device IDs.
+- Test both the helper and the real registered service callback with mocked
+  registry devices and a mocked async reboot API. Include extra identifiers,
+  multiple selected Decos, wrong-domain/missing identifiers, empty MACs and
+  unknown devices; assert that failures never invoke the router.
+- Apply the repository's configured isort/Black/pre-commit output rather than
+  assuming generic import ordering. Confirm the full Python/HA test matrix,
+  HACS and Hassfest results before claiming completion.
+
 ## Handoff checklist
 
 - State exactly which upstream change was ported and which behaviors remain out of scope.
