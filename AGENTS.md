@@ -14,6 +14,8 @@ reading these instructions:
   compare and port upstream features in small, compatibility-safe PRs.
 - [Config flow and test validation](.agents/skills/deco-config-flow-validation/SKILL.md):
   validate Home Assistant forms, polling interval storage and CI regressions.
+- [Device-registry service validation](.agents/skills/deco-service-registry-validation/SKILL.md):
+  validate Deco device selections, batch actions and service regression tests.
 
 These skills are task-specific procedures. This file remains the source of
 repository-wide implementation rules; `AI_POLICY.md` remains the governing
