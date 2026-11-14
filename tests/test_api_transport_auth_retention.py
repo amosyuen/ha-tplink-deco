@@ -10,6 +10,7 @@ import pytest
 
 from custom_components.tplink_deco.api import TplinkDecoApi
 from custom_components.tplink_deco.exceptions import ForbiddenException
+from custom_components.tplink_deco.exceptions import TransientConnectionException
 
 HOST = "http://192.0.2.1"
 STOK = "test-stok"
@@ -61,9 +62,9 @@ def _assert_session_retained(api: TplinkDecoApi) -> None:
 @pytest.mark.parametrize(
     ("transport_error", "error_type"),
     [
-        (aiohttp.ServerDisconnectedError(), aiohttp.ServerDisconnectedError),
+        (aiohttp.ServerDisconnectedError(), TransientConnectionException),
         (_connector_error(), aiohttp.ClientConnectorError),
-        (aiohttp.ClientPayloadError("incomplete body"), aiohttp.ClientPayloadError),
+        (aiohttp.ClientPayloadError("incomplete body"), TransientConnectionException),
     ],
 )
 async def test_transport_failure_keeps_existing_authentication(
@@ -124,7 +125,11 @@ async def test_response_status_preserves_existing_auth_expiry_policy(
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "transport_error",
-    [aiohttp.ServerDisconnectedError(), _connector_error()],
+    [
+        aiohttp.ServerDisconnectedError(),
+        aiohttp.ClientPayloadError("incomplete payload"),
+        _connector_error(),
+    ],
 )
 async def test_next_device_update_reuses_session_without_login(
     transport_error: aiohttp.ClientError,
@@ -136,11 +141,15 @@ async def test_next_device_update_reuses_session_without_login(
     api.async_login = AsyncMock()
     post.side_effect = [transport_error, _successful_response()]
 
-    with pytest.raises(type(transport_error)):
-        await api.async_list_devices()
+    if isinstance(transport_error, aiohttp.ClientConnectorError):
+        # Unrelated connector failures still propagate without an auto-retry.
+        with pytest.raises(aiohttp.ClientConnectorError):
+            await api.async_list_devices()
+        assert await api.async_list_devices() == []
+    else:
+        # Disconnects and incomplete bodies now recover within one poll.
+        assert await api.async_list_devices() == []
 
-    _assert_session_retained(api)
-    assert await api.async_list_devices() == []
     _assert_session_retained(api)
     assert post.await_count == 2
     assert post.await_args_list[0].kwargs["cookies"] == {"sysauth": "deadbeef"}
@@ -155,7 +164,7 @@ async def test_unauthenticated_transport_failure_does_not_invent_session() -> No
     api.clear_auth()
     post.side_effect = aiohttp.ServerDisconnectedError()
 
-    with pytest.raises(aiohttp.ServerDisconnectedError):
+    with pytest.raises(TransientConnectionException):
         await api._async_post("List Devices", f"{HOST}/path", params={}, data="x")
 
     assert api._stok is None
