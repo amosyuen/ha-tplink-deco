@@ -29,6 +29,7 @@ from .exceptions import ForbiddenException
 from .exceptions import LoginForbiddenException
 from .exceptions import LoginInvalidException
 from .exceptions import TimeoutException
+from .exceptions import TransientConnectionException
 from .exceptions import UnexpectedApiException
 
 AES_KEY_BYTES = 16
@@ -532,15 +533,19 @@ class TplinkDecoApi:
                 message = f"{context} Forbidden error: {err}"
                 raise ForbiddenException(message) from err
             raise err
-        except (aiohttp.ClientConnectorError, aiohttp.ServerDisconnectedError) as err:
-            # Transport failures do not prove an authenticated session has expired.
-            # A later HTTP 401/403 still invalidates and refreshes stale auth.
-            _LOGGER.error(
-                "%s connection error: %s",
-                context,
-                err,
+        except (aiohttp.ClientPayloadError, aiohttp.ServerDisconnectedError) as err:
+            # Truncated responses and disconnects can be retried without
+            # invalidating a previously authenticated session.
+            _LOGGER.debug(
+                "Deco API incomplete response: %s", type(err).__name__
             )
-            raise err
+            raise TransientConnectionException(
+                "Deco API response was incomplete"
+            ) from err
+        except aiohttp.ClientConnectorError as err:
+            # Network failures do not prove authentication expired.
+            _LOGGER.error("%s connection error: %s", context, err)
+            raise
         except aiohttp.ClientError as err:
             _LOGGER.error(
                 "%s client error: %s",
@@ -643,8 +648,10 @@ class TplinkDecoApi:
             raise err
 
     async def _async_call_with_retry(self, func, *args):
+        """Bound timeout, truncated-response and authentication retries independently."""
         relogin_retried = False
         timeout_retries = 0
+        transient_retries = 0
         while True:
             try:
                 return await func(*args)
@@ -667,4 +674,13 @@ class TplinkDecoApi:
                     timeout_retries,
                     self._timeout_error_retries,
                     err,
+                )
+            except TransientConnectionException:
+                if transient_retries >= self._timeout_error_retries:
+                    raise
+                transient_retries += 1
+                _LOGGER.debug(
+                    "Retry (%d of %d) incomplete Deco API response",
+                    transient_retries,
+                    self._timeout_error_retries,
                 )
