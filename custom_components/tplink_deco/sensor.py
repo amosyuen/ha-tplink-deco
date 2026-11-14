@@ -320,7 +320,9 @@ class TplinkDecoClientCountSensor(CoordinatorEntity, SensorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device info."""
         return create_device_info(
-            self._deco, self._coordinator_decos.data.master_deco, self._coordinator_decos
+            self._deco,
+            self._coordinator_decos.data.master_deco,
+            self._coordinator_decos,
         )
 
     @callback
