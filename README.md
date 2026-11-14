@@ -233,6 +233,7 @@ target:
 {% if not installed %}
 
 <!-- ha-marketplace:exclude-start -->
+
 ## Installation
 
 ### Marketplace (Home Assistant 2026.11 and newer)
@@ -263,6 +264,7 @@ The repository button works in both older HACS and the new Marketplace:
 Install test dependencies in an isolated Python 3.14 environment. See
 [the local test setup](CONTRIBUTING.md#local-regression-tests-python-314)
 for Windows PowerShell commands and the Home Assistant version requirement.
+
 <!-- ha-marketplace:exclude-end -->
 
 {% endif %}
