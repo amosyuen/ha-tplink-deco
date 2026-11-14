@@ -40,6 +40,27 @@ jobs:
         run: |
           pre-commit run --all-files --show-diff-on-failure --color=always
 
+  tests:
+    runs-on: ubuntu-latest
+    name: Python 3.14 / Home Assistant 2026.11 tests
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version: "3.14"
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install homeassistant==2026.11.0 pycryptodome pytest pytest-asyncio pytest-cov
+
+      - name: Run regression tests
+        run: |
+          python -m pytest --no-cov tests/
+
   hacs:
     runs-on: "ubuntu-latest"
     name: HACS
