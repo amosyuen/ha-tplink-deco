@@ -90,6 +90,8 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Recover from Deco API error code `-5002` on authenticated LuCI requests by clearing the expired session and using the existing one-time re-login retry, including for reboot commands. Keep login errors and generic HTTP failures distinct.
+
 - After Home Assistant successfully unloads Deco platforms, cancel coordinator refreshes, unsubscribe callbacks and release the router admin session. A failed platform unload leaves the running integration and session intact.
 
 - Detect router HTTP 307 redirects to HTTPS on the same host and switch subsequent API requests to the redirected HTTPS endpoint and port. This avoids session-cookie loss on redirects with newer aiohttp while leaving cross-host redirects untouched.
