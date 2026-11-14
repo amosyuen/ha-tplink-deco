@@ -112,6 +112,18 @@ policy for AI-assisted development.
   the current fork, and test against each supported Home Assistant version
   because form serialization internals can differ across releases.
 
+## Client tracker hostname and device naming (upstream PR #600)
+
+- For `ScannerEntity` client trackers, expose the existing composed display
+  name as `hostname`. Home Assistant may use it when registering a tracker
+  device whose MAC address is already associated with another integration.
+- Reuse the existing name/prefix/postfix logic; preserve `mac_address`,
+  entity/device identifiers, manually assigned names and other tracker
+  attributes. Do not substitute a client name for a stable registry ID.
+- Test missing and empty names, Unicode names, optional prefixes/postfixes,
+  nickname refreshes and unchanged MACs. Device naming at registration time
+  may not be updated until Home Assistant reloads the integration.
+
 ## Client throughput aggregation lessons (PR #6)
 
 - A client retained in coordinator data may still have nonzero cached upload
