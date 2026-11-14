@@ -91,12 +91,10 @@ class TpLinkDeco:
 
         custom_nickname = data.get("custom_nickname")
         nickname = data.get("nickname")
-        if custom_nickname:
-            self.name = normalize_name(custom_nickname)
-        elif nickname:
-            self.name = normalize_name(snake_case_to_title_space(nickname))
-        else:
-            self.name = self.mac
+        name = normalize_name(custom_nickname) if custom_nickname else None
+        if not name and nickname:
+            name = normalize_name(snake_case_to_title_space(nickname))
+        self.name = name or self.mac
         self.ip_address = filter_invalid_ip(data.get("device_ip"))
         self.online = data.get("group_status") == "connected"
         inet = data.get("inet_status")
