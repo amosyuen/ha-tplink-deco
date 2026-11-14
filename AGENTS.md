@@ -16,6 +16,8 @@ reading these instructions:
   validate Home Assistant forms, polling interval storage and CI regressions.
 - [Device-registry service validation](.agents/skills/deco-service-registry-validation/SKILL.md):
   validate Deco device selections, batch actions and service regression tests.
+- [Deco device-registry parent links](.agents/skills/deco-device-registry-parent-links/SKILL.md):
+  validate master/satellite `DeviceInfo` relationships, legacy/modern API compatibility and existing regression assumptions.
 - [Deco runtime lifecycle validation](.agents/skills/deco-lifecycle-validation/SKILL.md):
   validate entry setup/unload, coordinator shutdown, callbacks and safe logout.
 
@@ -210,8 +212,13 @@ policy for AI-assisted development.
   binary sensors, switch and select). Preserve stable MAC identifiers, entity
   unique IDs, config entries and fork-specific features.
 - Test missing master and device data, legacy and modern API versions,
-  multiple entries sharing MACs and satellite entity relationships. Do not
-  claim live hardware verification based solely on unit or CI results.
+  multiple entries sharing MACs and satellite entity relationships. Check
+  **existing** nickname/device-identity tests for deprecated `via_device`
+  lookups: on modern Home Assistant `DeviceInfo` can raise `KeyError` for that
+  field even though the new `via_device_id` relationship is correct. Use
+  version-aware assertions without deleting the original regression coverage.
+  Follow the device-registry parent-link skill for the full test procedure.
+  Do not claim live hardware verification based solely on unit or CI results.
 
 ## Authenticated API expiry error -5002 (upstream PR #620)
 
@@ -344,6 +351,11 @@ policy for AI-assisted development.
 
 ## PR validation and upstream tracking lessons
 
+- After an API or schema migration, inspect the **whole existing test suite**
+  for stale field assumptions, not just new targeted tests. Retain tests for
+  prior behaviors (such as nickname fallback and stable device identity),
+  make their expectations valid for each supported Home Assistant API, and
+  execute the full matrix on both versions before claiming compatibility.
 - Treat Black, isort and Prettier hooks as formatting requirements: if a CI
   hook rewrites a test or README file, commit the exact formatting correction
   to the PR branch and require a fresh run against the **new head commit**.
