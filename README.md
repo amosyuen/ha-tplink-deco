@@ -92,6 +92,7 @@ Configurable:
 
 - Preserve plain-text and UTF-8 encoded Deco/client names, including names from legacy firmware.
 - Fall back to the firmware nickname or MAC address when custom Deco nicknames are missing.
+- Fix Home Assistant config/options polling interval selection: offer 10/30/60/120-second dropdown choices and persist the selected interval as an integer.
 - Avoid logging client names from decode failures; existing MAC-based identifiers remain unchanged.
 
 ### v3.7.4
