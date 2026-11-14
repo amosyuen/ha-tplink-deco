@@ -3,7 +3,9 @@
 import json
 from pathlib import Path
 
-INTEGRATION_DIR = Path(__file__).resolve().parents[1] / "custom_components" / "tplink_deco"
+INTEGRATION_DIR = (
+    Path(__file__).resolve().parents[1] / "custom_components" / "tplink_deco"
+)
 
 
 def test_config_flow_omits_deprecated_connection_class() -> None:
@@ -18,7 +20,10 @@ def test_config_flow_omits_deprecated_connection_class() -> None:
 
 def test_manifest_preserves_local_polling_metadata() -> None:
     """Retain the supported manifest-based Home Assistant connection type."""
-    manifest = json.loads((INTEGRATION_DIR / "manifest.json").read_text(encoding="utf-8"))
+    manifest_content = (INTEGRATION_DIR / "manifest.json").read_text(
+        encoding="utf-8"
+    )
+    manifest = json.loads(manifest_content)
 
     assert manifest["domain"] == "tplink_deco"
     assert manifest["config_flow"] is True
