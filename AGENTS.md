@@ -268,7 +268,9 @@ policy for AI-assisted development.
   preserve cached CPU/memory values while still updating the discovered
   Decos. Do not silence unrelated errors or HTTP status failures.
 - Never log raw transport exception messages or router payloads that may
-  contain authentication or network identifiers. Cover request and response
+  contain authentication or network identifiers. Suppress the original
+  transport exception context to prevent sensitive details in tracebacks.
+  Cover request and response
   body failures, retry exhaustion, zero retries, multi-node partial success,
   successful empty lists, privacy and previous regression expectations.
   Follow the transient-response validation skill for the complete workflow.
