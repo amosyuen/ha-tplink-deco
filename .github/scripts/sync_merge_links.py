@@ -110,8 +110,13 @@ def update_issue_body(
         if re.match(r"^\s*-\s*\[ \]\s+", line):
             line = re.sub(r"^(\s*-\s*)\[ \]", r"\1[x]", line, count=1)
             completed += 1
-        elif "**In progress (not merged):**" in line:
-            line = line.replace("**In progress (not merged):**", "**Merged:**", 1)
+        elif re.search(r"\*\*In progress(?:\s*\([^)]*\))?:\*\*", line):
+            line = re.sub(
+                r"\*\*In progress(?:\s*\([^)]*\))?:\*\*",
+                "**Merged:**",
+                line,
+                count=1,
+            )
         elif re.search(r"^\s*-\s*\*\*Pending:\*\*", line):
             indentation = re.match(r"^\s*", line).group(0)
             line = (
