@@ -55,6 +55,30 @@ policy for AI-assisted development.
   review thread resolved or a tracking-issue task complete merely because
   its lesson has been documented.
 
+
+## Keep linked and related GitHub issues synchronized
+
+- Whenever a PR is created, materially updated, reviewed, closed or merged,
+  identify its directly linked issues and any repository-owned related issues
+  whose scope, implementation status or dependencies are actually affected.
+  Update those issues in the same workflow; a PR description alone is not an
+  adequate status update for a tracking issue.
+- For an open PR, record the PR link, implemented scope, verified tests,
+  limitations and current state as **in progress** in the relevant issue.
+  Update the existing status entry when new commits change the facts; avoid
+  duplicate comments or repeating the same status unnecessarily.
+- After a merge, verify the PR's `merged_at` and `merge_commit_sha`, confirm
+  the expected implementation on the target branch, and update only matching
+  issue checklist items and any dependent issue status. If a PR is closed
+  without merging, record that fact and keep unimplemented items open.
+- Never check off work, close a tracking issue, or claim completion solely
+  because a PR exists or its CI passes. Leave unrelated tasks and overall
+  acceptance gates open. Use `Part of #2`, not `Fixes #2`, for partial ports
+  so GitHub cannot automatically close the tracking issue.
+- Do not mutate upstream or unrelated repositories just because their issues
+  or PRs are cited as evidence. If an affected issue cannot be updated,
+  explain the permission or access limitation in the PR handoff.
+
 ## Preserve fork compatibility
 
 - Treat upstream synchronization (tracking issue #2) as a series of small,
