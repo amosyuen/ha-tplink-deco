@@ -273,7 +273,8 @@ class TplinkTotalClientDataRateSensor(CoordinatorEntity, SensorEntity):
         self._attr_native_value = sum(
             getattr(client, self._client_attribute)
             for client in self.coordinator.data.values()
-            if self._deco is None or client.deco_mac == self._deco.mac
+            if client.online
+            and (self._deco is None or client.deco_mac == self._deco.mac)
         )
 
 
