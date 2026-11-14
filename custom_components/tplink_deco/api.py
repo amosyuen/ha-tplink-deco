@@ -520,11 +520,18 @@ class TplinkDecoApi:
             )
             raise TimeoutException from err
         except aiohttp.ClientResponseError as err:
-            _LOGGER.error(
-                "%s client response error: %s",
-                context,
-                err,
-            )
+            if params is not None and params.get("form") == "client_list" and (
+                500 <= err.status < 600
+            ):
+                # aiohttp exceptions can contain a LuCI session token in
+                # request_info.real_url. Never interpolate these exceptions.
+                _LOGGER.debug("Deco client-list server error: HTTP %d", err.status)
+            else:
+                _LOGGER.error(
+                    "%s client response error: %s",
+                    context,
+                    err,
+                )
             if err.status == 401:
                 self.clear_auth()
                 raise err
