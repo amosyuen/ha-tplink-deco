@@ -90,6 +90,8 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Exclude offline clients' last-reported rates from network-wide and per-Deco upload/download sensors.
+
 - Remove the deprecated config-flow connection class; keep `local_polling` metadata in the manifest.
 
 - Preserve plain-text and UTF-8 encoded Deco/client names, including names from legacy firmware.
