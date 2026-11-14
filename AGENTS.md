@@ -25,21 +25,30 @@ These skills are task-specific procedures. This file remains the source of
 repository-wide implementation rules; `AI_POLICY.md` remains the governing
 policy for AI-assisted development.
 
-## Mandatory lessons-learned capture
+## Mandatory capture of learned lessons, rules, skills and technical workflows
 
-- After each substantive bug fix, upstream backport, review resolution, or
-  regression investigation, assess whether a verified, reusable lesson should
-  become repository guidance before calling the work complete.
-- Put stable, repository-wide implementation standards and testing requirements
-  in `AGENTS.md`. Put repeatable task-specific procedures in the relevant
-  `.agents/skills/*/SKILL.md` file, or create a new skill when appropriate.
-  Keep `AI_POLICY.md` for governing policy rather than detailed procedures.
-- State the triggering failure mode, required prevention or validation step,
-  and scope of the rule. Preserve existing instructions, avoid duplication,
-  and record only lessons supported by code review, tests, or other evidence.
-- Commit any necessary guidance change to the same working branch and
-  describe it in the PR. If there is no broadly reusable lesson, leave
-  instructions unchanged; do not manufacture rules to satisfy a checklist.
+- After each substantive bug fix, upstream backport, review resolution,
+  regression investigation or workflow improvement, evaluate and **save**
+  verified, reusable lessons learned, repository rules, skills and technical
+  workflows before calling the work complete. Saving means updating actual
+  repository files, not merely summarizing the lesson in a chat or PR.
+- Put stable, repository-wide implementation rules and testing requirements
+  in `AGENTS.md`. Put repeatable, task-specific technical procedures in the
+  relevant `.agents/skills/*/SKILL.md` file, or create a skill when needed.
+  Link newly created skills from the reusable-skills section of `AGENTS.md`.
+  Keep `AI_POLICY.md` for governing policy, not technical instructions.
+- For a reusable technical workflow, document when to use it, prerequisites,
+  safe implementation steps, exact commands **only when verified**, known
+  failure modes, required tests and completion criteria. Preserve existing
+  workflows and avoid conflicting or duplicated instructions.
+- For every new rule or lesson, record its triggering failure or evidence,
+  scope and mandatory prevention or validation step. Base instructions on
+  actual code, review findings or test results; never invent guidance or
+  promote unverified assumptions to repository rules.
+- Commit necessary guidance updates on the same working branch as the
+  related change and describe the updated files in the PR. Confirm the
+  documented links and run relevant formatting and validation checks.
+  If no new reusable lesson exists, leave the instructions unchanged.
 - Report unverified tests and incomplete work accurately. Do not mark a
   review thread resolved or a tracking-issue task complete merely because
   its lesson has been documented.
