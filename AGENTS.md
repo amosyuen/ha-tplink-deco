@@ -136,6 +136,20 @@ policy for AI-assisted development.
   updates that remove a band, and preservation of existing BSSID attributes.
   Avoid logging raw wireless identifiers or other sensitive network metadata.
 
+## Await Home Assistant platform setup (upstream PR #540)
+
+- In `async_setup_entry`, await
+  `hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)`
+  directly instead of scheduling a fire-and-forget task. Otherwise the
+  config-entry setup lock may be released while child platforms still load.
+- Propagate platform setup failures rather than returning success prematurely.
+  Do not register entry services or listeners until platform forwarding has
+  completed successfully. Preserve existing platform names and config entries.
+- Test the actual async entry setup with a blocked forwarding coroutine:
+  verify setup remains pending, service registration occurs only afterward,
+  failures propagate without registering services, and multiple config
+  entries each forward their platforms exactly once.
+
 ## Deferred network total sensors (upstream PR #540)
 
 - A configuration entry can be satellite-only or temporarily have no master
