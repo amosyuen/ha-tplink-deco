@@ -37,19 +37,31 @@ MAX_AES_KEY = (10**AES_KEY_BYTES) - 1
 PKCS1_v1_5_HEADER_BYTES = 11
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+LEGACY_ERROR_DECODING_PATTERN = re.compile(r"^<Error Decoding (.*)>$")
+
+
+def normalize_name(name: str | None) -> str | None:
+    """Restore raw names from placeholders created by older integration versions."""
+    if not name:
+        return name
+
+    match = LEGACY_ERROR_DECODING_PATTERN.fullmatch(name)
+    return match.group(1) if match else name
 
 
 def byte_len(n: int) -> int:
     return (int(math.log2(n)) + 8) >> 3
 
 
-def decode_name_with_fallback(name: str):
+def decode_name_with_fallback(name: str | None) -> str | None:
+    """Decode base64 UTF-8 names, preserving unencoded names from legacy firmware."""
+    if not name:
+        return name
+
     try:
-        name = base64.b64decode(name)
-        return name.decode()
-    except Exception as err:
-        _LOGGER.warning("Error decoding name %s: %s", name, err)
-        return f"<Error Decoding {name}>"
+        return normalize_name(base64.b64decode(name, validate=True).decode("utf-8"))
+    except (UnicodeError, ValueError):
+        return normalize_name(name)
 
 
 def rsa_encrypt(n: int, e: int, plaintext: bytes) -> bytes:
