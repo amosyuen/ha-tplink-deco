@@ -196,7 +196,7 @@ class MergeReferenceSyncTests(unittest.TestCase):
         """Recognize labeled in-progress entries, not only upstream ports."""
         body = (
             "- **In progress (workflow automation; not an upstream port):** "
-            "[PR #20](https://github.com/HiDiHo01/ha-tplink-deco/pull/20)\\n"
+            "[PR #20](https://github.com/HiDiHo01/ha-tplink-deco/pull/20)\n"
         )
         updated, completed = sync.update_issue_body(
             body, REPOSITORY, 20, MERGE_SHA, "2026-11-15"
