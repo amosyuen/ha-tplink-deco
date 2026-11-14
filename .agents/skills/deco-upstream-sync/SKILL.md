@@ -79,11 +79,19 @@ components before copying a newer upstream teardown implementation.
 3. Check mergeability and unresolved review threads independently of CI.
    Explain skipped or pending checks; do not call a PR validated until
    every required job actually passes. Record exact run links in the PR.
-4. After the PR merges, verify both `merged_at`/`merge_commit_sha`
+4. As soon as a PR is opened, record its link, precise scope, current CI
+   status and limitations in the associated tracking issue (issue #2).
+   Keep the matching checkbox **unchecked** and the issue open. If new
+   commits materially change status, update the existing issue record
+   rather than leaving the issue behind or adding duplicate updates.
+   Check other repository-owned related issues and update them only when
+   their scope or dependencies are genuinely affected.
+5. After the PR merges, verify both `merged_at`/`merge_commit_sha`
    and the expected changed code on the new `main`. Then mark **only**
    the matching checklist item complete in issue #2. Add a concise
    merged-PR record (commit, tests, preserved behavior, limitations).
-5. Keep the remaining checklist and cross-feature acceptance gates
+   If a PR closes unmerged, record that state without checking off work.
+6. Keep the remaining checklist and cross-feature acceptance gates
    untouched. Historical upstream/fork commit counts remain a historical
    baseline until a **new comparison** is actually performed; do not
    describe an updated heading as a fresh comparison.
