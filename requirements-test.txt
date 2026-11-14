@@ -1,0 +1,8 @@
+# Shared dependencies for local pytest runs and CI.
+# Install Home Assistant separately at the desired compatibility version.
+# Do not combine with requirements.txt: that file pins Home Assistant 2025.1.0.
+async-timeout>=4.0.3
+pycryptodome>=3.12.0
+pytest>=8.3.0
+pytest-asyncio>=1.0.0
+pytest-cov>=6.0.0
