@@ -1,5 +1,6 @@
 # artifacts
 __pycache__
+.venv/
 .pytest*
 *.egg-info
 */build/*
