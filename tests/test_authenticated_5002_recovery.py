@@ -210,9 +210,7 @@ async def test_non_expiry_encrypted_errors_keep_original_error_handling() -> Non
     """Continue to surface other API errors without clearing valid sessions."""
     api, _ = _api()
     with pytest.raises(UnexpectedApiException, match="error_code=-6001"):
-        api._check_authenticated_data_error_code(
-            "List Devices", {"error_code": -6001}
-        )
+        api._check_authenticated_data_error_code("List Devices", {"error_code": -6001})
     assert (api._stok, api._cookie, api._seq) == (OLD_TOKEN, OLD_COOKIE, 17)
 
 
