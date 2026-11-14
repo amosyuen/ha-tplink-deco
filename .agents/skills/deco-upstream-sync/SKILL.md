@@ -35,6 +35,35 @@ When porting Home Assistant services that consume device registry IDs, follow
 It covers domain-specific identifier lookup, validating all selected devices
 before router calls, real service-handler tests and preservation of stable IDs.
 
+## Coordinator and session lifecycle backports (upstream #656)
+
+For setup/unload, scheduled-refresh cleanup and router logout, follow
+[Deco lifecycle validation](../deco-lifecycle-validation/SKILL.md).
+The fork currently has Deco and client coordinators; review available
+components before copying a newer upstream teardown implementation.
+
+## CI repair and issue #2 bookkeeping
+
+1. Inspect the actual PR-head commit and both workflows:
+   `.github/workflows/pytest.yaml` runs both Python/Home Assistant
+   combinations; `.github/workflows/tests.yaml` covers pre-commit, HACS
+   and Hassfest. A successful test on an older commit is not sufficient.
+2. If Black, isort or Prettier changes a file in CI, read the hook diff,
+   apply only those required formatting changes to the PR branch, and
+   recheck every required workflow on the resulting head. Never weaken a
+   CI gate just to make it pass.
+3. Check mergeability and unresolved review threads independently of CI.
+   Explain skipped or pending checks; do not call a PR validated until
+   every required job actually passes. Record exact run links in the PR.
+4. After the PR merges, verify both `merged_at`/`merge_commit_sha`
+   and the expected changed code on the new `main`. Then mark **only**
+   the matching checklist item complete in issue #2. Add a concise
+   merged-PR record (commit, tests, preserved behavior, limitations).
+5. Keep the remaining checklist and cross-feature acceptance gates
+   untouched. Historical upstream/fork commit counts remain a historical
+   baseline until a **new comparison** is actually performed; do not
+   describe an updated heading as a fresh comparison.
+
 ## Handoff checklist
 
 - State exactly which upstream change was ported and which behaviors remain out of scope.
