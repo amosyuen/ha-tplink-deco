@@ -84,7 +84,7 @@ def references_pull_request(text: str, repository: str, number: int) -> bool:
     return bool(
         re.search(
             rf"https://github\.com/{scoped}/pull/{number}\b"
-            rf"|\b(?:PR|pull request)\s*#{number}\b",
+            rf"|(?<!upstream )\b(?:PR|pull request)\s*#{number}\b",
             _without_code(text),
             flags=re.I,
         )
@@ -98,7 +98,7 @@ def update_issue_body(
     owner, name = _repository_parts(repository)
     scoped = re.escape(f"{owner}/{name}")
     pr_link = re.compile(
-        rf"\bPR\s*#{pr_number}\b" rf"|https://github\.com/{scoped}/pull/{pr_number}\b",
+        rf"(?<!upstream )\bPR\s*#{pr_number}\b" rf"|https://github\.com/{scoped}/pull/{pr_number}\b",
         flags=re.I,
     )
     output: list[str] = []
