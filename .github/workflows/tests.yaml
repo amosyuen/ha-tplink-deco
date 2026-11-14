@@ -66,6 +66,26 @@ jobs:
           python -m pip install -r requirements-test.txt \
             "homeassistant==${{ matrix.homeassistant-version }}"
 
+      - name: Verify installed Home Assistant test environment
+        env:
+          EXPECTED_HA_VERSION: ${{ matrix.homeassistant-version }}
+        run: |
+          python - <<'PY'
+          import os
+          from importlib import import_module
+          from importlib.metadata import version
+
+          expected_version = os.environ["EXPECTED_HA_VERSION"]
+          installed_version = version("homeassistant")
+          if installed_version != expected_version:
+              raise SystemExit(
+                  f"Expected homeassistant=={expected_version}, "
+                  f"found homeassistant=={installed_version}"
+              )
+          for module_name in ("homeassistant", "voluptuous", "async_timeout", "Crypto"):
+              import_module(module_name)
+          PY
+
       - name: Run regression tests
         run: |
           python -m pytest --no-cov tests/
