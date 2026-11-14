@@ -90,11 +90,14 @@ async def test_authenticated_top_level_5002_invalidates_session(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("request_url", [
-    f"{HOST}/cgi-bin/luci/;stok=/login",
-    f"{HOST}/cgi-bin/luci/;stok=other-session/admin/device",
-    "http://other.example/cgi-bin/luci/;stok=synthetic-old-session/admin/device",
-])
+@pytest.mark.parametrize(
+    "request_url",
+    [
+        f"{HOST}/cgi-bin/luci/;stok=/login",
+        f"{HOST}/cgi-bin/luci/;stok=other-session/admin/device",
+        "http://other.example/cgi-bin/luci/;stok=synthetic-old-session/admin/device",
+    ],
+)
 async def test_non_authenticated_5002_does_not_invalidate_existing_auth(
     request_url: str,
 ) -> None:
