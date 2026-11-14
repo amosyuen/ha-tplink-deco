@@ -1,13 +1,14 @@
 {
   "domain": "tplink_deco",
   "name": "TP-Link Deco",
+  "categories": ["computers_network.routers_network"],
   "codeowners": ["@amosyuen"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/amosyuen/ha-tplink-deco",
+  "documentation": "https://github.com/HiDiHo01/ha-tplink-deco",
   "integration_type": "hub",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/amosyuen/ha-tplink-deco/issues",
+  "issue_tracker": "https://github.com/HiDiHo01/ha-tplink-deco/issues",
   "loggers": ["tplink_deco"],
   "requirements": ["pycryptodome>=3.12.0"],
   "version": "3.8.0"
