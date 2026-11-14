@@ -1,0 +1,67 @@
+name: Regression tests
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - dev
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    name: Tests / HA ${{ matrix.homeassistant-version }} / Python ${{ matrix.python-version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: "3.13"
+            homeassistant-version: "2025.12.0"
+          - python-version: "3.14"
+            homeassistant-version: "2026.11.0"
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-test.txt \
+            "homeassistant==${{ matrix.homeassistant-version }}"
+
+      - name: Verify installed Home Assistant test environment
+        env:
+          EXPECTED_HA_VERSION: ${{ matrix.homeassistant-version }}
+        run: |
+          python - <<'PY'
+          import os
+          from importlib import import_module
+          from importlib.metadata import version
+
+          expected_version = os.environ["EXPECTED_HA_VERSION"]
+          installed_version = version("homeassistant")
+          if installed_version != expected_version:
+              raise SystemExit(
+                  f"Expected homeassistant=={expected_version}, "
+                  f"found homeassistant=={installed_version}"
+              )
+          for module_name in ("homeassistant", "voluptuous", "async_timeout", "Crypto"):
+              import_module(module_name)
+          PY
+
+      - name: Run regression tests
+        run: |
+          python -m pytest --no-cov -ra tests/
+
