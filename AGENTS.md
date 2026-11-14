@@ -4,6 +4,19 @@ These instructions apply to the entire `ha-tplink-deco` repository. Read this
 file before making changes. If `AI_POLICY.md` is added later, follow it as the
 repository's governing policy and resolve any conflicts before proceeding.
 
+## Reusable repository skills
+
+For repeatable workflows, use the relevant repository-local skill after
+reading these instructions:
+
+- [Deco upstream synchronization](.agents/skills/deco-upstream-sync/SKILL.md):
+  compare and port upstream features in small, compatibility-safe PRs.
+- [Config flow and test validation](.agents/skills/deco-config-flow-validation/SKILL.md):
+  validate Home Assistant forms, polling interval storage and CI regressions.
+
+These skills are task-specific procedures. This file remains the source of
+repository-wide rules; any future `AI_POLICY.md` remains the governing policy.
+
 ## Preserve fork compatibility
 
 - Treat upstream synchronization (tracking issue #2) as a series of small,
