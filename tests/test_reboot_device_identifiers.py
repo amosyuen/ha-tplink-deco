@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-import pytest
 from homeassistant.const import ATTR_DEVICE_ID
+import pytest
 
 from custom_components.tplink_deco import _deco_mac_from_identifiers
 from custom_components.tplink_deco import async_setup_entry
