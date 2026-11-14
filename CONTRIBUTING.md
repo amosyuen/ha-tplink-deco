@@ -83,7 +83,7 @@ If Home Assistant is unavailable (for example, in an offline sandbox), run only
 the dependency-free metadata regression tests with an existing pytest installation:
 
 ```powershell
-python -m pytest --no-cov tests/test_connection_metadata.py tests/test_connection_flow_runtime.py
+python -m pytest -o addopts="" tests/test_connection_metadata.py tests/test_connection_flow_runtime.py
 ```
 
 The metadata tests can run without Home Assistant. The runtime tests skip when
