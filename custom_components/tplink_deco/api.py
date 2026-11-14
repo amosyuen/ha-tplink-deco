@@ -190,7 +190,6 @@ class TplinkDecoApi:
         try:
             device_list = data["result"]["device_list"]
             _LOGGER.debug("List devices device_count=%d", len(device_list))
-            _LOGGER.debug("List devices device_list=%s", device_list)
 
             for device in device_list:
                 custom_nickname = device.get("custom_nickname")
@@ -268,7 +267,6 @@ class TplinkDecoApi:
             client_list = data["result"]["client_list"]
             # client_list is only the connected clients
             _LOGGER.debug("%s client_count=%d", context, len(client_list))
-            _LOGGER.debug("%s client_list=%s", context, client_list)
 
             for client in client_list:
                 client["name"] = decode_name_with_fallback(client["name"])
