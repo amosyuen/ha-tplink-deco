@@ -90,6 +90,13 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Reduce repeated Deco client-list HTTP 5xx errors using a non-blocking
+  exponential polling delay (30, 60, 120, 240, then at most 300 seconds).
+  Keep known clients and the authenticated session through temporary
+  server failures while still accepting successful replies from other
+  Deco nodes; reset the delay after full recovery. Existing scan intervals,
+  authentication-expiry rules and entity IDs stay unchanged.
+
 - Retry truncated Deco responses and unexpected server disconnects up to the configured timeout-retry count without clearing a valid login. If one node's client list remains unavailable, retain its previously known clients while updating successful nodes. Keep cached CPU and memory readings when optional performance polling fails. HTTP errors and authentication expiry still surface normally.
 
 - Link satellite Decos to their master using `via_device_id` in Home Assistant 2026.8+, with a legacy `via_device` fallback on older supported releases. Keep existing MAC-based device identifiers and entity unique IDs.
