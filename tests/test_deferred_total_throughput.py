@@ -65,7 +65,9 @@ async def _setup_sensors(
     return coordinator_decos, async_add_entities, update_callback, discovery_callback
 
 
-def _total_sensors(async_add_entities: MagicMock) -> list[TplinkTotalClientDataRateSensor]:
+def _total_sensors(
+    async_add_entities: MagicMock,
+) -> list[TplinkTotalClientDataRateSensor]:
     """Collect only network-wide throughput sensors across platform additions."""
     return [
         entity
@@ -91,9 +93,9 @@ async def test_network_totals_created_once_when_master_known_at_setup() -> None:
         f"{MASTER_MAC}_total_down",
         f"{MASTER_MAC}_total_up",
     }
-    assert {entity.device_info["identifiers"].pop() for entity in totals} == {
-        (DOMAIN, MASTER_MAC)
-    }
+    assert {
+        next(iter(entity.device_info["identifiers"])) for entity in totals
+    } == {(DOMAIN, MASTER_MAC)}
     assert len(async_add.call_args_list[0].args[0]) == 2
 
     on_update()
