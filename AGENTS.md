@@ -157,6 +157,21 @@ policy for AI-assisted development.
   retained instructions and exclusion markers without changing the
   minimum HA version, existing runtime platforms or configuration data.
 
+## Transport errors versus expired authentication (upstream PR #598)
+
+- A disconnected HTTP transport or connector failure does not by itself
+  prove that the router's authentication token, cookie, or sequence expired.
+  Preserve session state on these temporary failures so the next refresh can
+  reuse credentials without creating a new Deco admin session.
+- Continue to invalidate authentication when the router explicitly returns
+  HTTP 401/403 or an established authentication-expiry response. Do not
+  change the caller's existing transport exception types or imply automatic
+  retries when the fork does not yet implement them.
+- Test real API request paths with mocked aiohttp responses: both transport
+  failures, incomplete payload behavior, 401/403 invalidation, non-auth
+  HTTP errors, retry on a subsequent poll without login, and no token/cookie
+  contents in logs. Never use real credentials or physical router calls.
+
 ## Await Home Assistant platform setup (upstream PR #540)
 
 - In `async_setup_entry`, await
