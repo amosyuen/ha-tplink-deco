@@ -6,10 +6,7 @@ import unittest
 
 
 _MODULE_PATH = (
-    Path(__file__).resolve().parents[1]
-    / ".github"
-    / "scripts"
-    / "sync_merge_links.py"
+    Path(__file__).resolve().parents[1] / ".github" / "scripts" / "sync_merge_links.py"
 )
 _SPEC = importlib.util.spec_from_file_location("deco_merge_sync", _MODULE_PATH)
 assert _SPEC is not None and _SPEC.loader is not None
@@ -131,9 +128,7 @@ class MergeReferenceSyncTests(unittest.TestCase):
             + chr(96) * 3
             + "\n<!-- Related to #700 -->\n"
         )
-        self.assertEqual(
-            sync.issue_references(body, REPOSITORY), {2, 3, 4, 5}
-        )
+        self.assertEqual(sync.issue_references(body, REPOSITORY), {2, 3, 4, 5})
 
     def test_does_not_treat_pr_urls_as_issue_references(self) -> None:
         """A pull request URL is never an issue link, even with matching ID."""
@@ -159,11 +154,7 @@ class MergeReferenceSyncTests(unittest.TestCase):
                 19,
             )
         )
-        self.assertFalse(
-            sync.references_pull_request(
-                "Part of #19", REPOSITORY, 19
-            )
-        )
+        self.assertFalse(sync.references_pull_request("Part of #19", REPOSITORY, 19))
 
     def test_only_explicitly_linked_checklist_is_completed(self) -> None:
         """Preserve global acceptance criteria and unrelated upstream work."""
