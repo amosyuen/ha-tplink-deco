@@ -33,5 +33,9 @@ class TimeoutException(Exception):
         )
 
 
+class TransientConnectionException(Exception):
+    """A truncated response or disconnect that can be retried safely."""
+
+
 class UnexpectedApiException(Exception):
     """Unexpected API exception"""
