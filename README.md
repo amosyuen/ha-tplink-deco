@@ -169,9 +169,11 @@ Which lines are sent:
   empty log or can't find the last lines seen sends nothing.
 - If two non-empty downloads in succession cannot find the saved position,
   for example after the Deco reboots, the downloaded log is treated as new,
-  subject to the same per-poll limit.
-- A run sends at most the newest 1000 new lines. Older excess lines are
-  skipped, not queued for the next poll. Forwarding is not a lossless archive.
+  subject to the same time budget and checkpointed batch handling.
+- Since v3.15.3, new lines are sent oldest first in batches of up to 1000,
+  without discarding the beginning of a burst. Each completed batch saves
+  progress. A failed, interrupted or paused run can resume from that position
+  on a later poll, provided the remaining lines are still in the Deco log.
 - A line without a Deco timestamp, such as the rest of a command's output, is
   sent with the timestamp and priority of the last timestamped line before it.
 
@@ -180,10 +182,14 @@ protocol data. It is not automatically redacted. Syslog sends it unencrypted,
 so use a server on a trusted local network and review logs before sharing.
 TCP retries after a partial send can duplicate lines.
 
-The warning `Forwarding only the newest 1000 of ... Deco system log lines`
-means the cap was reached, not that the integration crashed. Choose a more
-selective log level if you do not need all messages. Avoid shortening the
-interval on a slow mesh merely to reduce the number of lines per poll.
+Versions v3.15.0 through v3.15.2 discarded older excess lines at the 1000-line
+poll cap. Update to v3.15.3 or newer to preserve the start of fetched bursts.
+Sending/checkpointing has a 30-second budget per run, with the existing
+per-batch network timeouts and UDP pacing retained. Unsent lines are retried
+from the saved position; there is no separate durable queue of their content.
+Router log rotation, failed delivery and partial-send retries can still cause
+loss or duplication. This is not a guaranteed lossless archive. Avoid
+shortening the polling interval on a slow mesh merely to reduce burst size.
 
 See [Syslog in the wiki](https://github.com/amosyuen/ha-tplink-deco/wiki/Syslog)
 for receiver configuration, UDP/TCP tests and cleanup instructions.
@@ -520,8 +526,9 @@ or network isolation can prevent delivery. The first successful download after
 enabling forwarding only records a starting point; allow a later poll to send
 new lines. The default interval is five minutes.
 
-A successful UDP send does not confirm receipt. Repeated cap warnings mean
-older excess log lines are being skipped. See the
+A successful UDP send does not confirm receipt. On v3.15.0 through v3.15.2,
+cap warnings mean older excess lines were skipped; update to v3.15.3 or newer
+for chronological, checkpointed batches. See the
 [syslog guide](https://github.com/amosyuen/ha-tplink-deco/wiki/Syslog) for details.
 
 ### Deprecated connection-class warning
