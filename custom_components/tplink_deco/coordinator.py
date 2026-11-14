@@ -24,6 +24,7 @@ from .const import SIGNAL_CLIENT_ADDED
 from .const import SIGNAL_DECO_ADDED
 from .exceptions import LoginForbiddenException
 from .exceptions import LoginInvalidException
+from .exceptions import TransientConnectionException
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -200,9 +201,15 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
             self.api.async_list_devices
         )
 
-        performance_data = await async_call_and_propagate_config_error(
-            self.api.async_get_performance
-        )
+        try:
+            performance_data = await async_call_and_propagate_config_error(
+                self.api.async_get_performance
+            )
+        except TransientConnectionException:
+            # Keep previously sampled CPU/memory data if an optional request
+            # is still incomplete after its bounded transport retries.
+            _LOGGER.debug("Deco performance unavailable after transport retries")
+            performance_data = None
 
         old_decos = self.data.decos
         master_deco = None
@@ -231,7 +238,7 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
                 decos[mac] = old_deco
 
         # Zet globale performance data op de master Deco
-        result = performance_data.get("result", {})
+        result = performance_data.get("result", {}) if performance_data else {}
         if master_deco is not None:
             cpu_raw = result.get("cpu_usage")
             mem_raw = result.get("mem_usage")
@@ -307,6 +314,19 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         # Must happen after super().__init__
         self.data = {} if data is None else data
 
+    async def _async_clients_for_deco(
+        self, deco_mac: str
+    ) -> list[dict[str, Any]] | None:
+        """Return node clients, or None only for exhausted transport retries."""
+        try:
+            return await async_call_and_propagate_config_error(
+                self.api.async_list_clients, deco_mac
+            )
+        except TransientConnectionException:
+            # Distinguish a failed poll from a successful empty client list.
+            _LOGGER.debug("Deco client poll incomplete after transport retries")
+            return None
+
     async def _async_update_data(self):
         """Update data via api."""
         if self._deco_update_coordinator.paused:
@@ -319,40 +339,43 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         old_clients = self.data
         clients = {}
         client_added = False
-        # List clients for all decos if _deco_update_coordinator is not provided
-        deco_macs = self._deco_update_coordinator.data.decos.keys()
+        deco_macs = list(self._deco_update_coordinator.data.decos)
         utc_point_in_time = dt_util.utcnow()
-        # Send list client requests in parallel for each deco
 
+        # A single malformed/truncated node response must not discard the
+        # successful responses or the last-known clients on that node.
         deco_client_responses = await asyncio.gather(
-            *[
-                async_call_and_propagate_config_error(
-                    self.api.async_list_clients, deco_mac
-                )
-                for deco_mac in deco_macs
-            ]
+            *(self._async_clients_for_deco(deco_mac) for deco_mac in deco_macs)
         )
+        failed_deco_macs = {
+            deco_mac
+            for deco_mac, response in zip(deco_macs, deco_client_responses)
+            if response is None
+        }
 
-        if len(deco_client_responses) > 0:
-            # deco_macs is not subscriptable, must be iterated
-            for deco_mac, deco_clients in zip(deco_macs, deco_client_responses):
-                for deco_client in deco_clients:
-                    client_mac = deco_client["mac"]
-                    client = old_clients.get(client_mac)
-                    if client is None:
-                        client_added = True
-                        client = TpLinkDecoClient(client_mac)
-                        _LOGGER.debug(
-                            "_async_update_data: Found new client mac=%s", client.mac
-                        )
-                    client.update(deco_client, deco_mac, utc_point_in_time)
-                    clients[client_mac] = client
+        for deco_mac, deco_clients in zip(deco_macs, deco_client_responses):
+            if deco_clients is None:
+                continue
+            for deco_client in deco_clients:
+                client_mac = deco_client["mac"]
+                client = old_clients.get(client_mac)
+                if client is None:
+                    client_added = True
+                    client = TpLinkDecoClient(client_mac)
+                    _LOGGER.debug(
+                        "_async_update_data: Found new client mac=%s", client.mac
+                    )
+                client.update(deco_client, deco_mac, utc_point_in_time)
+                clients[client_mac] = client
 
-        # Copy over clients no longer online
+        # Retain previous association, state and activity when its node was
+        # not polled successfully; apply the usual grace policy otherwise.
         for client in old_clients.values():
             mac = client.mac
             if mac not in clients:
                 clients[mac] = client
+                if client.deco_mac in failed_deco_macs:
+                    continue
                 if client.last_activity is None:
                     client.online = False
                 else:
