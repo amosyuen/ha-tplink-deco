@@ -3,8 +3,8 @@
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-import pytest
 from homeassistant.helpers.entity import DeviceInfo
+import pytest
 
 from custom_components.tplink_deco import device as device_module
 from custom_components.tplink_deco.binary_sensor import (
@@ -16,9 +16,7 @@ from custom_components.tplink_deco.coordinator import TpLinkDeco
 from custom_components.tplink_deco.coordinator import TpLinkDecoClient
 from custom_components.tplink_deco.coordinator import TpLinkDecoData
 from custom_components.tplink_deco.device import create_device_info
-from custom_components.tplink_deco.device_tracker import (
-    TplinkDecoClientDeviceTracker,
-)
+from custom_components.tplink_deco.device_tracker import TplinkDecoClientDeviceTracker
 from custom_components.tplink_deco.device_tracker import TplinkDecoDeviceTracker
 from custom_components.tplink_deco.select import DecoPollingIntervalSelect
 from custom_components.tplink_deco.sensor import DIAGNOSTIC_SENSOR_DESCRIPTIONS
@@ -81,9 +79,7 @@ def _registry() -> MagicMock:
     ("info_class", "expected_field"),
     [(_ModernDeviceInfo, "via_device_id"), (_LegacyDeviceInfo, "via_device")],
 )
-def test_supported_parent_link(
-    info_class: type[dict], expected_field: str
-) -> None:
+def test_supported_parent_link(info_class: type[dict], expected_field: str) -> None:
     """Use the modern registry ID or the supported legacy identifier."""
     master, satellite = _mesh()
     coordinator = _coordinator(master, satellite)
@@ -128,9 +124,7 @@ def test_missing_context_skips_parent_link(missing: str) -> None:
         info = create_device_info(
             None if missing == "deco" else satellite,
             None if missing == "master" else master,
-            None
-            if missing == "coordinator"
-            else _coordinator(master, satellite),
+            None if missing == "coordinator" else _coordinator(master, satellite),
         )
 
     if missing == "deco":
@@ -165,9 +159,7 @@ def test_device_registry_scopes_identical_macs_to_config_entries() -> None:
     ]
     with (
         patch.object(device_module, "DeviceInfo", _ModernDeviceInfo),
-        patch.object(
-            device_module.device_registry, "async_get", return_value=registry
-        ),
+        patch.object(device_module.device_registry, "async_get", return_value=registry),
     ):
         first = create_device_info(
             satellite, master, _coordinator(master, satellite, "first")
