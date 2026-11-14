@@ -198,6 +198,21 @@ policy for AI-assisted development.
   auth, transport errors, cancellation and safe diagnostic logging in
   actual async entry and API paths.
 
+## Deco master/satellite registry links (upstream PR #579)
+
+- Register or retrieve the master before linking satellites. On Home Assistant
+  2026.8+, resolve the master's config-entry-scoped registry ID and use
+  `via_device_id`; a MAC identifier tuple is not a registry ID.
+- Detect support through `DeviceInfo.__annotations__`; on older supported
+  Home Assistant versions, including 2025.12, use the `"via_device"` fallback
+  without importing the deprecated `ATTR_VIA_DEVICE`.
+- Pass the Deco coordinator to every device-info caller (trackers, sensors,
+  binary sensors, switch and select). Preserve stable MAC identifiers, entity
+  unique IDs, config entries and fork-specific features.
+- Test missing master and device data, legacy and modern API versions,
+  multiple entries sharing MACs and satellite entity relationships. Do not
+  claim live hardware verification based solely on unit or CI results.
+
 ## Authenticated API expiry error -5002 (upstream PR #620)
 
 - Some Deco firmware reports an expired authenticated LuCI session as
