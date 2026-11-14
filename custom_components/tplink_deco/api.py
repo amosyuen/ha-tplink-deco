@@ -572,6 +572,26 @@ class TplinkDecoApi:
         self._stok = None
         self._cookie = None
 
+    async def async_logout(self) -> None:
+        """Best-effort router logout; always clear the local session."""
+        if self._stok is None or self._cookie is None:
+            self.clear_auth()
+            return
+
+        try:
+            await self._async_post(
+                "Logout",
+                f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/system",
+                params={"form": "logout"},
+                data=self._encode_payload({"operation": "logout"}),
+            )
+        except Exception as err:
+            # An offline router must not prevent Home Assistant from unloading.
+            # Never include an upstream exception or session token in logs.
+            _LOGGER.debug("Deco logout failed: %s", type(err).__name__)
+        finally:
+            self.clear_auth()
+
     def _decrypt_data(self, context: str, data: str):
         if data == "":
             self.clear_auth()
