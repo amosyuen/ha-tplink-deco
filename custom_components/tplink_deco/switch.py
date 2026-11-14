@@ -33,7 +33,7 @@ class DecoPollingSwitch(SwitchEntity):
     def device_info(self) -> DeviceInfo:
         """Attach switch to the master Deco device."""
         master_deco = self.coordinator.data.master_deco
-        return create_device_info(master_deco, master_deco)
+        return create_device_info(master_deco, master_deco, self.coordinator)
 
     @property
     def is_on(self) -> bool:
