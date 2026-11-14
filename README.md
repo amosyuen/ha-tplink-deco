@@ -90,6 +90,8 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Expose readable client names (including configured prefixes and postfixes) as tracker hostnames, so Home Assistant can name client devices instead of showing only their MAC addresses. Existing MAC identity and user-defined names are preserved.
+
 - Fix `reboot_deco` when a device has multiple registry identifiers; reject missing Deco MACs cleanly without calling the router.
 
 - Exclude offline clients' last-reported rates from network-wide and per-Deco upload/download sensors.
