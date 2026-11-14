@@ -59,6 +59,16 @@ def _assert_auth_cleared(api: TplinkDecoApi) -> None:
     assert (api._stok, api._cookie, api._seq) == (None, None, None)
 
 
+def _mock_relogin(api: TplinkDecoApi) -> AsyncMock:
+    """Return an async login mock that restores synthetic router credentials."""
+
+    async def _perform_relogin() -> None:
+        """Perform the fake login within the awaited mock callback."""
+        await _relogin(api)
+
+    return AsyncMock(side_effect=_perform_relogin)
+
+
 @pytest.mark.asyncio
 async def test_authenticated_top_level_5002_invalidates_session(
     caplog: pytest.LogCaptureFixture,
@@ -82,7 +92,7 @@ async def test_authenticated_top_level_5002_invalidates_session(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("request_url", [
     f"{HOST}/cgi-bin/luci/;stok=/login",
-    f"{HOST}/cgi-bin/luci/;stok={OLD_TOKEN}/login",
+    f"{HOST}/cgi-bin/luci/;stok=other-session/admin/device",
     "http://other.example/cgi-bin/luci/;stok=synthetic-old-session/admin/device",
 ])
 async def test_non_authenticated_5002_does_not_invalidate_existing_auth(
@@ -144,7 +154,7 @@ async def test_encrypted_5002_relogs_in_once_for_authenticated_actions(
             {"error_code": 0, **successful_result},
         ]
     )
-    api.async_login = AsyncMock(side_effect=lambda: _relogin(api))
+    api.async_login = _mock_relogin(api)
 
     result = await getattr(api, method_name)(*args)
 
@@ -162,7 +172,7 @@ async def test_second_decrypted_5002_stops_after_one_relogin() -> None:
     api, _ = _api()
     api._async_post = AsyncMock(return_value={"data": "synthetic-ciphertext"})
     api._decrypt_data = MagicMock(return_value={"error_code": -5002})
-    api.async_login = AsyncMock(side_effect=lambda: _relogin(api))
+    api.async_login = _mock_relogin(api)
 
     with pytest.raises(EmptyDataException, match="-5002"):
         await api.async_list_devices()
@@ -183,7 +193,7 @@ async def test_top_level_5002_recovers_on_the_next_authenticated_attempt() -> No
     api._decrypt_data = MagicMock(
         return_value={"error_code": 0, "result": {"device_list": []}}
     )
-    api.async_login = AsyncMock(side_effect=lambda: _relogin(api))
+    api.async_login = _mock_relogin(api)
 
     assert await api.async_list_devices() == []
     api.async_login.assert_awaited_once()
