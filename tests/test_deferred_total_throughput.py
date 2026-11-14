@@ -93,9 +93,9 @@ async def test_network_totals_created_once_when_master_known_at_setup() -> None:
         f"{MASTER_MAC}_total_down",
         f"{MASTER_MAC}_total_up",
     }
-    assert {
-        next(iter(entity.device_info["identifiers"])) for entity in totals
-    } == {(DOMAIN, MASTER_MAC)}
+    assert {next(iter(entity.device_info["identifiers"])) for entity in totals} == {
+        (DOMAIN, MASTER_MAC)
+    }
     assert len(async_add.call_args_list[0].args[0]) == 2
 
     on_update()
@@ -117,13 +117,9 @@ async def test_network_totals_added_after_master_discovered() -> None:
 
     assert _total_sensors(async_add) == []
     satellite_ids = {
-        entity.unique_id
-        for call in async_add.call_args_list
-        for entity in call.args[0]
+        entity.unique_id for call in async_add.call_args_list for entity in call.args[0]
     }
-    assert {f"{SATELLITE_MAC}_down", f"{SATELLITE_MAC}_up"}.issubset(
-        satellite_ids
-    )
+    assert {f"{SATELLITE_MAC}_down", f"{SATELLITE_MAC}_up"}.issubset(satellite_ids)
 
     # The discovery signal is dispatched before the coordinator commits data.
     on_discovery()
