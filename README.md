@@ -90,6 +90,8 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- After Home Assistant successfully unloads Deco platforms, cancel coordinator refreshes, unsubscribe callbacks and release the router admin session. A failed platform unload leaves the running integration and session intact.
+
 - Detect router HTTP 307 redirects to HTTPS on the same host and switch subsequent API requests to the redirected HTTPS endpoint and port. This avoids session-cookie loss on redirects with newer aiohttp while leaving cross-host redirects untouched.
 
 - Keep an existing Deco session after temporary disconnections or connection failures; a later successful poll reuses it without logging in again. Actual HTTP 401/403 responses still clear expired authentication.
