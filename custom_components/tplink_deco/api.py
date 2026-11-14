@@ -8,6 +8,7 @@ import re
 import secrets
 from typing import Any
 from urllib.parse import quote_plus
+from urllib.parse import urlsplit
 
 from Crypto.Cipher import PKCS1_v1_5
 from Crypto.PublicKey import RSA
@@ -421,6 +422,29 @@ class TplinkDecoApi:
         # Login success
         self._auth_errors = 0
 
+    def _update_https_host_after_redirect(
+        self, response: aiohttp.ClientResponse
+    ) -> None:
+        """Upgrade only after a same-router HTTP 307 redirect to HTTPS."""
+        if not response.history or not self._host.startswith("http://"):
+            return
+
+        first_response = response.history[0]
+        configured_hostname = urlsplit(self._host).hostname
+        if (
+            first_response.status != 307
+            or first_response.url.scheme != "http"
+            or response.url.scheme != "https"
+            or not configured_hostname
+            or first_response.url.host != configured_hostname
+            or response.url.host != configured_hostname
+        ):
+            return
+
+        # Follow the redirected HTTPS port as well as its scheme.
+        self._host = str(response.url.origin())
+        _LOGGER.debug("Deco API switched to HTTPS after same-host 307 redirect")
+
     async def _async_post(
         self,
         context: str,
@@ -450,6 +474,7 @@ class TplinkDecoApi:
                     ssl=self._ssl_context,
                 )
                 response.raise_for_status()
+                self._update_https_host_after_redirect(response)
 
                 # Verbeterde extractie: loop door alle Set-Cookie headers
                 for cookie_header in response.headers.getall(SET_COOKIE, []):
