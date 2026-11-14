@@ -77,6 +77,10 @@ policy for AI-assisted development.
 - Do not mutate upstream or unrelated repositories just because their issues
   or PRs are cited as evidence. If an affected issue cannot be updated,
   explain the permission or access limitation in the PR handoff.
+- **PR #19 lesson:** opening a PR and adding `Part of #2` to its description
+  did not update issue #2's progress automatically. Verify the issue body
+  contains a current PR status entry and preserves the unchecked item before
+  reporting the PR handoff.
 
 ## Preserve fork compatibility
 
@@ -293,9 +297,9 @@ policy for AI-assisted development.
 - Never log raw transport exception messages or router payloads that may
   contain authentication or network identifiers. Suppress the original
   transport exception context to prevent sensitive details in tracebacks.
-  Cover request and response
-  body failures, retry exhaustion, zero retries, multi-node partial success,
-  successful empty lists, privacy and previous regression expectations.
+  Cover request dispatch and response-body failures, retry exhaustion, zero
+  retries, multi-node partial success, successful empty lists, privacy and
+  previous regression expectations.
   Follow the transient-response validation skill for the complete workflow.
 
 ## Transport errors versus expired authentication (upstream PR #598)
@@ -305,9 +309,10 @@ policy for AI-assisted development.
   Preserve session state on these temporary failures so the next refresh can
   reuse credentials without creating a new Deco admin session.
 - Continue to invalidate authentication when the router explicitly returns
-  HTTP 401/403 or an established authentication-expiry response. Do not
-  change the caller's existing transport exception types or imply automatic
-  retries when the fork does not yet implement them.
+  HTTP 401/403 or an established authentication-expiry response. Preserve
+  `ClientConnectorError` propagation without clearing the session; only
+  incomplete payloads and server disconnects enter the bounded
+  `TransientConnectionException` retry path from PR #19.
 - Test real API request paths with mocked aiohttp responses: both transport
   failures, incomplete payload behavior, 401/403 invalidation, non-auth
   HTTP errors, retry on a subsequent poll without login, and no token/cookie
