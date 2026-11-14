@@ -12,6 +12,8 @@ reading these instructions:
 
 - [Deco upstream synchronization](.agents/skills/deco-upstream-sync/SKILL.md):
   compare and port upstream features in small, compatibility-safe PRs.
+- [GitHub merge-reference synchronization](.agents/skills/github-merge-sync/SKILL.md):
+  validate secure merge-triggered updates to linked issues and related open PRs.
 - [Config flow and test validation](.agents/skills/deco-config-flow-validation/SKILL.md):
   validate Home Assistant forms, polling interval storage and CI regressions.
 - [Device-registry service validation](.agents/skills/deco-service-registry-validation/SKILL.md):
@@ -81,6 +83,18 @@ policy for AI-assisted development.
   did not update issue #2's progress automatically. Verify the issue body
   contains a current PR status entry and preserves the unchecked item before
   reporting the PR handoff.
+- The merge workflow `.github/workflows/sync-merged-references.yml` runs
+  only for pull requests actually merged to the default branch. It uses
+  trusted default-branch code with narrowly scoped write permissions, not
+  the untrusted PR head. Follow the GitHub merge-reference synchronization
+  skill when modifying its implementation or testing GitHub API behavior.
+- At merge time, update only same-repository issues linked explicitly in the
+  PR body or GitHub closing-issue references. Check only issue checklist
+  lines that explicitly name the merged PR. Notify only related **open** PRs
+  and use idempotent bot comments. Never auto-close tracking issues, rebase
+  other branches or claim that a merge event validates runtime functionality.
+  Manually verify the merged implementation when assessing overall issue
+  completion; the workflow does not replace this review.
 
 ## Preserve fork compatibility
 
