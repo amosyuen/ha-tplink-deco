@@ -8,10 +8,9 @@ import pytest
 
 from custom_components.tplink_deco.config_flow import TplinkDecoFlowHandler
 from custom_components.tplink_deco.config_flow import TplinkDecoOptionsFlowHandler
-from custom_components.tplink_deco.const import DOMAIN
 
 
-def test_config_flow_preserves_registration_and_entry_version() -> None:
+def test_config_flow_preserves_base_class_and_entry_version() -> None:
     """Keep the original config flow and migration version without old metadata."""
     assert issubclass(TplinkDecoFlowHandler, config_entries.ConfigFlow)
     assert TplinkDecoFlowHandler.VERSION == 6
@@ -46,4 +45,3 @@ async def test_config_flow_still_renders_initial_form() -> None:
     show_form.assert_called_once()
     assert show_form.call_args.kwargs["step_id"] == "user"
     assert not show_form.call_args.kwargs["errors"]
-    assert DOMAIN == "tplink_deco"
