@@ -49,6 +49,16 @@ preserve the original identity/name assertions, and run **both** supported
 Home Assistant versions after updating stale expectations. Keep the main
 tracking issue open until the PR has actually been merged.
 
+## HTTP 5xx client polling backoff (upstream #624)
+
+For client-list HTTP 500/502/503, capped non-blocking 30–300-second
+retry delays, session retention, partial mesh failures and sanitized
+response logging, follow
+[Deco client-backoff validation](../deco-client-backoff-validation/SKILL.md).
+Preserve the fork's per-node client data and pending distinct global
+client-list fallback; no global query-mode or health infrastructure is
+required for this narrow port.
+
 ## Incomplete response and client-state recovery (upstream #590)
 
 For `ClientPayloadError`, server disconnects and per-node client-state
