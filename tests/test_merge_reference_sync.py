@@ -192,6 +192,19 @@ class MergeReferenceSyncTests(unittest.TestCase):
         self.assertIn("**Merge status:** PR #19 merged", updated)
         self.assertNotIn("**Pending:**", updated)
 
+    def test_tracking_issue_workflow_status_updates_on_merge(self) -> None:
+        """Recognize labeled in-progress entries, not only upstream ports."""
+        body = (
+            "- **In progress (workflow automation; not an upstream port):** "
+            "[PR #20](https://github.com/HiDiHo01/ha-tplink-deco/pull/20)\\n"
+        )
+        updated, completed = sync.update_issue_body(
+            body, REPOSITORY, 20, MERGE_SHA, "2026-11-15"
+        )
+        self.assertEqual(completed, 0)
+        self.assertIn("- **Merged:** [PR #20]", updated)
+        self.assertNotIn("In progress (workflow", updated)
+
     def test_merge_updates_issue_and_only_related_open_prs(self) -> None:
         """Notify shared-issue PRs and direct dependencies without closing."""
         api = _FakeGitHub()
