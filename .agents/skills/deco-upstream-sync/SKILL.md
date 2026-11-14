@@ -49,6 +49,16 @@ preserve the original identity/name assertions, and run **both** supported
 Home Assistant versions after updating stale expectations. Keep the main
 tracking issue open until the PR has actually been merged.
 
+## Incomplete response and client-state recovery (upstream #590)
+
+For `ClientPayloadError`, server disconnects and per-node client-state
+preservation, follow [Deco transient-response validation](../deco-transient-response-validation/SKILL.md).
+The fork's authenticated-session retention on transport failure (PR #14)
+takes priority over upstream's older disconnect-based `clear_auth` behavior.
+Keep HTTP 500 backoff (#624) and global client-list fallback (#527/#556)
+outside this small port. Tests must distinguish failed responses from
+successful empty lists and preserve known clients after retry exhaustion.
+
 ## Coordinator and session lifecycle backports (upstream #656)
 
 For setup/unload, scheduled-refresh cleanup and router logout, follow
