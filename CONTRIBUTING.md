@@ -92,6 +92,18 @@ To validate the whole integration, install the dependencies above and run
 `python -m pytest --no-cov tests/`. GitHub CI explicitly verifies the pinned
 Home Assistant version and required imports before running the complete suite.
 
+### GitHub Actions regression workflow
+
+The standalone [Regression tests workflow](.github/workflows/pytest.yaml)
+runs the complete test suite on pull requests, pushes to `main`, `master`
+and `dev`, and on a daily schedule. Once the workflow has been merged
+into the default branch, it can also be started from **Actions →
+Regression tests → Run workflow**.
+
+It tests Python 3.13 with Home Assistant 2025.12 and Python 3.14 with
+Home Assistant 2026.11. Missing dependencies fail before pytest runs.
+Linting, HACS, and Hassfest remain in `.github/workflows/tests.yaml`.
+
 Do **not** install `requirements.txt` in the same test environment: it pins
 `homeassistant==2025.1.0`, which conflicts with the Home Assistant 2026.11
 version above. For linting, use the existing pre-commit workflow in a compatible
