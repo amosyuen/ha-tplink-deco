@@ -25,7 +25,7 @@ def test_plain_text_and_legacy_names(name: str | None, expected: str | None) -> 
     assert decode_name_with_fallback(name) == expected
 
 
-@pytest.mark.parametrize("name", ["Kitchen", "Living Room", "Deco S7"])
+@pytest.mark.parametrize("name", ["Kitchen", "Living Room", "Deco S7", "Café"])
 def test_base64_utf8_name(name: str) -> None:
     """Decode valid UTF-8 names without changing their contents."""
     encoded_name = base64.b64encode(name.encode("utf-8")).decode("ascii")
@@ -38,7 +38,9 @@ def test_invalid_utf8_keeps_original_name() -> None:
     assert decode_name_with_fallback("/w==") == "/w=="
 
 
-def test_name_fallback_does_not_log_private_names(caplog: pytest.LogCaptureFixture) -> None:
+def test_name_fallback_does_not_log_private_names(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     """Do not log router/client names when decoding fails."""
     with caplog.at_level(logging.DEBUG):
         assert decode_name_with_fallback("Sensitive client???") == "Sensitive client???"
