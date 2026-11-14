@@ -19,6 +19,13 @@ MAC = "AA:BB:CC:DD:EE:FF"
         ({"custom_nickname": "Kitchen", "nickname": "living_room"}, "Kitchen"),
         ({"custom_nickname": "", "nickname": "living_room"}, "Living Room"),
         ({"custom_nickname": "<Error Decoding Kitchen>"}, "Kitchen"),
+        ({"custom_nickname": "<Error Decoding >"}, MAC),
+        (
+            {"custom_nickname": "<Error Decoding >", "nickname": "living_room"},
+            "Living Room",
+        ),
+        ({"nickname": "<Error Decoding >"}, MAC),
+        ({"custom_nickname": "", "nickname": "<Error Decoding >"}, MAC),
     ],
 )
 def test_deco_uses_available_name_or_mac(
