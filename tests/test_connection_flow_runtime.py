@@ -3,8 +3,11 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from homeassistant import config_entries
 import pytest
+
+pytest.importorskip("homeassistant", reason="Runtime tests require Home Assistant")
+
+from homeassistant import config_entries
 
 from custom_components.tplink_deco.config_flow import TplinkDecoFlowHandler
 from custom_components.tplink_deco.config_flow import TplinkDecoOptionsFlowHandler
