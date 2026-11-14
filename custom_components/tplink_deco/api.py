@@ -457,6 +457,7 @@ class TplinkDecoApi:
         params: dict[str:Any],
         data: Any,
     ) -> dict:
+        """Send a Deco API request and detect expiration of authenticated sessions."""
         authenticated_request = self._stok not in (None, "") and url.startswith(
             f"{self._host}/cgi-bin/luci/;stok={self._stok}/"
         )
