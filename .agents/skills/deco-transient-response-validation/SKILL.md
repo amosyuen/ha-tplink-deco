@@ -63,9 +63,14 @@ description: "Use when implementing or reviewing bounded Deco API retries for tr
 
 ## Handoff
 
-11. Link the narrow port as `Part of #2`, never `Fixes #2`. Note that
-    HTTP 500 exponential backoff and global client-list fallback remain
-    separate upstream work. Update issue #2 only after the PR is merged.
+11. Link the narrow port as `Part of #2`, never `Fixes #2`. As soon as
+    the PR is opened, update issue #2 with the link, in-progress status,
+    tested scope and limitations; refresh that record after material changes.
+    Keep the corresponding checklist item unchecked until the PR is
+    actually merged and its implementation verified on `main`. If closed
+    without merging, record that result and leave the task open. HTTP 500
+    exponential backoff and global client-list fallback remain separate
+    upstream work.
 
 Keep repository-wide rules in `AGENTS.md` and governing policy in
 `AI_POLICY.md`.
