@@ -22,8 +22,9 @@ description: "Use when implementing or reviewing bounded Deco API retries for tr
 
 3. Convert only incomplete-body/disconnected-server errors into a
    `TransientConnectionException` whose public message contains no raw
-   response body, token, cookie, credentials or client MAC. Chain the
-   original exception for troubleshooting without interpolating it in logs.
+   response body, token, cookie, credentials or client MAC. Suppress the
+   raw original exception context so automatic tracebacks cannot print
+   sensitive response text; log only the exception class name.
    Keep connector failures and other HTTP/GraphQL/API errors separate.
 4. Retry those failures through the existing API wrapper using the
    configured `timeout_error_retries` count, with a separate counter from
