@@ -379,6 +379,11 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
         return self._attr_ip_address
 
     @property
+    def hostname(self) -> str | None:
+        """Expose the client name when Home Assistant creates a tracker device."""
+        return self._attr_name
+
+    @property
     def source_type(self) -> str:
         """Return the source type."""
         return SourceType.ROUTER
