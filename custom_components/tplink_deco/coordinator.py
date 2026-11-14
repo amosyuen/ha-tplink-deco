@@ -6,8 +6,11 @@ from datetime import datetime
 from datetime import timedelta
 import ipaddress
 import logging
+from math import ceil
+from time import monotonic
 from typing import Any
 
+import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import CALLBACK_TYPE
 from homeassistant.core import HomeAssistant
@@ -27,6 +30,8 @@ from .exceptions import LoginInvalidException
 from .exceptions import TransientConnectionException
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+CLIENT_BACKOFF_INITIAL_SECONDS = 30
+CLIENT_BACKOFF_MAX_SECONDS = 300
 
 
 def bytes_to_bits(bytes_count):
@@ -313,19 +318,51 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         )
         # Must happen after super().__init__
         self.data = {} if data is None else data
+        self._client_backoff_until = 0.0
+        self._client_backoff_seconds = 0
+
+    @property
+    def remaining_backoff_seconds(self) -> int:
+        """Return the remaining 5xx client-polling delay, rounded up."""
+        return max(0, ceil(self._client_backoff_until - monotonic()))
+
+    def _apply_client_backoff(self) -> None:
+        """Double the delay after an HTTP 5xx polling cycle, up to five minutes."""
+        self._client_backoff_seconds = min(
+            self._client_backoff_seconds * 2 or CLIENT_BACKOFF_INITIAL_SECONDS,
+            CLIENT_BACKOFF_MAX_SECONDS,
+        )
+        self._client_backoff_until = monotonic() + self._client_backoff_seconds
+        _LOGGER.warning(
+            "Deco client polling hit HTTP 5xx; pausing for %d seconds",
+            self._client_backoff_seconds,
+        )
+
+    def _reset_client_backoff(self) -> None:
+        """Reset the delay once every queried Deco returned a valid response."""
+        if self._client_backoff_seconds:
+            _LOGGER.info("Deco client polling recovered after HTTP 5xx backoff")
+        self._client_backoff_seconds = 0
+        self._client_backoff_until = 0.0
 
     async def _async_clients_for_deco(
         self, deco_mac: str
-    ) -> list[dict[str, Any]] | None:
-        """Return node clients, or None only for exhausted transport retries."""
+    ) -> tuple[list[dict[str, Any]] | None, bool]:
+        """Return clients and whether an HTTP 5xx response occurred."""
         try:
-            return await async_call_and_propagate_config_error(
+            clients = await async_call_and_propagate_config_error(
                 self.api.async_list_clients, deco_mac
             )
         except TransientConnectionException:
-            # Distinguish a failed poll from a successful empty client list.
+            # A failed request is not equivalent to a valid empty client list.
             _LOGGER.debug("Deco client poll incomplete after transport retries")
-            return None
+            return None, False
+        except aiohttp.ClientResponseError as err:
+            if not 500 <= err.status < 600:
+                raise
+            _LOGGER.debug("Deco client poll returned HTTP %d", err.status)
+            return None, True
+        return clients, False
 
     async def _async_update_data(self):
         """Update data via api."""
@@ -336,24 +373,30 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         if len(self._deco_update_coordinator.data.decos) == 0:
             return
 
+        if self.remaining_backoff_seconds:
+            _LOGGER.debug(
+                "Skipping Deco client polling during HTTP 5xx backoff (%ds remaining)",
+                self.remaining_backoff_seconds,
+            )
+            return self.data
+
         old_clients = self.data
         clients = {}
         client_added = False
         deco_macs = list(self._deco_update_coordinator.data.decos)
         utc_point_in_time = dt_util.utcnow()
 
-        # A single malformed/truncated node response must not discard the
-        # successful responses or the last-known clients on that node.
+        # Retain successful per-node responses even when a peer fails.
         deco_client_responses = await asyncio.gather(
             *(self._async_clients_for_deco(deco_mac) for deco_mac in deco_macs)
         )
         failed_deco_macs = {
             deco_mac
-            for deco_mac, response in zip(deco_macs, deco_client_responses)
+            for deco_mac, (response, _) in zip(deco_macs, deco_client_responses)
             if response is None
         }
 
-        for deco_mac, deco_clients in zip(deco_macs, deco_client_responses):
+        for deco_mac, (deco_clients, _) in zip(deco_macs, deco_client_responses):
             if deco_clients is None:
                 continue
             for deco_client in deco_clients:
@@ -382,6 +425,11 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
                     client.online = (
                         utc_point_in_time - client.last_activity
                     ).total_seconds() < self._consider_home_seconds
+
+        if any(server_error for _, server_error in deco_client_responses):
+            self._apply_client_backoff()
+        elif all(response is not None for response, _ in deco_client_responses):
+            self._reset_client_backoff()
 
         if client_added:
             async_dispatcher_send(self.hass, SIGNAL_CLIENT_ADDED)
