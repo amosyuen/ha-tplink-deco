@@ -1,6 +1,8 @@
 """Regression tests for serializable scan-interval setup and options flows."""
 
 from types import SimpleNamespace
+import json
+from typing import Any
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -9,6 +11,8 @@ from homeassistant.components.device_tracker.const import CONF_SCAN_INTERVAL
 from homeassistant.const import CONF_HOST
 from homeassistant.const import CONF_PASSWORD
 from homeassistant.const import CONF_USERNAME
+from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers.data_entry_flow import _BaseFlowManagerView
 from homeassistant.helpers import selector
 import pytest
 import voluptuous as vol
@@ -29,7 +33,7 @@ def _input_data(interval: object = "30") -> dict[str, object]:
     }
 
 
-def _mock_flow(kind: str) -> tuple[object, SimpleNamespace]:
+def _mock_flow(kind: str) -> tuple[Any, SimpleNamespace]:
     """Initialize the real flow with mocked Home Assistant dependencies."""
     entry = SimpleNamespace(entry_id="test-entry", data=_input_data(30))
     if kind == "user":
@@ -45,7 +49,9 @@ def _mock_flow(kind: str) -> tuple[object, SimpleNamespace]:
     return flow, entry
 
 
-async def _submit(flow: object, kind: str, data: dict | None) -> dict:
+async def _submit(
+    flow: Any, kind: str, data: dict[str, Any] | None
+) -> dict[str, Any]:
     """Submit data to the user or options step."""
     if kind == "user":
         return await flow.async_step_user(data)
@@ -79,6 +85,20 @@ def test_scan_interval_selector_default(stored: object, expected: str) -> None:
 
     assert interval_key.default() == expected
     assert isinstance(schema.schema[interval_key], selector.SelectSelector)
+
+
+@pytest.mark.parametrize("persisted", [10, "30", 60, "120"])
+def test_form_serializes_to_home_assistant_json(persisted: int | str) -> None:
+    """Serialize the scan interval form using Home Assistant's own HTTP path."""
+    schema = vol.Schema(config_flow._get_schema({CONF_SCAN_INTERVAL: persisted}))
+    view = _BaseFlowManagerView(MagicMock())
+
+    result = view._prepare_result_json(
+        {"type": FlowResultType.FORM, "data_schema": schema}
+    )
+
+    assert json.dumps(result)
+    assert any(field["name"] == CONF_SCAN_INTERVAL for field in result["data_schema"])
 
 
 @pytest.mark.parametrize("interval", SCANS)
