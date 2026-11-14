@@ -104,6 +104,10 @@ It tests Python 3.13 with Home Assistant 2025.12 and Python 3.14 with
 Home Assistant 2026.11. Missing dependencies fail before pytest runs.
 Linting, HACS, and Hassfest remain in `.github/workflows/tests.yaml`.
 
+The Home Assistant 2025.12 job additionally pins `pycares<5` to
+avoid the incompatible `aiodns 3.5.0` / `pycares 5.x` combination.
+The Home Assistant 2026.11 job retains its newer dependencies.
+
 Do **not** install `requirements.txt` in the same test environment: it pins
 `homeassistant==2025.1.0`, which conflicts with the Home Assistant 2026.11
 version above. For linting, use the existing pre-commit workflow in a compatible
