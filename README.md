@@ -150,24 +150,6 @@ Configurable:
 
 ---
 
-## 📦 Installation
-
-### HACS
-
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=amosyuen&repository=ha-tplink-deco&category=integration)
-
-### Manual
-
-1. Copy `custom_components/tplink_deco` to your Home Assistant config folder
-2. Restart Home Assistant
-3. Add the integration via UI
-
-### Local regression tests
-
-Install test dependencies in an isolated Python 3.14 environment. See
-[the local test setup](CONTRIBUTING.md#local-regression-tests-python-314)
-for Windows PowerShell commands and the Home Assistant version requirement.
-
 # TP-Link Deco
 
 [![GitHub Release][releases-shield]][releases]
@@ -248,11 +230,22 @@ target:
 
 {% if not installed %}
 
+<!-- ha-marketplace:exclude-start -->
 ## Installation
 
-### HACS
+### Marketplace (Home Assistant 2026.11 and newer)
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=amosyuen&repository=ha-tplink-deco&category=integration)
+Open **Settings > Marketplace > Add from link** and enter the fork's repository URL:
+`https://github.com/HiDiHo01/ha-tplink-deco`.
+
+### HACS (Home Assistant 2026.10 and earlier)
+
+In **HACS > Integrations**, add `https://github.com/HiDiHo01/ha-tplink-deco`
+as a custom repository of type **Integration**, then install it.
+
+The repository button works in both older HACS and the new Marketplace:
+
+[![Open this TP-Link Deco fork in HACS or Home Assistant Marketplace.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=HiDiHo01&repository=ha-tplink-deco&category=integration)
 
 ### Manual
 
@@ -262,6 +255,13 @@ target:
 4. Download _all_ the files from the `custom_components/tplink_deco/` directory (folder) in this repository.
 5. Place the files you downloaded in the new directory (folder) you created.
 6. Restart Home Assistant
+
+### Local regression tests
+
+Install test dependencies in an isolated Python 3.14 environment. See
+[the local test setup](CONTRIBUTING.md#local-regression-tests-python-314)
+for Windows PowerShell commands and the Home Assistant version requirement.
+<!-- ha-marketplace:exclude-end -->
 
 {% endif %}
 
