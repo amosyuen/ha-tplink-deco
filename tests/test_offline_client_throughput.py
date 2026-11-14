@@ -114,9 +114,7 @@ def test_per_deco_total_excludes_offline_and_other_deco_clients(
 @pytest.mark.parametrize("attribute", ["down_kilobytes_per_s", "up_kilobytes_per_s"])
 def test_throughput_recalculates_on_client_status_change(attribute: str) -> None:
     """Drop stale rates after a connected client becomes offline."""
-    client = _client(
-        "00:00:00:00:00:01", MASTER_MAC, online=True, down=12.0, up=3.0
-    )
+    client = _client("00:00:00:00:00:01", MASTER_MAC, online=True, down=12.0, up=3.0)
     sensor = _sensor({"client": client}, attribute, None)
 
     assert sensor.native_value == pytest.approx(getattr(client, attribute))
