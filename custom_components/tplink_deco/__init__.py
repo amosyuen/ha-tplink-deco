@@ -61,6 +61,14 @@ from .coordinator import TplinkDecoUpdateCoordinator
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
+def _deco_mac_from_identifiers(identifiers: set[tuple[str, str]]) -> str | None:
+    """Find a nonempty TP-Link Deco MAC among device-registry identifiers."""
+    return next(
+        (mac for domain, mac in identifiers if domain == DOMAIN and mac),
+        None,
+    )
+
+
 async def async_create_and_refresh_coordinators(
     hass: HomeAssistant,
     config_data: dict[str:Any],
@@ -211,13 +219,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             device = dr.async_get(device_id)
             if device is None:
                 raise Exception(f"Device ID {device_id} is not a TP-Link Deco device")
-            ids = device.identifiers
-            id = next(iter(ids)) if len(ids) == 1 else None
-            if id[0] != DOMAIN:
+            mac = _deco_mac_from_identifiers(device.identifiers)
+            if mac is None:
                 raise Exception(
                     f"Device ID {device_id} does not have {DOMAIN} MAC identifier"
                 )
-            macs.append(id[1])
+            macs.append(mac)
         await deco_coordinator.api.async_reboot_decos(macs)
 
     hass.services.async_register(
