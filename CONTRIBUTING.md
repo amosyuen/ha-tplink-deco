@@ -63,6 +63,27 @@ file.
 You can use the `pre-commit` settings implemented in this repository to have
 linting tool checking your contributions (see deicated section below).
 
+## Local regression tests (Python 3.14)
+
+Use a dedicated virtual environment to run the regression tests. In Windows
+PowerShell, from the repository root:
+
+```powershell
+py -3.14 -m venv .venv
+.\\.venv\\Scripts\\python.exe -m pip install --upgrade pip
+.\\.venv\\Scripts\\python.exe -m pip install -r requirements-test.txt "homeassistant==2026.11.0"
+.\\.venv\\Scripts\\python.exe -m pytest --no-cov tests/
+```
+
+The `requirements-test.txt` file is also used by GitHub Actions. It contains
+the test runner and direct integration dependencies. Home Assistant is installed
+separately to allow the CI matrix to exercise multiple HA/Python versions.
+
+Do **not** install `requirements.txt` in the same test environment: it pins
+`homeassistant==2025.1.0`, which conflicts with the Home Assistant 2026.11
+version above. For linting, use the existing pre-commit workflow in a compatible
+development environment.
+
 ## Pre-commit
 
 You can use the [pre-commit](https://pre-commit.com/) settings included in the
