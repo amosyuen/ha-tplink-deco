@@ -64,9 +64,7 @@ async def test_list_devices_handles_mixed_firmware_nicknames() -> None:
     assert devices[3]["nickname"] == "study_room"
     api.async_login_if_needed.assert_awaited_once_with()
     api._async_post.assert_awaited_once()
-    api._decrypt_data.assert_called_once_with(
-        "List Devices", "mocked-encrypted-body"
-    )
+    api._decrypt_data.assert_called_once_with("List Devices", "mocked-encrypted-body")
 
 
 @pytest.mark.asyncio
@@ -98,7 +96,8 @@ async def test_list_clients_handles_mixed_firmware_names() -> None:
     api.async_login_if_needed.assert_awaited_once_with()
     api._async_post.assert_awaited_once()
     api._decrypt_data.assert_called_once_with(
-        "List Clients default", "mocked-encrypted-body"
+        "List Clients default",
+        "mocked-encrypted-body",
     )
 
 
