@@ -42,30 +42,29 @@ SCAN_INTERVAL_OPTIONS = (10, 30, 60, 120)
 SCAN_INTERVAL_SELECTOR_OPTIONS = [str(value) for value in SCAN_INTERVAL_OPTIONS]
 
 
+def _parse_scan_interval(value: Any) -> int | None:
+    """Parse a supported interval without accepting booleans or floats."""
+    if isinstance(value, bool) or not isinstance(value, (int, str)):
+        return None
+    try:
+        interval = int(value)
+    except ValueError:
+        return None
+    return interval if interval in SCAN_INTERVAL_OPTIONS else None
+
+
 def _get_scan_interval(data: dict[str, Any]) -> str:
     """Return a supported scan interval as a string for the form selector."""
-    value = data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-    try:
-        if isinstance(value, bool):
-            return str(DEFAULT_SCAN_INTERVAL)
-        interval = int(value)
-    except (TypeError, ValueError, OverflowError):
-        return str(DEFAULT_SCAN_INTERVAL)
-    return str(interval) if interval in SCAN_INTERVAL_OPTIONS else str(DEFAULT_SCAN_INTERVAL)
+    interval = _parse_scan_interval(data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
+    return str(interval if interval is not None else DEFAULT_SCAN_INTERVAL)
 
 
 def _normalize_scan_interval(data: dict[str, Any]) -> bool:
     """Validate a submitted interval and preserve integer config storage."""
     if CONF_SCAN_INTERVAL not in data:
         return True
-    value = data[CONF_SCAN_INTERVAL]
-    if isinstance(value, bool):
-        return False
-    try:
-        interval = int(value)
-    except (TypeError, ValueError, OverflowError):
-        return False
-    if interval not in SCAN_INTERVAL_OPTIONS:
+    interval = _parse_scan_interval(data[CONF_SCAN_INTERVAL])
+    if interval is None:
         return False
     data[CONF_SCAN_INTERVAL] = interval
     return True
