@@ -16,6 +16,8 @@ reading these instructions:
   validate Home Assistant forms, polling interval storage and CI regressions.
 - [Device-registry service validation](.agents/skills/deco-service-registry-validation/SKILL.md):
   validate Deco device selections, batch actions and service regression tests.
+- [Deco runtime lifecycle validation](.agents/skills/deco-lifecycle-validation/SKILL.md):
+  validate entry setup/unload, coordinator shutdown, callbacks and safe logout.
 
 These skills are task-specific procedures. This file remains the source of
 repository-wide implementation rules; `AI_POLICY.md` remains the governing
@@ -304,6 +306,24 @@ policy for AI-assisted development.
   then confirm HACS, Hassfest, and CI status where available. Report
   checks that were not run or could not be verified; never claim success
   from tests that have merely been added.
+
+## PR validation and upstream tracking lessons
+
+- Treat Black, isort and Prettier hooks as formatting requirements: if a CI
+  hook rewrites a test or README file, commit the exact formatting correction
+  to the PR branch and require a fresh run against the **new head commit**.
+  Passing runs on superseded commits do not validate the final diff.
+- Review the actual GitHub Actions job results for both supported Python /
+  Home Assistant test-matrix entries and for pre-commit, HACS and Hassfest.
+  Distinguish failures, skipped jobs, jobs still running and genuine passes;
+  include run links in the PR only after the relevant jobs complete.
+- Before describing a PR as ready, verify it targets current `main`, is
+  mergeable, and has no unaddressed review threads. Never mark issue #2's
+  corresponding checklist entry complete merely because CI is green.
+- After an actual merge, verify the implementation on `main`, record the
+  merged PR, commit, scope limits and CI links in issue #2, and leave unrelated
+  checklist items and repository-wide acceptance gates open. Identify the
+  historical upstream comparison as a snapshot, not a fresh diff.
 
 ## Implementation quality
 
