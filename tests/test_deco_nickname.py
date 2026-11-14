@@ -1,5 +1,9 @@
 """Regression tests for Deco nickname handling and stable device identifiers."""
 
+from unittest.mock import MagicMock
+from unittest.mock import patch
+
+from homeassistant.helpers.entity import DeviceInfo
 import pytest
 
 from custom_components.tplink_deco import device
@@ -76,8 +80,19 @@ def test_satellite_keeps_master_registry_link_when_name_is_missing() -> None:
     satellite = TpLinkDeco("11:22:33:44:55:66")
     satellite.update({"role": "slave"})
 
-    device_info = device.create_device_info(satellite, master)
+    coordinator = MagicMock()
+    coordinator.config_entry.entry_id = "nickname-test"
+    registry = MagicMock()
+    registry.async_get_or_create.return_value.id = "master-registry-id"
+
+    with patch.object(device.device_registry, "async_get", return_value=registry):
+        device_info = device.create_device_info(satellite, master, coordinator)
 
     assert device_info["identifiers"] == {("tplink_deco", "11:22:33:44:55:66")}
-    assert device_info["via_device"] == ("tplink_deco", MAC)
+    if "via_device_id" in DeviceInfo.__annotations__:
+        assert device_info["via_device_id"] == "master-registry-id"
+        registry.async_get_or_create.assert_called_once()
+    else:
+        assert device_info["via_device"] == ("tplink_deco", MAC)
+        registry.async_get_or_create.assert_not_called()
     assert device_info["name"] == "11:22:33:44:55:66 Deco"
