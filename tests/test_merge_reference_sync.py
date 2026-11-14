@@ -157,12 +157,16 @@ class MergeReferenceSyncTests(unittest.TestCase):
             )
         )
         self.assertFalse(sync.references_pull_request("Part of #19", REPOSITORY, 19))
+        self.assertFalse(
+            sync.references_pull_request("upstream PR #19", REPOSITORY, 19)
+        )
 
     def test_only_explicitly_linked_checklist_is_completed(self) -> None:
         """Preserve global acceptance criteria and unrelated upstream work."""
         body = (
             "- [ ] Fix unstable clients in fork PR #19\n"
             "- [ ] Restore HTTP 500 handling #624\n"
+            "- [ ] Port upstream PR #19 separately\n"
             "- [ ] Overall acceptance\n"
         )
         updated, completed = sync.update_issue_body(
@@ -171,6 +175,7 @@ class MergeReferenceSyncTests(unittest.TestCase):
         self.assertEqual(completed, 1)
         self.assertIn("- [x] Fix unstable clients in fork PR #19", updated)
         self.assertIn("- [ ] Restore HTTP 500 handling #624", updated)
+        self.assertIn("- [ ] Port upstream PR #19 separately", updated)
         self.assertIn("- [ ] Overall acceptance", updated)
         unchanged, again = sync.update_issue_body(
             updated, REPOSITORY, 19, MERGE_SHA, "2026-11-15"
