@@ -395,6 +395,12 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             for deco_mac, (response, _) in zip(deco_macs, deco_client_responses)
             if response is None
         }
+        if len(failed_deco_macs) == len(deco_macs):
+            # Unknown client-to-node assignments must also survive a poll
+            # where no Deco returned a valid client list.
+            if any(server_error for _, server_error in deco_client_responses):
+                self._apply_client_backoff()
+            return old_clients
 
         for deco_mac, (deco_clients, _) in zip(deco_macs, deco_client_responses):
             if deco_clients is None:
