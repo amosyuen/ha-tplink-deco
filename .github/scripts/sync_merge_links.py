@@ -62,7 +62,10 @@ def issue_references(text: str, repository: str) -> set[int]:
         flags=re.I,
     )
     for line in source.splitlines():
-        match = directive.match(line)
+        # PR descriptions frequently format these directives in bold or
+        # as Markdown list items; formatting is not part of the reference.
+        normalized = re.sub(r"^\s*(?:[-*]\s+|>\s+)*", "", line)
+        match = directive.match(normalized.lstrip("*_"))
         if match:
             found.update(
                 int(value)
