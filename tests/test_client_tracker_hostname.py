@@ -60,7 +60,7 @@ def test_scanner_hostname_falls_back_to_mac_when_name_is_missing(
     """Allow Home Assistant to fall back to the existing MAC when unnamed."""
     tracker = _make_tracker(client_name)
 
-    assert tracker.hostname or tracker.mac_address == CLIENT_MAC
+    assert (tracker.hostname or tracker.mac_address) == CLIENT_MAC
 
 
 def test_client_rename_updates_hostname_and_preserves_mac() -> None:
