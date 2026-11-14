@@ -198,6 +198,26 @@ policy for AI-assisted development.
   auth, transport errors, cancellation and safe diagnostic logging in
   actual async entry and API paths.
 
+## Authenticated API expiry error -5002 (upstream PR #620)
+
+- Some Deco firmware reports an expired authenticated LuCI session as
+  `error_code=-5002` in the top-level HTTP JSON response or in decrypted
+  payloads (`error_code` / `errorcode`). Treat it as an auth expiry
+  **only for requests made with the current authenticated session**, not
+  during the initial login or when querying an unrelated host.
+- Clear the stale token, cookie and sequence and raise the existing
+  `EmptyDataException` to reuse the existing single re-login retry.
+  Add authenticated reboot operations to that same bounded retry path.
+- Preserve login-time invalid-credentials semantics, other API error
+  propagation, HTTP 401/403 invalidation and ordinary HTTP 500 handling.
+  Do not retry indefinitely or log the complete API response or credentials
+  when detecting `-5002`.
+- Test top-level responses via mocked aiohttp, decrypted responses from
+  all four current LuCI operations, one successful relogin, repeated
+  `-5002` stopping after one relogin, login/unrelated-host exclusions,
+  generic API errors and unaffected HTTP errors. Do not assume that the
+  fork already supports upstream legacy outer-session encryption.
+
 ## Transport errors versus expired authentication (upstream PR #598)
 
 - A disconnected HTTP transport or connector failure does not by itself
