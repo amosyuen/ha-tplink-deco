@@ -520,8 +520,10 @@ class TplinkDecoApi:
             )
             raise TimeoutException from err
         except aiohttp.ClientResponseError as err:
-            if params is not None and params.get("form") == "client_list" and (
-                500 <= err.status < 600
+            if (
+                params is not None
+                and params.get("form") == "client_list"
+                and (500 <= err.status < 600)
             ):
                 # aiohttp exceptions can contain a LuCI session token in
                 # request_info.real_url. Never interpolate these exceptions.
