@@ -53,9 +53,7 @@ def issue_references(text: str, repository: str) -> set[int]:
     }
     found.update(
         int(value)
-        for value in re.findall(
-            rf"(?<![\w/]){scoped}#(\d+)\b", source, flags=re.I
-        )
+        for value in re.findall(rf"(?<![\w/]){scoped}#(\d+)\b", source, flags=re.I)
     )
     directive = re.compile(
         r"^\s*(?:[-*]\s+)?(?:part\s+of|related\s+to|"
@@ -97,8 +95,7 @@ def update_issue_body(
     owner, name = _repository_parts(repository)
     scoped = re.escape(f"{owner}/{name}")
     pr_link = re.compile(
-        rf"\bPR\s*#{pr_number}\b"
-        rf"|https://github\.com/{scoped}/pull/{pr_number}\b",
+        rf"\bPR\s*#{pr_number}\b" rf"|https://github\.com/{scoped}/pull/{pr_number}\b",
         flags=re.I,
     )
     output: list[str] = []
@@ -117,8 +114,7 @@ def update_issue_body(
             line = (
                 f"{indentation}- **Merge status:** PR #{pr_number} merged "
                 f"on {merged_date} (commit {merge_sha[:12]}); "
-                "other tasks remain open."
-                + ("\n" if line.endswith("\n") else "")
+                "other tasks remain open." + ("\n" if line.endswith("\n") else "")
             )
         output.append(line)
     return "".join(output), completed
@@ -231,10 +227,9 @@ def synchronize_merge(
     if event.get("action") != "closed" or pr.get("merged") is not True:
         return [], []
     base = pr.get("base") or {}
-    if (
-        (base.get("repo") or {}).get("full_name") != repository
-        or base.get("ref") != (event.get("repository") or {}).get("default_branch")
-    ):
+    if (base.get("repo") or {}).get("full_name") != repository or base.get("ref") != (
+        event.get("repository") or {}
+    ).get("default_branch"):
         raise ValueError("Merge must target this repository default branch")
 
     number = pr.get("number")
@@ -295,9 +290,7 @@ def synchronize_merge(
             continue
         related_body = f"{related.get('title') or ''}\n{related.get('body') or ''}"
         shared = issue_references(related_body, repository) & issue_numbers
-        if not shared and not references_pull_request(
-            related_body, repository, number
-        ):
+        if not shared and not references_pull_request(related_body, repository, number):
             continue
         if len(updated_prs) >= _MAX_RELATED_PRS:
             raise RuntimeError("Too many related PRs; refusing broad notices")
