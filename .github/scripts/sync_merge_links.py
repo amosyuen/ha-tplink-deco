@@ -98,7 +98,8 @@ def update_issue_body(
     owner, name = _repository_parts(repository)
     scoped = re.escape(f"{owner}/{name}")
     pr_link = re.compile(
-        rf"(?<!upstream )\bPR\s*#{pr_number}\b" rf"|https://github\.com/{scoped}/pull/{pr_number}\b",
+        rf"(?<!upstream )\bPR\s*#{pr_number}\b"
+        rf"|https://github\.com/{scoped}/pull/{pr_number}\b",
         flags=re.I,
     )
     output: list[str] = []
