@@ -64,7 +64,7 @@ policy for AI-assisted development.
   exceptions. Renaming must not change MAC-based device identifiers.
 - Do not log complete device/client lists, raw firmware responses, names,
   credentials, session tokens, or other sensitive API data. Use sanitized
-  counts and exception *types* for diagnostics when appropriate.
+  counts and exception _types_ for diagnostics when appropriate.
 - Add tests at both the helper and API-response-handler levels; a helper
   unit test alone does not verify that incoming firmware payloads are
   processed or logged safely.
