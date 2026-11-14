@@ -15,6 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import selector
 import voluptuous as vol
 
 from .__init__ import async_create_and_refresh_coordinators
@@ -37,6 +38,39 @@ from .exceptions import TimeoutException
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+SCAN_INTERVAL_OPTIONS = (10, 30, 60, 120)
+SCAN_INTERVAL_SELECTOR_OPTIONS = [str(value) for value in SCAN_INTERVAL_OPTIONS]
+
+
+def _get_scan_interval(data: dict[str, Any]) -> str:
+    """Return a supported scan interval as a string for the form selector."""
+    value = data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+    try:
+        if isinstance(value, bool):
+            return str(DEFAULT_SCAN_INTERVAL)
+        interval = int(value)
+    except (TypeError, ValueError, OverflowError):
+        return str(DEFAULT_SCAN_INTERVAL)
+    return str(interval) if interval in SCAN_INTERVAL_OPTIONS else str(DEFAULT_SCAN_INTERVAL)
+
+
+def _normalize_scan_interval(data: dict[str, Any]) -> bool:
+    """Validate a submitted interval and preserve integer config storage."""
+    if CONF_SCAN_INTERVAL not in data:
+        return True
+    value = data[CONF_SCAN_INTERVAL]
+    if isinstance(value, bool):
+        return False
+    try:
+        interval = int(value)
+    except (TypeError, ValueError, OverflowError):
+        return False
+    if interval not in SCAN_INTERVAL_OPTIONS:
+        return False
+    data[CONF_SCAN_INTERVAL] = interval
+    return True
+
+
 
 def _get_auth_schema(data: dict[str:Any]):
     if data is None:
@@ -51,10 +85,7 @@ def _get_schema(data: dict[str:Any]):
     if data is None:
         data = {}
     schema = _get_auth_schema(data)
-    scan_interval = data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-
-    if scan_interval not in [10, 30, 60, 120]:
-        scan_interval = DEFAULT_SCAN_INTERVAL
+    scan_interval = _get_scan_interval(data)
 
     schema.update(
         {
@@ -64,7 +95,12 @@ def _get_schema(data: dict[str:Any]):
             vol.Required(
                 CONF_SCAN_INTERVAL,
                 default=scan_interval,
-            ): vol.In([10, 30, 60, 120]),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=SCAN_INTERVAL_SELECTOR_OPTIONS,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
             vol.Required(
                 CONF_CONSIDER_HOME,
                 default=data.get(CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME),
@@ -160,8 +196,11 @@ class TplinkDecoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._errors = {}
 
         if user_input is not None:
-            self._errors = await _async_test_credentials(self.hass, user_input)
-            if len(self._errors) == 0:
+            if _normalize_scan_interval(user_input):
+                self._errors = await _async_test_credentials(self.hass, user_input)
+            else:
+                self._errors = {CONF_SCAN_INTERVAL: "invalid_scan_interval"}
+            if not self._errors:
                 _ensure_user_input_optionals(user_input)
                 return self.async_create_entry(
                     title=user_input[CONF_HOST], data=user_input
@@ -222,11 +261,13 @@ class TplinkDecoOptionsFlowHandler(config_entries.OptionsFlow):
         self._errors = {}
 
         if user_input is not None:
-            _ensure_user_input_optionals(user_input)
-            self.data.update(user_input)
-
-            self._errors = await _async_test_credentials(self.hass, self.data)
-            if len(self._errors) == 0:
+            if _normalize_scan_interval(user_input):
+                _ensure_user_input_optionals(user_input)
+                self.data.update(user_input)
+                self._errors = await _async_test_credentials(self.hass, self.data)
+            else:
+                self._errors = {CONF_SCAN_INTERVAL: "invalid_scan_interval"}
+            if not self._errors:
                 self.hass.config_entries.async_update_entry(
                     entry=self.config_entry,
                     title=self.data[CONF_HOST],
