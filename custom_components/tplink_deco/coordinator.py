@@ -18,6 +18,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
 from .api import TplinkDecoApi
+from .api import normalize_name
 from .const import DOMAIN
 from .const import SIGNAL_CLIENT_ADDED
 from .const import SIGNAL_DECO_ADDED
@@ -40,8 +41,9 @@ def filter_invalid_ip(ip_address):
         return None
 
 
-def snake_case_to_title_space(str):
-    return " ".join([w.title() for w in str.split("_")])
+def snake_case_to_title_space(name: str) -> str:
+    """Convert firmware identifiers to display names."""
+    return " ".join(word.title() for word in name.split("_"))
 
 
 async def async_call_and_propagate_config_error(func, *args):
@@ -87,9 +89,14 @@ class TpLinkDeco:
         self.sw_version = data.get("software_ver")
         self.device_model = data.get("device_model")
 
-        self.name = data.get("custom_nickname")  # Only set if custom value
-        if self.name is None:
-            self.name = snake_case_to_title_space(data.get("nickname"))
+        custom_nickname = data.get("custom_nickname")
+        nickname = data.get("nickname")
+        if custom_nickname:
+            self.name = normalize_name(custom_nickname)
+        elif nickname:
+            self.name = normalize_name(snake_case_to_title_space(nickname))
+        else:
+            self.name = self.mac
         self.ip_address = filter_invalid_ip(data.get("device_ip"))
         self.online = data.get("group_status") == "connected"
         inet = data.get("inet_status")
