@@ -55,7 +55,6 @@ policy for AI-assisted development.
   review thread resolved or a tracking-issue task complete merely because
   its lesson has been documented.
 
-
 ## Keep linked and related GitHub issues synchronized
 
 - Whenever a PR is created, materially updated, reviewed, closed or merged,
