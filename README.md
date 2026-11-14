@@ -90,6 +90,8 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Fix `reboot_deco` when a device has multiple registry identifiers; reject missing Deco MACs cleanly without calling the router.
+
 - Exclude offline clients' last-reported rates from network-wide and per-Deco upload/download sensors.
 
 - Remove the deprecated config-flow connection class; keep `local_polling` metadata in the manifest.
