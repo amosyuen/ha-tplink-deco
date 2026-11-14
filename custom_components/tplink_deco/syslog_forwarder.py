@@ -48,7 +48,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 STORAGE_VERSION = 1
 # Long enough that a run of identical lines is unlikely to match as the tail.
 TAIL_LINES = 20
-MAX_LINES_PER_POLL = 1000
+MAX_LINES_PER_BATCH = 1000
+FORWARD_TIMEOUT_SECONDS = 30
 SEND_TIMEOUT_SECONDS = 10
 CLOSE_TIMEOUT_SECONDS = 5
 UDP_BURST_DATAGRAMS = 100
@@ -343,22 +344,36 @@ class TplinkDecoSyslogForwarder:
         new = self._lines_after_tail(fetched)
         if new is None:
             return 0
-        if new:
-            logged_before = fetched[: len(fetched) - len(new)]
-            await self._server.async_send(
-                format_rfc5424(
-                    new,
-                    self._hostname,
-                    dt_util.now(),
-                    previous=logged_before[-TAIL_LINES:],
-                )
+        if not new:
+            return 0
+
+        start = len(fetched) - len(new)
+        sent = 0
+        async with asyncio.timeout(FORWARD_TIMEOUT_SECONDS):
+            messages = await asyncio.to_thread(
+                format_rfc5424,
+                new,
+                self._hostname,
+                dt_util.now(),
+                previous=fetched[max(0, start - TAIL_LINES) : start],
             )
-        await self._async_save_tail(fetched)
-        _LOGGER.debug("Forwarded %d Deco system log lines to syslog", len(new))
-        return len(new)
+            for offset in range(0, len(messages), MAX_LINES_PER_BATCH):
+                if self._is_paused():
+                    break
+                batch = messages[offset : offset + MAX_LINES_PER_BATCH]
+                await self._server.async_send(batch)
+                # Checkpoint only completed batches, never the unsent snapshot end.
+                end = start + offset + len(batch)
+                await self._async_save_tail(fetched[max(0, end - TAIL_LINES) : end])
+                sent += len(batch)
+                await asyncio.sleep(0)
+        _LOGGER.debug(
+            "Forwarded %d of %d new Deco system log lines to syslog", sent, len(new)
+        )
+        return sent
 
     def _lines_after_tail(self, fetched: list[str]) -> list[str] | None:
-        """Return the newest lines after the saved tail, up to the poll cap.
+        """Return all lines after the saved tail in their original order.
 
         Return None to skip this poll.
         """
@@ -379,18 +394,12 @@ class TplinkDecoSyslogForwarder:
             )
             new = fetched
         self._missed_tail = False
-        if len(new) > MAX_LINES_PER_POLL:
-            _LOGGER.warning(
-                "Forwarding only the newest %d of %d Deco system log lines",
-                MAX_LINES_PER_POLL,
-                len(new),
-            )
-            new = new[-MAX_LINES_PER_POLL:]
         return new
 
     async def _async_save_tail(self, fetched: list[str]) -> None:
-        self._tail = fetched[-TAIL_LINES:]
-        await self._store.async_save({"level": self._level, "tail": self._tail})
+        tail = fetched[-TAIL_LINES:]
+        await self._store.async_save({"level": self._level, "tail": tail})
+        self._tail = tail
 
 
 async def async_setup_syslog_forwarder(

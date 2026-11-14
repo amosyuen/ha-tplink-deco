@@ -228,16 +228,127 @@ async def test_stored_tail_from_another_level_is_ignored(send):
 
 
 @pytest.mark.asyncio
-async def test_no_overlap_twice_forwards_newest_lines_up_to_cap(send, caplog):
+async def test_no_overlap_twice_forwards_all_lines_in_order(send, caplog):
     forwarder = _forwarder(_api("v", "w", "x", "y", "z"), tail=["a"])
 
-    with patch.object(syslog_forwarder, "MAX_LINES_PER_POLL", 3):
+    with patch.object(syslog_forwarder, "MAX_LINES_PER_BATCH", 3):
         assert await forwarder.async_forward_new_lines() == 0
         send.assert_not_awaited()
-        assert await forwarder.async_forward_new_lines() == 3
+        assert await forwarder.async_forward_new_lines() == 5
 
-    assert _sent_lines(send) == ["x", "y", "z"]
+    assert _sent_lines(send) == ["v", "w", "x", "y", "z"]
+    assert [len(call.args[0]) for call in send.await_args_list] == [3, 2]
     assert "no overlap" in caplog.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("count", [1859, 2638, 5001])
+async def test_large_burst_keeps_oldest_and_newest_lines(send, count):
+    lines = [f"line-{i}" for i in range(count)]
+    forwarder = _forwarder(_api("anchor", *lines), tail=["anchor"])
+
+    assert await forwarder.async_forward_new_lines() == count
+
+    assert _sent_lines(send) == lines
+    assert all(len(call.args[0]) <= 1000 for call in send.await_args_list)
+    assert forwarder._tail == lines[-20:]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["error", "timeout", "cancel"])
+async def test_partial_burst_resumes_after_last_completed_batch(send, failure):
+    lines = [f"line-{i}" for i in range(8)]
+    api = _api("anchor", *lines)
+    store = FakeStore()
+    forwarder = _forwarder(api, store, tail=["anchor"])
+    started = asyncio.Event()
+
+    async def fail_second_batch(_messages):
+        if send.await_count == 2:
+            started.set()
+            if failure == "error":
+                raise OSError("receiver unavailable")
+            await asyncio.Event().wait()
+
+    send.side_effect = fail_second_batch
+    with patch.object(syslog_forwarder, "MAX_LINES_PER_BATCH", 3):
+        if failure == "cancel":
+            task = asyncio.create_task(forwarder.async_forward_new_lines())
+            await asyncio.wait_for(started.wait(), 5)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+        elif failure == "timeout":
+            with (
+                patch.object(syslog_forwarder, "FORWARD_TIMEOUT_SECONDS", 1),
+                pytest.raises(TimeoutError),
+            ):
+                await forwarder.async_forward_new_lines()
+        else:
+            with pytest.raises(OSError):
+                await forwarder.async_forward_new_lines()
+
+        assert store.data["tail"] == ["anchor", *lines[:3]]
+        send.reset_mock()
+        send.side_effect = None
+        # Recreate the forwarder to exercise persisted state, not just memory.
+        resumed = _forwarder(api, store)
+        with patch.object(syslog_forwarder, "async_track_time_interval"):
+            await resumed.async_start()
+        await resumed._task
+
+    assert _sent_lines(send) == lines[3:]
+    assert store.data["tail"] == ["anchor", *lines]
+
+
+@pytest.mark.asyncio
+async def test_pause_between_batches_preserves_unsent_lines(send):
+    paused = False
+    lines = [f"line-{i}" for i in range(8)]
+    forwarder = _forwarder(_api("anchor", *lines), tail=["anchor"])
+    forwarder._is_paused = lambda: paused
+
+    async def pause_after_batch(_messages):
+        nonlocal paused
+        paused = True
+
+    send.side_effect = pause_after_batch
+    with patch.object(syslog_forwarder, "MAX_LINES_PER_BATCH", 3):
+        assert await forwarder.async_forward_new_lines() == 3
+        assert forwarder._tail == ["anchor", *lines[:3]]
+        paused = False
+        send.reset_mock()
+        send.side_effect = None
+        assert await forwarder.async_forward_new_lines() == 5
+
+    assert _sent_lines(send) == lines[3:]
+
+
+@pytest.mark.asyncio
+async def test_failed_checkpoint_does_not_advance_memory_tail(send):
+    store = FakeStore()
+    forwarder = _forwarder(_api("anchor", "new"), store, tail=["anchor"])
+    with patch.object(store, "async_save", AsyncMock(side_effect=OSError("storage"))):
+        with pytest.raises(OSError):
+            await forwarder.async_forward_new_lines()
+    assert forwarder._tail == ["anchor"]
+    send.reset_mock()
+    assert await forwarder.async_forward_new_lines() == 1
+    assert _sent_lines(send) == ["new"]
+
+
+@pytest.mark.asyncio
+async def test_continuation_headers_survive_batch_boundaries(send, utc):
+    header = "Sat Nov  7 12:19:42 2026 user.err fan[7]: start"
+    lines = [header] + [f"continuation-{i}" for i in range(30)]
+    forwarder = _forwarder(_api("anchor", *lines), tail=["anchor"])
+    with patch.object(syslog_forwarder, "MAX_LINES_PER_BATCH", 3):
+        assert await forwarder.async_forward_new_lines() == len(lines)
+    assert all(
+        message.startswith("<11>1 2026-11-07T12:19:42+00:00")
+        for call in send.await_args_list
+        for message in call.args[0]
+    )
 
 
 @pytest.mark.asyncio
