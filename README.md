@@ -90,6 +90,8 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Link satellite Decos to their master using `via_device_id` in Home Assistant 2026.8+, with a legacy `via_device` fallback on older supported releases. Keep existing MAC-based device identifiers and entity unique IDs.
+
 - Recover from Deco API error code `-5002` on authenticated LuCI requests by clearing the expired session and using the existing one-time re-login retry, including for reboot commands. Keep login errors and generic HTTP failures distinct.
 
 - After Home Assistant successfully unloads Deco platforms, cancel coordinator refreshes, unsubscribe callbacks and release the router admin session. A failed platform unload leaves the running integration and session intact.
