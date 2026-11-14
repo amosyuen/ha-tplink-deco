@@ -70,9 +70,7 @@ def _unload_context(
         }
     }
 
-    async def _platform_unload(
-        _entry: SimpleNamespace, _platform: str
-    ) -> bool:
+    async def _platform_unload(_entry: SimpleNamespace, _platform: str) -> bool:
         """Record platform unloads before coordinator and session cleanup."""
         events.append("platform_unload")
         return True
@@ -113,9 +111,7 @@ async def test_failed_platform_unload_preserves_polling_callbacks_and_login() ->
     """Keep the entry and router session intact when a platform cannot unload."""
     events: list[str] = []
     hass, entry, deco, client = _unload_context(events)
-    hass.config_entries.async_forward_entry_unload = AsyncMock(
-        return_value=False
-    )
+    hass.config_entries.async_forward_entry_unload = AsyncMock(return_value=False)
     entry_data = hass.data[DOMAIN][entry.entry_id]
 
     assert await async_unload_entry(hass, entry) is False
