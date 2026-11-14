@@ -22,6 +22,8 @@ reading these instructions:
   validate master/satellite `DeviceInfo` relationships, legacy/modern API compatibility and existing regression assumptions.
 - [Deco truncated-response and client-state validation](.agents/skills/deco-transient-response-validation/SKILL.md):
   validate bounded retries, retained authentication, per-node clients and optional performance data.
+- [Deco HTTP 5xx client polling backoff](.agents/skills/deco-client-backoff-validation/SKILL.md):
+  validate capped delays, partial mesh recovery, session privacy and compatibility.
 - [Deco runtime lifecycle validation](.agents/skills/deco-lifecycle-validation/SKILL.md):
   validate entry setup/unload, coordinator shutdown, callbacks and safe logout.
 
@@ -291,6 +293,27 @@ policy for AI-assisted development.
   `-5002` stopping after one relogin, login/unrelated-host exclusions,
   generic API errors and unaffected HTTP errors. Do not assume that the
   fork already supports upstream legacy outer-session encryption.
+
+## Capped HTTP 5xx backoff for Deco client polling (upstream PR #624)
+
+- After a client-list HTTP 5xx response, pause further client-list requests
+  per config entry for 30, 60, 120, 240, then at most 300 seconds.
+  Use monotonic time and non-blocking skips, **not** event-loop sleeps.
+  Do not conflate 5xx backoff with configured timeout or transient-body retries.
+- Preserve valid credentials and existing clients (including `online`,
+  `last_activity`, and node identity) during skipped polls. When one node
+  fails, still accept successful peer-node replies. When all nodes fail,
+  retain every previous client, including those with no known Deco mapping.
+- Reset the delay only after all queried nodes provide valid responses;
+  an empty successful list is valid and retains the current
+  `consider_home` semantics. Non-5xx HTTP/auth failures still propagate.
+- Never interpolate `aiohttp.ClientResponseError` or its request URL
+  into client-list logs because LuCI `stok` tokens can occur in URLs.
+  Test sanitized logging, the 300-second cap, recovery and multi-node
+  failures against both Home Assistant versions. Use the
+  [client backoff validation skill](.agents/skills/deco-client-backoff-validation/SKILL.md).
+- Dedicated global-client-list fallback and coordinator-health sensors
+  are separate upstream work. Do not invent them to complete backoff.
 
 ## Retry incomplete API responses without losing client state (upstream PR #590)
 
