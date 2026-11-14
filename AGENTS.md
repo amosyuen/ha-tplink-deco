@@ -35,6 +35,35 @@ repository's governing policy and resolve any conflicts before proceeding.
   unit test alone does not verify that incoming firmware payloads are
   processed or logged safely.
 
+## Configuration and polling interval lessons (PR #4)
+
+- Home Assistant config/option forms must use schema validators that the
+  installed HA version can serialize for the UI. For a fixed choice of polling
+  intervals, use `selector.SelectSelector` with string options instead of
+  a numeric `vol.In(...)` control; test serialization through Home Assistant's
+  actual flow response path, not only Voluptuous schema validation.
+- Preserve the fork's supported scan intervals (10, 30, 60 and 120 seconds)
+  and the existing 30-second default. Treat persisted integers and valid
+  numeric strings as equivalent when displaying selector defaults.
+- Normalize accepted selector values back to integers before saving config
+  entries. The polling coordinators and the runtime interval select depend on
+  compatible persisted settings; do not change their entity IDs or semantics.
+- Validate submitted intervals in both initial configuration and options
+  flows before checking credentials, making router calls, or persisting data.
+  Reject unsupported values, booleans, floats, malformed strings and nulls
+  with a field-specific error, without changing stored settings.
+- Keep field errors in `strings.json` and relevant translations (at least
+  English and Dutch). Confirm that invalid form submissions display an error
+  rather than initiating an unnecessary network request.
+- Regression coverage should include form serialization, supported and
+  invalid values, defaults from older config entries, string-to-int
+  conversion, initial setup, options updates and preservation of other
+  configuration fields.
+- Keep the scan-interval control separate from any future independent Deco
+  device-list polling interval. Port only upstream behavior that applies to
+  the current fork, and test against each supported Home Assistant version
+  because form serialization internals can differ across releases.
+
 ## Local dependencies and tests
 
 - `requirements.txt` is the existing development constraints file and
