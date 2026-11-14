@@ -186,7 +186,7 @@ class TplinkDecoApi:
             data=self._encode_payload(device_list_payload),
         )
         data = self._decrypt_data(context, response_json["data"])
-        check_data_error_code(context, data)
+        self._check_authenticated_data_error_code(context, data)
 
         try:
             device_list = data["result"]["device_list"]
@@ -205,7 +205,12 @@ class TplinkDecoApi:
             raise err
 
     # Reboot decos.
-    async def async_reboot_decos(self, deco_macs) -> dict:
+    async def async_reboot_decos(self, deco_macs: list[str]) -> None:
+        """Reboot Deco devices, retrying once if an authenticated session expires."""
+        await self._async_call_with_retry(self._async_reboot_decos, deco_macs)
+
+    async def _async_reboot_decos(self, deco_macs: list[str]) -> None:
+        """Submit a reboot request with the current authenticated session."""
         await self.async_login_if_needed()
 
         context = f"Reboot Decos {deco_macs}"
@@ -221,7 +226,7 @@ class TplinkDecoApi:
         )
 
         data = self._decrypt_data(context, response_json["data"])
-        check_data_error_code(context, data)
+        self._check_authenticated_data_error_code(context, data)
         _LOGGER.debug("Rebooted decos %s", deco_macs)
 
     # Return performance data (CPU / memory)
@@ -242,7 +247,7 @@ class TplinkDecoApi:
         )
 
         data = self._decrypt_data(context, response_json["data"])
-        check_data_error_code(context, data)
+        self._check_authenticated_data_error_code(context, data)
         return data
 
     # Return list of clients. Default lists clients for all decos.
@@ -262,7 +267,7 @@ class TplinkDecoApi:
         )
 
         data = self._decrypt_data(context, response_json["data"])
-        check_data_error_code(context, data)
+        self._check_authenticated_data_error_code(context, data)
 
         try:
             client_list = data["result"]["client_list"]
@@ -452,6 +457,9 @@ class TplinkDecoApi:
         params: dict[str:Any],
         data: Any,
     ) -> dict:
+        authenticated_request = self._stok not in (None, "") and url.startswith(
+            f"{self._host}/cgi-bin/luci/;stok={self._stok}/"
+        )
         headers = {CONTENT_TYPE: "application/json"}
         # Gebruik een dictionary voor cookies in plaats van een string in headers
         request_cookies = {}
@@ -488,6 +496,11 @@ class TplinkDecoApi:
                 response_json = await response.json(content_type=None)
                 if "error_code" in response_json:
                     error_code = response_json.get("error_code")
+                    if error_code == -5002 and authenticated_request:
+                        self.clear_auth()
+                        raise EmptyDataException(
+                            f"{context} authenticated session expired (error_code=-5002)"
+                        )
                     if error_code != 0 and error_code != "":
                         _LOGGER.debug(
                             "%s error_code=%s, response_json=%s",
@@ -591,6 +604,17 @@ class TplinkDecoApi:
             _LOGGER.debug("Deco logout failed: %s", type(err).__name__)
         finally:
             self.clear_auth()
+
+    def _check_authenticated_data_error_code(
+        self, context: str, data: dict[str, Any]
+    ) -> None:
+        """Invalidate a rejected authenticated session and trigger one re-login."""
+        if data.get("error_code") == -5002 or data.get("errorcode") == -5002:
+            self.clear_auth()
+            raise EmptyDataException(
+                f"{context} authenticated session expired (error_code=-5002)"
+            )
+        check_data_error_code(context, data)
 
     def _decrypt_data(self, context: str, data: str):
         if data == "":
