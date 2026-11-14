@@ -90,6 +90,8 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Keep an existing Deco session after temporary disconnections or connection failures; a later successful poll reuses it without logging in again. Actual HTTP 401/403 responses still clear expired authentication.
+
 - Add the Home Assistant Marketplace router category and fork-specific install/support links; document Marketplace (2026.11+), legacy HACS and manual installation without duplicate instructions.
 
 - Await Home Assistant platform initialization during config-entry setup so setup cannot complete before platforms are ready and forwarding failures are reported.
