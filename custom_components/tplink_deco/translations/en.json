@@ -33,7 +33,8 @@
       "invalid_auth": "Invalid authentication",
       "invalid_host": "Unable to connect to host.",
       "timeout_connect": "Timeout establishing connection",
-      "unknown": "Unexpected error"
+      "unknown": "Unexpected error",
+      "invalid_scan_interval": "Select a polling interval of 10, 30, 60, or 120 seconds."
     }
   },
   "options": {
@@ -63,7 +64,8 @@
       "invalid_auth": "Invalid authentication",
       "invalid_host": "Unable to connect to host.",
       "timeout_connect": "Timeout establishing connection",
-      "unknown": "Unexpected error"
+      "unknown": "Unexpected error",
+      "invalid_scan_interval": "Select a polling interval of 10, 30, 60, or 120 seconds."
     }
   }
 }
