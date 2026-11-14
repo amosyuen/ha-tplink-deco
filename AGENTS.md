@@ -1,8 +1,9 @@
 # Repository instructions for AI-assisted development
 
-These instructions apply to the entire `ha-tplink-deco` repository. Read this
-file before making changes. If `AI_POLICY.md` is added later, follow it as the
-repository's governing policy and resolve any conflicts before proceeding.
+These instructions apply to the entire `ha-tplink-deco` repository. Read
+[`AI_POLICY.md`](AI_POLICY.md) first: it governs AI-assisted development.
+Follow this file for repository-specific implementation rules and report
+conflicts before proceeding.
 
 ## Reusable repository skills
 
@@ -15,7 +16,8 @@ reading these instructions:
   validate Home Assistant forms, polling interval storage and CI regressions.
 
 These skills are task-specific procedures. This file remains the source of
-repository-wide rules; any future `AI_POLICY.md` remains the governing policy.
+repository-wide implementation rules; `AI_POLICY.md` remains the governing
+policy for AI-assisted development.
 
 ## Preserve fork compatibility
 
