@@ -5,6 +5,7 @@ from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 import logging
+import traceback
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -142,7 +143,11 @@ async def test_exhaustion_keeps_auth_and_private_payloads_out_of_logs(
         with pytest.raises(TransientConnectionException) as exc_info:
             await api.async_list_devices()
 
-    assert isinstance(exc_info.value.__cause__, aiohttp.ClientPayloadError)
+    assert exc_info.value.__cause__ is None
+    assert exc_info.value.__suppress_context__ is True
+    formatted_error = "".join(traceback.format_exception(exc_info.value))
+    assert TOKEN not in formatted_error
+    assert COOKIE not in formatted_error
     assert post.await_count == 2
     assert (api._stok, api._cookie, api._seq) == (TOKEN, COOKIE, 17)
     assert TOKEN not in caplog.text
