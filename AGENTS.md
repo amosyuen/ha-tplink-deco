@@ -79,6 +79,29 @@ policy for AI-assisted development.
   the current fork, and test against each supported Home Assistant version
   because form serialization internals can differ across releases.
 
+## Client throughput aggregation lessons (PR #6)
+
+- A client retained in coordinator data may still have nonzero cached upload
+  and download rates after going offline. Calculate current throughput using
+  only clients whose existing `online` state is truthy; treat `False` and
+  unknown (`None`) as ineligible for live rate totals.
+- Preserve both aggregation scopes: network totals include all online clients
+  across Deco nodes; per-Deco totals include only online clients whose
+  `deco_mac` matches that node. Cover both upload and download consistently.
+- Do not zero historical client rates, alter `consider_home` grace-period
+  behavior, or change tracker/connected-client-count semantics just to fix
+  throughput totals. Those behaviors need separate review and tests.
+- Keep throughput entity unique IDs, device associations, CPU/memory/backhaul
+  sensors, and fork-specific polling controls unchanged when porting upstream
+  sensor fixes.
+- Add deterministic regression cases for online clients across multiple
+  Deco nodes, offline clients with stale nonzero rates, missing/unknown online
+  state, per-node isolation, online-to-offline-to-online transitions, and
+  empty/offline-only inventories. Test sensor behavior, not only a helper.
+- Distinguish tests added and source checks from tests actually executed:
+  Home Assistant-dependent tests require a compatible installed runtime
+  before reporting a passing integration test result.
+
 ## Local dependencies and tests
 
 - `requirements.txt` is the existing development constraints file and
