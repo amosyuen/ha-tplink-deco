@@ -124,6 +124,18 @@ policy for AI-assisted development.
   nickname refreshes and unchanged MACs. Device naming at registration time
   may not be updated until Home Assistant reloads the integration.
 
+## Optional wireless backhaul metadata (upstream PR #595)
+
+- Treat `bssid_sta_2g` and `bssid_sta_5g` from the Deco device list as
+  optional wireless backhaul metadata, distinct from `bssid_2g` and `bssid_5g`
+  used for the existing access-point BSSID attributes.
+- Expose supported backhaul identifiers only as read-only Deco tracker state
+  attributes. Missing fields must remain `None`, not cause startup failures
+  or change MAC-based device identity, parent relationships, sensors or polling.
+- Test master and satellite entries, missing/one/both bands, subsequent
+  updates that remove a band, and preservation of existing BSSID attributes.
+  Avoid logging raw wireless identifiers or other sensitive network metadata.
+
 ## Client throughput aggregation lessons (PR #6)
 
 - A client retained in coordinator data may still have nonzero cached upload
