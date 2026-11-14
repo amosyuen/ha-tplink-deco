@@ -41,7 +41,9 @@ def _sensor(
         coordinator_decos=MagicMock(),
         coordinator_clients=coordinator_clients,
         name="Total Down" if attribute.startswith("down") else "Total Up",
-        unique_id="test_total_down" if attribute.startswith("down") else "test_total_up",
+        unique_id=(
+            "test_total_down" if attribute.startswith("down") else "test_total_up"
+        ),
         client_attribute=attribute,
         deco=deco,
     )
@@ -50,8 +52,8 @@ def _sensor(
 @pytest.mark.parametrize(
     ("attribute", "expected"),
     [
-        ("down_kilobytes_per_s", 12.0),
-        ("up_kilobytes_per_s", 3.0),
+        ("down_kilobytes_per_s", 17.0),
+        ("up_kilobytes_per_s", 4.0),
     ],
 )
 def test_network_total_excludes_offline_clients(
@@ -61,6 +63,9 @@ def test_network_total_excludes_offline_clients(
     clients = {
         "online": _client(
             "00:00:00:00:00:01", MASTER_MAC, online=True, down=12.0, up=3.0
+        ),
+        "other_online": _client(
+            "00:00:00:00:00:04", SATELLITE_MAC, online=True, down=5.0, up=1.0
         ),
         "offline": _client(
             "00:00:00:00:00:02", MASTER_MAC, online=False, down=5186.0, up=24.0
@@ -73,7 +78,8 @@ def test_network_total_excludes_offline_clients(
     sensor = _sensor(clients, attribute, None)
 
     assert sensor.native_value == pytest.approx(expected)
-    assert sensor.unique_id == ("test_total_down" if attribute.startswith("down") else "test_total_up")
+    expected_id = "test_total_down" if attribute.startswith("down") else "test_total_up"
+    assert sensor.unique_id == expected_id
 
 
 @pytest.mark.parametrize(
