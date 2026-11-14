@@ -136,6 +136,22 @@ policy for AI-assisted development.
   updates that remove a band, and preservation of existing BSSID attributes.
   Avoid logging raw wireless identifiers or other sensitive network metadata.
 
+## Deferred network total sensors (upstream PR #540)
+
+- A configuration entry can be satellite-only or temporarily have no master
+  Deco. Do not instantiate master-dependent network-wide sensors until the
+  coordinator has a valid `master_deco`; continue registering per-Deco sensors.
+- Discovery signals may fire during `_async_update_data`, before the new
+  coordinator data is committed. Use the coordinator's post-update listener
+  for deferred master-dependent entities and unregister it on coordinator
+  shutdown.
+- Register network-wide Total Down/Up exactly once per config entry using
+  the established `<master_mac>_total_down` and `<master_mac>_total_up`
+  unique IDs. Do not recreate them after transient master disappearance.
+- Test master-present, initially absent and permanently absent scenarios,
+  late master discovery, repeated updates, stable IDs, and independent config
+  entries without real hardware.
+
 ## Client throughput aggregation lessons (PR #6)
 
 - A client retained in coordinator data may still have nonzero cached upload
