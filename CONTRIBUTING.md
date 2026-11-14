@@ -79,6 +79,19 @@ The `requirements-test.txt` file is also used by GitHub Actions. It contains
 the test runner and direct integration dependencies. Home Assistant is installed
 separately to allow the CI matrix to exercise multiple HA/Python versions.
 
+If Home Assistant is unavailable (for example, in an offline sandbox), run only
+the dependency-free metadata regression tests with an existing pytest installation:
+
+```powershell
+python -m pytest --no-cov tests/test_connection_metadata.py tests/test_connection_flow_runtime.py
+```
+
+The metadata tests can run without Home Assistant. The runtime tests skip when
+Home Assistant is absent; **a skipped runtime test is not a passing test**.
+To validate the whole integration, install the dependencies above and run
+`python -m pytest --no-cov tests/`. GitHub CI explicitly verifies the pinned
+Home Assistant version and required imports before running the complete suite.
+
 Do **not** install `requirements.txt` in the same test environment: it pins
 `homeassistant==2025.1.0`, which conflicts with the Home Assistant 2026.11
 version above. For linting, use the existing pre-commit workflow in a compatible
