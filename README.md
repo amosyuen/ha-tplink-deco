@@ -146,6 +146,12 @@ Configurable:
 2. Restart Home Assistant
 3. Add the integration via UI
 
+### Local regression tests
+
+Install test dependencies in an isolated Python 3.14 environment. See
+[the local test setup](CONTRIBUTING.md#local-regression-tests-python-314)
+for Windows PowerShell commands and the Home Assistant version requirement.
+
 # TP-Link Deco
 
 [![GitHub Release][releases-shield]][releases]
