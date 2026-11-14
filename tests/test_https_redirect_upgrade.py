@@ -100,9 +100,8 @@ async def test_upgraded_host_uses_redirect_port_on_next_authenticated_poll() -> 
     assert await api.async_list_devices() == []
     assert post.await_count == 2
     assert post.await_args_list[0].args[0] == initial_url
-    assert post.await_args_list[1].args[0].startswith(
-        f"https://{ROUTER_HOST}:8443/cgi-bin/luci/"
-    )
+    next_request_url = post.await_args_list[1].args[0]
+    assert next_request_url.startswith(f"https://{ROUTER_HOST}:8443/cgi-bin/luci/")
     assert post.await_args_list[1].kwargs["cookies"] == {"sysauth": "deadbeef"}
     api.async_login.assert_not_awaited()
 
