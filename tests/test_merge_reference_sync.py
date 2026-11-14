@@ -4,7 +4,6 @@ import importlib.util
 from pathlib import Path
 import unittest
 
-
 _MODULE_PATH = (
     Path(__file__).resolve().parents[1] / ".github" / "scripts" / "sync_merge_links.py"
 )
