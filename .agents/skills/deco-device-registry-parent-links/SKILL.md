@@ -38,7 +38,7 @@ to actions such as `reboot_deco`. For service input validation, use
    version comparisons. On older supported versions, retain the
    `"via_device": (DOMAIN, master.mac)` compatibility path. Do not import
    deprecated `ATTR_VIA_DEVICE` on modern Home Assistant.
-6. Thread the Deco coordinator through *all* device-info users: Deco and
+6. Thread the Deco coordinator through _all_ device-info users: Deco and
    client trackers, regular/diagnostic/throughput sensors, binary sensors,
    polling select and polling switch. Client-related entities need the
    **Deco coordinator** for their parent relationship, not merely the
@@ -48,7 +48,7 @@ to actions such as `reboot_deco`. For service input validation, use
 ## Prove compatibility with tests
 
 7. Test both simulated legacy and modern `DeviceInfo` behavior and exercise
-   the *real installed* `DeviceInfo` on both supported CI matrix versions.
+   the _real installed_ `DeviceInfo` on both supported CI matrix versions.
    Verify master and satellite identity, missing context, name fallbacks,
    per-config-entry registry lookup, actual entity `device_info` output,
    and unchanged unique IDs. Use deterministic fake registry IDs without
