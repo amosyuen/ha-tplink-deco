@@ -213,10 +213,27 @@ async def async_setup_entry(
         if new_entities:
             async_add_entities(new_entities)
 
-    # Total (network-wide) sensors
-    total_entities = _build_entities_for_deco(None)
-    if total_entities:
-        async_add_entities(total_entities)
+    total_sensors_added = False
+
+    @callback
+    def _add_totals_when_master_available() -> None:
+        """Register network totals once a master Deco is available."""
+        nonlocal total_sensors_added
+
+        if total_sensors_added or coordinator_decos.data.master_deco is None:
+            return
+
+        total_entities = _build_entities_for_deco(None)
+        if total_entities:
+            async_add_entities(total_entities)
+            total_sensors_added = True
+
+    # The coordinator listener runs after the new device-list data is stored.
+    # SIGNAL_DECO_ADDED can fire before that data is assigned.
+    _add_totals_when_master_available()
+    coordinator_decos.on_close(
+        coordinator_decos.async_add_listener(_add_totals_when_master_available)
+    )
 
     # Per-deco sensors for already-known decos
     _add_untracked_deco_sensors()
