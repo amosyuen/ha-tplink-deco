@@ -90,6 +90,8 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Add the Home Assistant Marketplace router category and fork-specific install/support links; document Marketplace (2026.11+), legacy HACS and manual installation without duplicate instructions.
+
 - Await Home Assistant platform initialization during config-entry setup so setup cannot complete before platforms are ready and forwarding failures are reported.
 
 - Defer network-wide Total Down/Up sensors until the master Deco is available, then register them once without changing their existing MAC-based unique IDs. Satellite sensors remain available when no master is detected.
