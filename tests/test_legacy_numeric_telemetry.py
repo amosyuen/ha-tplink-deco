@@ -194,5 +194,6 @@ async def test_legacy_master_performance_ignores_invalid_numeric_values() -> Non
     assert master.cpu_usage == 22.8
     assert master.mem_usage == 29.7
     assert coordinator.data.master_deco is master
-    assert api.async_list_devices.await_count == 4
+    # The independent inventory cadence skips subsequent device_list requests.
+    assert api.async_list_devices.await_count == 1
     assert api.async_get_performance.await_count == 4
