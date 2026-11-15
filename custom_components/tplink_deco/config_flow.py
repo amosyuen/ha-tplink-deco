@@ -23,6 +23,7 @@ from .const import CONF_CLIENT_POSTFIX
 from .const import CONF_CLIENT_PREFIX
 from .const import CONF_DECO_POSTFIX
 from .const import CONF_DECO_PREFIX
+from .const import CONF_DEVICE_LIST_INTERVAL
 from .const import CONF_LINK_CLIENT_DEVICES
 from .const import CONF_TIMEOUT_ERROR_RETRIES
 from .const import CONF_TIMEOUT_SECONDS
@@ -72,6 +73,28 @@ def _normalize_scan_interval(data: dict[str, Any]) -> bool:
     return True
 
 
+def _parse_device_list_interval(value: Any) -> int | None:
+    """Accept startup-only zero or a positive interval of at least ten seconds."""
+    if isinstance(value, bool) or not isinstance(value, (int, str)):
+        return None
+    try:
+        interval = int(value)
+    except ValueError:
+        return None
+    return interval if interval == 0 or interval >= 10 else None
+
+
+def _normalize_device_list_interval(data: dict[str, Any]) -> bool:
+    """Normalize the independent interval without changing the main cadence."""
+    if CONF_DEVICE_LIST_INTERVAL not in data:
+        return True
+    interval = _parse_device_list_interval(data[CONF_DEVICE_LIST_INTERVAL])
+    if interval is None:
+        return False
+    data[CONF_DEVICE_LIST_INTERVAL] = interval
+    return True
+
+
 def _get_auth_schema(data: dict[str:Any]):
     if data is None:
         data = {}
@@ -86,6 +109,11 @@ def _get_schema(data: dict[str:Any]):
         data = {}
     schema = _get_auth_schema(data)
     scan_interval = _get_scan_interval(data)
+    device_list_interval = _parse_device_list_interval(
+        data.get(CONF_DEVICE_LIST_INTERVAL, scan_interval)
+    )
+    if device_list_interval is None:
+        device_list_interval = int(scan_interval)
 
     schema.update(
         {
@@ -101,6 +129,10 @@ def _get_schema(data: dict[str:Any]):
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),
+            vol.Required(
+                CONF_DEVICE_LIST_INTERVAL,
+                default=device_list_interval,
+            ): vol.All(vol.Coerce(int), vol.Range(min=0)),
             vol.Required(
                 CONF_CONSIDER_HOME,
                 default=data.get(CONF_CONSIDER_HOME, DEFAULT_CONSIDER_HOME),
@@ -199,10 +231,14 @@ class TplinkDecoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._errors = {}
 
         if user_input is not None:
-            if _normalize_scan_interval(user_input):
-                self._errors = await _async_test_credentials(self.hass, user_input)
-            else:
+            if not _normalize_scan_interval(user_input):
                 self._errors = {CONF_SCAN_INTERVAL: "invalid_scan_interval"}
+            elif not _normalize_device_list_interval(user_input):
+                self._errors = {
+                    CONF_DEVICE_LIST_INTERVAL: "invalid_device_list_interval"
+                }
+            else:
+                self._errors = await _async_test_credentials(self.hass, user_input)
             if not self._errors:
                 _ensure_user_input_optionals(user_input)
                 return self.async_create_entry(
@@ -264,12 +300,16 @@ class TplinkDecoOptionsFlowHandler(config_entries.OptionsFlow):
         self._errors = {}
 
         if user_input is not None:
-            if _normalize_scan_interval(user_input):
+            if not _normalize_scan_interval(user_input):
+                self._errors = {CONF_SCAN_INTERVAL: "invalid_scan_interval"}
+            elif not _normalize_device_list_interval(user_input):
+                self._errors = {
+                    CONF_DEVICE_LIST_INTERVAL: "invalid_device_list_interval"
+                }
+            else:
                 _ensure_user_input_optionals(user_input)
                 self.data.update(user_input)
                 self._errors = await _async_test_credentials(self.hass, self.data)
-            else:
-                self._errors = {CONF_SCAN_INTERVAL: "invalid_scan_interval"}
             if not self._errors:
                 self.hass.config_entries.async_update_entry(
                     entry=self.config_entry,
