@@ -9,6 +9,7 @@
           "username": "Gebruikersnaam",
           "password": "Wachtwoord",
           "interval_seconds": "Aantal seconden tussen updates",
+          "device_list_interval": "Seconden tussen Deco-statusupdates (0 = alleen bij opstarten)",
           "consider_home": "Aantal seconden sinds laatste keer dat het gezien is totdat een device als niet-thuis wordt gemarkeerd",
           "link_client_devices": "Koppel clienttrackers aan apparaten via MAC-adres"
         }
@@ -25,7 +26,8 @@
       "invalid_auth": "Incorrecte authenticatie",
       "timeout_connect": "Timeout tijdens maken van verbinding",
       "unknown": "Onbekende fout",
-      "invalid_scan_interval": "Kies een pollinginterval van 10, 30, 60 of 120 seconden."
+      "invalid_scan_interval": "Kies een pollinginterval van 10, 30, 60 of 120 seconden.",
+      "invalid_device_list_interval": "Kies 0 voor alleen bij opstarten of minstens 10 seconden voor Deco-statusupdates."
     }
   },
   "options": {
@@ -38,6 +40,7 @@
           "username": "Gebruikersnaam",
           "password": "Wachtwoord",
           "interval_seconds": "Aantal seconden tussen updates",
+          "device_list_interval": "Seconden tussen Deco-statusupdates (0 = alleen bij opstarten)",
           "consider_home": "Aantal seconden sinds laatste keer dat het gezien is totdat een device als niet-thuis wordt gemarkeerd",
           "link_client_devices": "Koppel clienttrackers aan apparaten via MAC-adres"
         }
@@ -47,7 +50,8 @@
       "invalid_auth": "Incorrecte authenticatie",
       "timeout_connect": "Timeout tijdens maken van verbinding",
       "unknown": "Onbekende fout",
-      "invalid_scan_interval": "Kies een pollinginterval van 10, 30, 60 of 120 seconden."
+      "invalid_scan_interval": "Kies een pollinginterval van 10, 30, 60 of 120 seconden.",
+      "invalid_device_list_interval": "Kies 0 voor alleen bij opstarten of minstens 10 seconden voor Deco-statusupdates."
     }
   }
 }
