@@ -198,6 +198,34 @@ async def test_timed_out_peer_keeps_cached_clients_and_updates_healthy_peer() ->
     assert result[peer_client].online is True
     assert coordinator._client_backoff_seconds == 0
     assert coordinator.health.consecutive_failures == 0
+    assert coordinator.health.timeout_count == 1
+    assert coordinator.health.last_error == "TimeoutException"
+    assert coordinator.health.last_successful_update is not None
+
+
+@pytest.mark.asyncio
+async def test_multiple_node_timeouts_count_once_per_poll_cycle() -> None:
+    """Report one timeout per failed refresh without marking clients offline."""
+    old_client = TpLinkDecoClient(CLIENT)
+    old_client.deco_mac = MASTER
+    old_client.online = True
+    old_client.last_activity = datetime.now(timezone.utc) - timedelta(hours=1)
+    coordinator, api = _client_coordinator(old_clients={CLIENT: old_client})
+    api.async_list_clients = AsyncMock(
+        side_effect=TimeoutException("private-router-session")
+    )
+
+    for expected_count in (1, 2):
+        result = await coordinator._async_update_data()
+        assert result[CLIENT] is old_client
+        assert result[CLIENT].online is True
+        assert coordinator.health.timeout_count == expected_count
+        assert coordinator.health.consecutive_failures == expected_count
+        assert coordinator.health.last_error == "TimeoutException"
+        assert coordinator.health.last_successful_update is None
+        assert coordinator._client_backoff_seconds == 0
+
+    assert api.async_list_clients.await_count == 4
 
 
 @pytest.mark.asyncio
