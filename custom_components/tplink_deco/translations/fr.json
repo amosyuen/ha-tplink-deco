@@ -5,7 +5,8 @@
         "title": "TP-Link Deco",
         "data": {
           "username": "Identifiant",
-          "password": "Mot de Passe"
+          "password": "Mot de Passe",
+          "link_client_devices": "Associer les traceurs clients aux appareils par adresse MAC"
         }
       },
       "reauth_confirm": {
@@ -24,7 +25,8 @@
         "title": "TP-Link Deco",
         "data": {
           "username": "Identifiant",
-          "password": "Mot de Passe"
+          "password": "Mot de Passe",
+          "link_client_devices": "Associer les traceurs clients aux appareils par adresse MAC"
         }
       }
     }
