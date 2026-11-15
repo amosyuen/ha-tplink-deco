@@ -130,9 +130,7 @@ async def test_unexpected_node_error_cancels_other_pending_requests() -> None:
     assert active == set()
     assert {MASTER, SATELLITE}.issubset(ended)
     assert SATELLITE in cancelled
-    assert ended == {
-        call.args[0] for call in api.async_list_clients.await_args_list
-    }
+    assert ended == {call.args[0] for call in api.async_list_clients.await_args_list}
     # A semaphore waiter may briefly start after the first slot releases.
     assert coordinator.health.last_error == "ValueError"
     assert coordinator.health.consecutive_failures == 1
