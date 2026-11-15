@@ -207,7 +207,9 @@ async def test_failed_node_keeps_clients_while_peer_node_updates() -> None:
     old = _client(MASTER_CLIENT, MASTER_MAC)
     api = MagicMock(spec=TplinkDecoApi)
 
-    async def _list_clients(deco_mac: str) -> list[dict[str, object]]:
+    async def _list_clients(
+        deco_mac: str, *, timeout_error_retries: int
+    ) -> list[dict[str, object]]:
         """Fail one node while delivering the peer's new client data."""
         if deco_mac == MASTER_MAC:
             raise TransientConnectionException("incomplete")
@@ -233,7 +235,9 @@ async def test_empty_success_is_not_confused_with_failed_node() -> None:
     satellite_client = _client(SATELLITE_CLIENT, SATELLITE_MAC)
     api = MagicMock(spec=TplinkDecoApi)
 
-    async def _list_clients(deco_mac: str) -> list[dict[str, object]]:
+    async def _list_clients(
+        deco_mac: str, *, timeout_error_retries: int
+    ) -> list[dict[str, object]]:
         """Return a genuine empty list for the satellite only."""
         if deco_mac == MASTER_MAC:
             raise TransientConnectionException("incomplete")
