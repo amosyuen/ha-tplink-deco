@@ -1,9 +1,9 @@
 """Tests for the anonymized Deco config-entry diagnostics download."""
 
-import json
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
+import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
