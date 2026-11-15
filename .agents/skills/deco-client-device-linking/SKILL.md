@@ -51,6 +51,39 @@ description: "Validate optional MAC-based device linking for TP-Link Deco client
    Do not imply that changing the option changes established `entity_id`
    or `unique_id`, or that disabling it erases the MAC from history.
 
+## Verified migration review procedure (PR #24)
+
+The P1 review found that updating `config_entry.version` directly
+prevents real Home Assistant entries from loading. The previous
+`SimpleNamespace` regression could not detect this because it allowed
+the invalid write. Use this procedure for a future config-entry version
+upgrade:
+
+1. **Inspect supported Core APIs.** Check `ConfigEntry.__setattr__` and
+   `ConfigEntries.async_update_entry` for both supported Home Assistant
+   releases. Do not copy an older upstream migration that mutates the
+   version directly.
+2. **Stage without mutation.** Read `version = config_entry.version`
+   and `new = dict(config_entry.data)`. Apply each historical migration
+   in sequence to these **local** values, and use `setdefault` for
+   newly introduced options that must preserve an existing `False`.
+3. **Commit through the manager.** Pass the staged values in **one**
+   `hass.config_entries.async_update_entry(config_entry, data=new,
+   version=version)` call. Do not assign protected attributes on
+   `ConfigEntry` and do not update its `data` mapping in place.
+4. **Test the failure mechanism.** Build a real `ConfigEntry` using
+   the required constructor fields from the installed HA version.
+   Exercise version 5 and version 6 inputs with the new setting absent,
+   `False`, and `True`. Assert no direct version mutation, a single
+   manager update, version 7 as an argument, preserved unrelated values
+   and the legacy v5 host migration. A `MagicMock` for the manager
+   validates **arguments**, not the manager's actual persistence.
+5. **Check surrounding regressions.** Update any stale
+   `TplinkDecoFlowHandler.VERSION` expectation, then exercise
+   setup/options forms, safe device-removal permissions and both
+   supported HA versions. Do not report the review as runtime-tested
+   until real pytest and CI jobs succeed on the **final PR head**.
+
 ## Regression matrix
 
 8. Test default-enabled, explicit opt-out, re-enable and a missing legacy
