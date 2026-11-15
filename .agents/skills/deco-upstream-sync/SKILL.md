@@ -241,6 +241,18 @@ components before copying a newer upstream teardown implementation.
    apply only those required formatting changes to the PR branch, and
    recheck every required workflow on the resulting head. Never weaken a
    CI gate just to make it pass.
+   **PR #30 bootstrap failure:** if every job fails at `Set up job`,
+   download the failing job logs before changing application code.
+   This repo enforces full-length commit SHA pinning for external
+   `uses:` actions. The unpinned `actions/checkout@v6`,
+   `actions/setup-python@v6.2.0`, `hacs/action@main`, and
+   `home-assistant/actions/hassfest@master` references were rejected
+   before tests began. Keep code changes separate from CI policy repair;
+   in a targeted workflow fix, verify and pin the correct upstream action
+   commit SHA for **each** reference and rerun both matrix entries plus
+   pre-commit, HACS and Hassfest. Never relax action restrictions to force
+   a run. Report `not executed: blocked at action download`, rather than
+   claiming a pytest or lint failure in the integration itself.
 3. Check mergeability and unresolved review threads independently of CI.
    Explain skipped or pending checks; do not call a PR validated until
    every required job actually passes. Record exact run links in the PR.
