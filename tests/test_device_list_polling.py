@@ -226,6 +226,7 @@ async def test_manual_refresh_sanitizes_authentication_failure() -> None:
         [_node(MASTER, True), {"role": "slave"}],
         [_node(MASTER, True), _node(MASTER, True)],
         [{"mac": MASTER, "signal_level": None}],
+        [_node(MASTER, True), {"mac": SATELLITE, "nickname": 7}],
         ["private_router_response"],
     ],
 )
