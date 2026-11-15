@@ -165,7 +165,9 @@ async def test_migration_adds_opt_out_with_safe_default(
 def test_link_option_is_serializable_and_boolean(enabled: bool) -> None:
     """Expose a real Home Assistant boolean option in both flow schemas."""
     schema = vol.Schema(config_flow._get_schema({CONF_LINK_CLIENT_DEVICES: enabled}))
-    key = next(item for item in schema.schema if item.schema == CONF_LINK_CLIENT_DEVICES)
+    key = next(
+        item for item in schema.schema if item.schema == CONF_LINK_CLIENT_DEVICES
+    )
     assert key.default() is enabled
     assert schema.schema[key] is bool
 
