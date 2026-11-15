@@ -55,7 +55,8 @@ def _registry(
     return registry
 
 
-def test_unique_ids_distinguish_config_entries_and_preserve_other_switch_details() -> None:
+def test_unique_ids_distinguish_config_entries_and_preserve_other_switch_details(
+) -> None:
     """Two Deco entries must never create the same polling switch identity."""
     first = DecoPollingSwitch(_coordinator("entry-one"))
     second = DecoPollingSwitch(_coordinator("entry-two"))
