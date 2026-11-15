@@ -252,8 +252,22 @@ class TplinkDecoApi:
         return data
 
     # Return list of clients. Default lists clients for all decos.
-    async def async_list_clients(self, deco_mac="default") -> dict:
-        return await self._async_call_with_retry(self._async_list_clients, deco_mac)
+    async def async_list_clients(
+        self, deco_mac: str = "default", *, timeout_error_retries: int | None = None
+    ) -> list[dict[str, Any]]:
+        """List clients with an optional per-request timeout retry budget."""
+        if timeout_error_retries is not None and (
+            isinstance(timeout_error_retries, bool)
+            or not isinstance(timeout_error_retries, int)
+            or timeout_error_retries < 0
+        ):
+            raise ValueError("Timeout retries must be a non-negative integer")
+
+        return await self._async_call_with_retry(
+            self._async_list_clients,
+            deco_mac,
+            timeout_error_retries=timeout_error_retries,
+        )
 
     async def _async_list_clients(self, deco_mac) -> dict:
         await self.async_login_if_needed()
@@ -656,8 +670,15 @@ class TplinkDecoApi:
             )
             raise err
 
-    async def _async_call_with_retry(self, func, *args):
-        """Bound timeout, truncated-response and authentication retries independently."""
+    async def _async_call_with_retry(
+        self, func, *args, timeout_error_retries: int | None = None
+    ):
+        """Bound timeout, incomplete-response and authentication retries."""
+        max_timeout_retries = (
+            self._timeout_error_retries
+            if timeout_error_retries is None
+            else timeout_error_retries
+        )
         relogin_retried = False
         timeout_retries = 0
         transient_retries = 0
@@ -674,15 +695,14 @@ class TplinkDecoApi:
                     err,
                 )
             except TimeoutException as err:
-                if timeout_retries >= self._timeout_error_retries:
+                if timeout_retries >= max_timeout_retries:
                     # Reached max retries
-                    raise err
+                    raise
                 timeout_retries += 1
                 _LOGGER.debug(
-                    "Retry (%d of %d) timeout error: %s",
+                    "Retry (%d of %d) timeout error",
                     timeout_retries,
-                    self._timeout_error_retries,
-                    err,
+                    max_timeout_retries,
                 )
             except TransientConnectionException:
                 if transient_retries >= self._timeout_error_retries:
