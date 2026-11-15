@@ -99,9 +99,7 @@ class CoordinatorHealth:
             self.timeout_count += 1
         self._notify_listeners()
 
-    def record_incomplete(
-        self, started: float, *, timed_out: bool = False
-    ) -> None:
+    def record_incomplete(self, started: float, *, timed_out: bool = False) -> None:
         """Record an all-failed poll and whether any node timed out."""
         self.response_time_ms = max(0, round((monotonic() - started) * 1000))
         self.consecutive_failures += 1
