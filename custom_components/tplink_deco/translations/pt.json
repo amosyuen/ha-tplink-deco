@@ -9,7 +9,8 @@
           "username": "Nome de utilizador",
           "password": "Senha",
           "interval_seconds": "Segundos entre atualizações",
-          "consider_home": "Segundos de espera até marcar um scan de dispositivo reconhecer como fora de casa depois de não ser visto."
+          "consider_home": "Segundos de espera até marcar um scan de dispositivo reconhecer como fora de casa depois de não ser visto.",
+          "link_client_devices": "Associar rastreadores de clientes a dispositivos pelo endereço MAC"
         }
       },
       "reauth_confirm": {
