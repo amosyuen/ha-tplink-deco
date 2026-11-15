@@ -113,6 +113,11 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Limit simultaneous per-Deco client-list requests to two per mesh and
+  avoid repeated timeouts for each node. A timeout on one node keeps its
+  last-known client state while successful peers continue updating.
+  This does **not** implement fallback to the global client list.
+
 - Add an independent Deco status polling interval. Choose 0 to fetch
   the mesh inventory only at startup, or an interval of at least ten
   seconds. Client and CPU/memory polling continue at the existing main
