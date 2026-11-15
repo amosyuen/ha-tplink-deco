@@ -12,13 +12,12 @@ in [`.agents/skills/`](.agents/skills/). The repository's governing policy
 remains `AI_POLICY.md`.
 
 **Baseline:** verified against fork `main` at
-`2d7df8f0b316bde81e5222ae777f35b5ce97a5fd` (15 November 2026).
+`d4c39b91558d1396b0a2d1f2d227fd82cf2955b3` (15 November 2026).
 This describes the fork, **not** the current upstream architecture.
 Deco discovery (PR #25), client restoration (PR #26), tracker discovery
 (PR #27), per-node client counts (PR #28), non-blocking initial client
-refresh (PR #29) and coordinator health sensors (PR #30) are merged.
-The downloadable health export below is proposed in [PR #31](https://github.com/HiDiHo01/ha-tplink-deco/pull/31),
-not in baseline `main`.
+refresh (PR #29), coordinator health sensors (PR #30) and the
+privacy-safe diagnostics download (PR #31) are merged.
 
 ## 1. Integration boundary and data ownership
 
@@ -246,8 +245,8 @@ not in baseline `main`.
   separately implemented. Stable identities use `<master_mac>_<metric_key>`.
   A paused, backoff-skipped or no-device cycle does not change health;
   completely failed client lists count as unsuccessful, even if client
-  state is retained. No extra router API calls or downloaded diagnostics
-  export are added by this change. The health sensors stay readable when
+  state is retained. PR #30 itself made no additional router calls and did
+  not include the diagnostics download (added separately by PR #31). The health sensors stay readable when
   polling fails and are registered once when the master is available.
   **PR #30 review correction (merged):** HA 2025.12
   and 2026.11 suppress ordinary coordinator-listener callbacks on
@@ -259,7 +258,7 @@ not in baseline `main`.
   The merged regressions exercise actual `async_refresh()` transitions;
   both Home Assistant test matrices, pre-commit, HACS and Hassfest passed.
   Physical hardware validation remains unverified.
-- **Privacy-safe downloadable diagnostics (proposed in this PR):** the
+- **Privacy-safe downloadable diagnostics (merged in PR #31):** the
   Home Assistant `async_get_config_entry_diagnostics` hook exports
   cached Deco/client coordinator health and aggregate online/known
   counts. The snapshot is JSON-serializable and makes no router API calls.
