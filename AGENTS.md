@@ -377,17 +377,24 @@ policy for AI-assisted development.
   invalid/duplicate MAC identifiers and malformed optional signal mappings
   _before_ modifying cached Deco objects or advancing inventory cadence.
   Raise fixed, descriptive exceptions that never interpolate upstream
-  content. Keep the last valid inventory and retry eligibility on failure.
+  content. Keep the last valid inventory, its successful-poll timestamp
+  and retry eligibility on failure, **but update health failure counters
+  and sanitized exception-type status**; a failed poll is not a success.
   Commit a validated inventory independently from optional performance;
   expected transient/timeout performance failures preserve last CPU/memory
-  samples, while authentication errors must still propagate.
+  samples, while authentication and unexpected failures must propagate.
 - **Manual failure feedback:** Home Assistant's coordinator `async_refresh`
   can consume an API exception; check `last_update_success` and raise a
-  sanitized `HomeAssistantError` for the button. Clear the manual override
-  on failure as well as success, so a paused polling switch cannot
-  accidentally resume API requests; a later press retries explicitly.
-  Test invalid response atomicity, paused behavior, optional timeouts and
-  credential error propagation on both supported HA versions.
+  sanitized `HomeAssistantError` for the button. If refresh propagates
+  an exception, translate upstream failures into a fixed HA error; retain
+  `ConfigEntryAuthFailed` as a **type**, but replace its potentially
+  sensitive message. Suppress raw exception chaining (`from None`) and
+  do not intercept cancellation. Always clear the forced-request override
+  in `finally`, on either result or exception, so failed manual presses
+  do not bypass a paused switch; a later press may retry explicitly.
+  Test absorbed and propagated failures, error-message redaction, health
+  counters, cache preservation, paused behavior and auth propagation
+  on both supported HA versions.
 
 ## Legacy firmware numeric telemetry (upstream #589, partial backport)
 
