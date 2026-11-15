@@ -35,6 +35,11 @@ description: "Use when changing or reviewing the Deco polling switch's unique ID
    new unique ID is already registered, perform no migration. Preserve
    idempotency on subsequent reloads and defend against collisions.
    A default single-entry setup must continue to work normally.
+   **Downgrades to a version that expects the old global unique ID are
+   unsupported after migration**: that version can create a duplicate
+   switch, potentially breaking automations. State this in the README
+   before releasing the migration and recommend an entity-registry backup;
+   do not promise automatic backward migration or safe downgrade.
 7. Keep pause/resume and immediate-refresh behavior unchanged; keep
    master device linking, existing polling interval selectors,
    services and startup lifecycle intact.
