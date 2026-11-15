@@ -169,7 +169,12 @@ privacy-safe diagnostics download (PR #31) are merged.
 - The Deco coordinator requests the device list and optional master
   performance. Master CPU/memory values have raw readings and smoothed
   readings (currently 70% previous/30% new); missing measurement fields
-  preserve the last known values. An optional performance request that
+  preserve the last known values. **Proposed in the current issue #2 PR:**
+  normalize finite numeric firmware strings for client down/up rates
+  and CPU/memory before arithmetic; ignore malformed/non-finite optional
+  values without clearing earlier valid CPU/memory readings. Keep the
+  existing units and smoothing. This does **not** add the separate
+  encrypted outer session needed for some legacy S7 firmware. An optional performance request that
   exhausts **transient-response** retries raises
   `TransientConnectionException`, which the coordinator catches so
   the device-list update can proceed. **Current limitation:** an
