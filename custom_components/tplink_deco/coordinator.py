@@ -270,10 +270,13 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
                 else:
                     master_deco.mem_usage = round(mem_percent, 1)
 
+        updated_data = TpLinkDecoData(master_deco, decos)
+        # Discovery callbacks inspect coordinator.data synchronously.
+        self.data = updated_data
         if deco_added:
             async_dispatcher_send(self.hass, SIGNAL_DECO_ADDED)
 
-        return TpLinkDecoData(master_deco, decos)
+        return updated_data
 
     @callback
     def on_close(self, func: CALLBACK_TYPE) -> None:
