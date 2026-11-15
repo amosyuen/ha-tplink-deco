@@ -12,7 +12,7 @@ in [`.agents/skills/`](.agents/skills/). The repository's governing policy
 remains `AI_POLICY.md`.
 
 **Baseline:** verified against fork `main` at
-`442ecebf32deb4dd4aec619dec6e6c79b5dbf4d4` (15 November 2026).
+`4ccb1dec6b2212e4e87fc45f563647f5b28b24b1` (15 November 2026).
 This is a description of this fork, **not** of the upstream project's current
 architecture. When changing a described behavior, update this guide along
 with the implementation; do not promote planned upstream work to an existing
@@ -63,13 +63,12 @@ feature.
 - Keep device identifiers separate from human-readable names. Names, MAC
   formatting, optional firmware attributes and Deco-master discovery can
   change independently of entity/device identity.
-- **Polling switch, baseline caveat:** `switch.py` still uses the legacy
-  globally shared unique ID `tplink_deco_polling` on the baseline commit.
-  [PR #22](https://github.com/HiDiHo01/ha-tplink-deco/pull/22) separately
-  proposes per-config-entry unique IDs. That change must migrate the old
-  entity-registry record **in place**, only for its owning config entry,
-  preserving the existing Home Assistant entity ID and automations.
-  Do not describe this migration as deployed until it is merged.
+- **Polling switch:** [PR #22](https://github.com/HiDiHo01/ha-tplink-deco/pull/22)
+  is merged. `switch.py` uses one scoped unique ID per config entry,
+  `tplink_deco_polling_<entry_id>`. The legacy global ID
+  `tplink_deco_polling` is migrated **in place** only for the owning
+  config entry, preserving the user's existing Home Assistant entity ID.
+  Downgrading to a release expecting the old shared ID is unsupported.
 
 ## 3. Mesh discovery, restoration and naming
 
