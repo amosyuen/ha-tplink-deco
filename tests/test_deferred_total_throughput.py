@@ -98,8 +98,18 @@ async def test_network_totals_created_once_when_master_known_at_setup() -> None:
         (DOMAIN, MASTER_MAC)
     }
     initial_entities = async_add.call_args_list[0].args[0]
-    assert len([item for item in initial_entities if isinstance(item, TplinkTotalClientDataRateSensor)]) == 2
-    assert len([item for item in initial_entities if isinstance(item, TplinkCoordinatorHealthSensor)]) == 8
+    throughput_entities = [
+        item
+        for item in initial_entities
+        if isinstance(item, TplinkTotalClientDataRateSensor)
+    ]
+    health_entities = [
+        item
+        for item in initial_entities
+        if isinstance(item, TplinkCoordinatorHealthSensor)
+    ]
+    assert len(throughput_entities) == 2
+    assert len(health_entities) == 8
 
     on_update()
     on_discovery()
