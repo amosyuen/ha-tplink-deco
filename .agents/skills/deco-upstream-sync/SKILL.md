@@ -55,6 +55,25 @@ performance calculations, late-master network totals and MAC-based entity
 IDs. Mark the binary-sensor discovery handler with `@callback`.
 Follow [Deco runtime discovery validation](../deco-runtime-discovery-validation/SKILL.md).
 
+## Startup client counts (upstream #567/#597)
+
+Inspect `sensor.py` and the fork's existing client coordinator before
+porting upstream. The sensor's `<deco_mac>_client_count` identity must stay
+unchanged. Separate a **valid empty response** from an unverified state:
+when all node queries fail, polling is paused or HTTP 5xx backoff suppresses
+requests, do not create a new zero-count sensor. Track each Deco's first
+successful client poll; a successful peer does not validate a failed node.
+
+Register the count entity once per confirmed node via the client
+coordinator's post-update listener, including nodes discovered at runtime.
+Only count clients whose node matches and `online` is truthy; keep the
+existing `consider_home` grace behavior and retained offline trackers.
+Verify early and repeated events, partial-mesh failures, recovery, valid
+empty lists, stable identifiers and independent config entries. Update
+existing runtime-discovery tests that previously assumed count sensors
+were created before a client poll. Run both Python/HA test configurations
+and lint/HACS/Hassfest, or report precisely what could not run.
+
 ## Client tracker registration after coordinator refresh (upstream #569)
 
 The fork currently publishes `SIGNAL_CLIENT_ADDED` while computing
