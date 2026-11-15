@@ -55,6 +55,29 @@ performance calculations, late-master network totals and MAC-based entity
 IDs. Mark the binary-sensor discovery handler with `@callback`.
 Follow [Deco runtime discovery validation](../deco-runtime-discovery-validation/SKILL.md).
 
+## Initial optional client refresh without startup blocking (upstream #645)
+
+When this fork's `async_create_and_refresh_coordinators` awaits the client
+coordinator's first refresh, slow per-node requests block platform setup.
+Leave the first **Deco device** refresh awaited and keep provisional-client
+reconciliation before constructing the client coordinator. For configured
+entries, defer only the **client** first refresh until after platform
+forwarding and service/listener setup, then use
+`ConfigEntry.async_create_background_task(hass, clients.async_refresh(), ...)`.
+Do **not** use `async_request_refresh()` here: its debouncer can create a
+foreground task and defeat the intended startup behavior.
+
+Add deterministic tests for setup returning before the pending initial
+client request resolves, platform-forwarding order, entry-owned coroutine
+scheduling, and failure during platform forwarding. Update existing
+restoration tests that previously expected an awaited client first refresh.
+Verify the existing Deco first-refresh failure still prevents unsafe client
+construction, and confirm later count-sensor discovery uses its own first
+successful client poll. Test both supported Home Assistant versions and
+lifecycle/unload behavior when available. This is a client-only subset of
+upstream #645; wireless and mobile initial refreshes remain out of scope
+until those optional coordinator platforms exist in the fork.
+
 ## Startup client counts (upstream #567/#597)
 
 Inspect `sensor.py` and the fork's existing client coordinator before
