@@ -350,6 +350,39 @@ Review older cross-platform registry tests for a global unique ID
 assertion. Keep switch functionality, master-device identity and all
 other platforms unchanged.
 
+## Bounded client-list concurrency (upstream #556, partial)
+
+Use this when a multi-node mesh needs protection from simultaneous
+long-running client requests. It is distinct from global-list fallback.
+
+1. Inspect `TplinkDecoClientUpdateCoordinator`,
+   `TplinkDecoApi.async_list_clients`, the retry wrapper and
+   client-backoff / transient-response tests. Verify the current fork's
+   per-node partial-success and last-activity behavior before editing.
+2. Bound each coordinator's client-list requests to two simultaneous
+   calls with `asyncio.Semaphore`. Pass
+   `timeout_error_retries=0` only for those per-node calls; keep
+   global/default timeout and transient retry settings unchanged for
+   other API methods. Validate negative, boolean, float and string
+   overrides before network access.
+3. Handle per-node timeout exhaustion as a failed/incomplete node without
+   resetting online flags or starting the HTTP 5xx backoff. Preserve
+   valid empty responses, successful peers, 5xx recovery and explicit
+   authentication failures. Do not log credentials, MACs, raw responses
+   or exception messages.
+4. Await all scheduled requests and cancel unfinished siblings on
+   unexpected errors and task cancellation. Test semaphore waiters as
+   well as active requests; avoid leaked tasks and extra router polls.
+5. Add deterministic real-coordinator concurrency, cancellation and
+   partial-node regressions and a real API timeout-override test.
+   Update legacy mocked call signatures to accept the new keyword
+   **without weakening their existing assertions**. Re-run both Python/
+   Home Assistant matrices, pre-commit, HACS and Hassfest on the final
+   head SHA; record hardware verification separately.
+6. Link the scoped PR as `Part of #2`; do not check off upstream #527/
+   #556 global-list fallback until the actual fallback is implemented.
+   Revalidate the issue status when the PR is merged or closed.
+
 ## HTTP 5xx client polling backoff (upstream #624)
 
 For client-list HTTP 500/502/503, capped non-blocking 30–300-second
