@@ -38,9 +38,7 @@ def _migrate_polling_switch_unique_id(
     if registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, new_unique_id) is not None:
         return
 
-    registry.async_update_entity(
-        legacy_entity_id, new_unique_id=new_unique_id
-    )
+    registry.async_update_entity(legacy_entity_id, new_unique_id=new_unique_id)
 
 
 async def async_setup_entry(
