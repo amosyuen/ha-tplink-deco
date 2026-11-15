@@ -224,7 +224,9 @@ async def test_manual_refresh_sanitizes_authentication_failure() -> None:
         {"devices": []},
         [_node(MASTER, True), {"role": "slave"}],
         [_node(MASTER, True), _node(MASTER, True)],
-        [{"mac": MASTER, "signal_level": None}],
+        [{"mac": MASTER, "signal_level": []}],
+        [{"mac": MASTER, "signal_level": "not-a-mapping"}],
+        [{"mac": MASTER, "signal_level": 0}],
         [_node(MASTER, True), {"mac": SATELLITE, "nickname": 7}],
         ["private_router_response"],
     ],
@@ -255,6 +257,52 @@ async def test_invalid_device_list_preserves_cached_state(
     assert coordinator.api.async_get_performance.await_count == prior_calls
     assert coordinator.health.last_error == "ValueError"
     assert coordinator.health.consecutive_failures == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("signal_level", [None, {}])
+async def test_optional_null_or_empty_signal_mapping_keeps_discovery(
+    signal_level: dict[str, int] | None,
+) -> None:
+    """Allow absent measurements while preserving the known Deco identity."""
+    coordinator = _coordinator(10)
+    first_device = {
+        **_node(MASTER, True),
+        "signal_level": {"band2_4": 42, "band5": 65},
+    }
+    coordinator.api.async_list_devices.return_value = [first_device]
+
+    with patch("custom_components.tplink_deco.coordinator.async_dispatcher_send"):
+        await coordinator._async_update_data()
+
+    original_master = coordinator.data.master_deco
+    assert original_master.signal_band2_4 == 42
+    assert original_master.signal_band5 == 65
+    old_timestamp = coordinator._last_device_list_update
+
+    coordinator.api.async_list_devices.return_value = [
+        {**_node(MASTER, True), "signal_level": signal_level},
+        _node(SATELLITE),
+    ]
+    coordinator._force_device_list_refresh = True
+    with patch(
+        "custom_components.tplink_deco.coordinator.async_dispatcher_send"
+    ) as discovered:
+        refreshed = await coordinator._async_update_data()
+
+    assert refreshed.master_deco is original_master
+    assert refreshed.decos[MASTER] is original_master
+    assert SATELLITE in refreshed.decos
+    assert original_master.mac == MASTER
+    assert original_master.signal_band2_4 is None
+    assert original_master.signal_band5 is None
+    assert original_master.cpu_usage_raw == 20.0
+    assert original_master.mem_usage_raw == 40.0
+    assert coordinator._last_device_list_update is not None
+    assert old_timestamp is not None
+    assert coordinator._force_device_list_refresh is False
+    assert coordinator.health.consecutive_failures == 0
+    discovered.assert_called_once()
 
 
 @pytest.mark.asyncio

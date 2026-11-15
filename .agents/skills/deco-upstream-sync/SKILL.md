@@ -78,6 +78,20 @@ Use the config-flow validation skill for the setup/options portion.
   full checks on the **new final head**. A previous green head cannot
   validate later documentation-only commits or tests.
 
+## Nullable optional firmware signal data (issue #2)
+
+For Deco inventory replies, `signal_level` may be absent or explicitly
+JSON `null`; neither is a usable measurement. Verify the coordinator's
+whole-inventory validation before changing the model: accept missing,
+`None`, or a dictionary, but still reject other shapes before mutation.
+Normalize an explicit `None` to an empty mapping in `TpLinkDeco.update`
+so it has the same signal-sensor behavior as a missing field. Preserve
+the current master identity, discovered satellite notifications, all
+other device attributes, polling cadence and last-good performance.
+Test initial discovery followed by an optional-null refresh and invalid
+non-mapping responses on both supported Home Assistant versions. This
+is a narrow firmware-compatibility fix, not global client-list fallback.
+
 ## Legacy numeric telemetry compatibility (upstream #589)
 
 The fork's Deco/client coordinators previously used firmware fields

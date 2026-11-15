@@ -12,17 +12,15 @@ in [`.agents/skills/`](.agents/skills/). The repository's governing policy
 remains `AI_POLICY.md`.
 
 **Baseline:** verified against fork `main` at
-`363dc48de9cb599b812b61c7527225e5187dd3e9` (15 November 2026).
-This describes the fork, **not** the current upstream architecture.
-Deco discovery (PR #25), client restoration (PR #26), tracker discovery
-(PR #27), per-node client counts (PR #28), non-blocking initial client
-refresh (PR #29), coordinator health (PR #30), privacy-safe diagnostics
-(PR #31), numeric-string telemetry (PR #33) and independent Deco
-status polling (PR #34) and bounded client-list concurrency (PR #35)
-are merged. PR #36 (upstream #621 restore parity) is still open and
-adds targeted restore-state error handling, regression tests and
-development guidance; these pending changes are not part of this
-`main` baseline.
+`a657aa06636884404fc1ec08ae9462f244d10047` (15 November 2026),
+before the optional-signal fix in this PR. This describes the fork,
+**not** the current upstream architecture. Deco discovery (PR #25),
+client restoration (PR #26), tracker discovery (PR #27), per-node client
+counts (PR #28), non-blocking initial client refresh (PR #29),
+coordinator health (PR #30), privacy-safe diagnostics (PR #31),
+numeric-string telemetry (PR #33), independent status polling (PR #34),
+bounded client-list concurrency (PR #35), and restore-state error
+hardening/test parity (PR #36) are merged.
 
 ## 1. Integration boundary and data ownership
 
@@ -115,11 +113,13 @@ development guidance; these pending changes are not part of this
 - Firmware can return Base64/UTF-8 text, plain text, legacy
   `<Error Decoding ...>` wrappers or missing/empty fields. Normalize
   names and preserve supported optional wireless/backhaul fields
-  without requiring a specific firmware variant. **Current limitation:**
-  `TpLinkDeco.update` accepts an absent `signal_level` field but calls
-  `.get` on an explicitly `null` value; such a response raises
-  `AttributeError` and interrupts discovery. Handling this case
-  requires a separate runtime fix and regression test.
+  without requiring a specific firmware variant. **Optional-signal
+  compatibility in this PR:** `signal_level` may be absent, explicitly
+  `null`, or a mapping. Missing/`null` values both yield unavailable
+  signal measurements while allowing valid Deco discovery and cached
+  identities to continue; other non-mapping types remain invalid and
+  must be rejected before changing coordinator state. The pre-PR
+  `main` baseline rejected explicit `null`.
 - Discovery: new nodes dispatch `SIGNAL_DECO_ADDED` and new clients
   dispatch `SIGNAL_CLIENT_ADDED`. The complete new `TpLinkDecoData`
   snapshot is published to `coordinator.data` _before_ signaling, so

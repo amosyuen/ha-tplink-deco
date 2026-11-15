@@ -184,6 +184,7 @@ class TpLinkDeco:
         self,
         data: dict[str, Any],
     ) -> None:
+        """Apply a validated firmware record, including nullable signal data."""
         self.hw_version = data.get("hardware_ver")
         self.sw_version = data.get("software_ver")
         self.device_model = data.get("device_model")
@@ -209,7 +210,9 @@ class TpLinkDeco:
         self.bssid_band5 = data.get("bssid_5g")
         self.backhaul_bssid_band2_4 = data.get("bssid_sta_2g")
         self.backhaul_bssid_band5 = data.get("bssid_sta_5g")
-        signal_level = data.get("signal_level", {})
+        signal_level = data.get("signal_level")
+        if signal_level is None:
+            signal_level = {}
         self.signal_band2_4 = signal_level.get("band2_4")
         self.signal_band5 = signal_level.get("band5")
         self.backhaul_speed = data.get("backhual_speed")
@@ -402,8 +405,8 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
             mac = item.get("mac")
             if not isinstance(mac, str) or not mac.strip():
                 raise ValueError("Deco inventory contains an invalid device ID")
-            signal_level = item.get("signal_level", {})
-            if not isinstance(signal_level, dict):
+            signal_level = item.get("signal_level")
+            if signal_level is not None and not isinstance(signal_level, dict):
                 raise ValueError("Deco inventory contains invalid signal data")
             for name_key in ("nickname", "custom_nickname"):
                 name_value = item.get(name_key)

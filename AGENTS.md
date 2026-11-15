@@ -429,6 +429,16 @@ policy for AI-assisted development.
   Commit a validated inventory independently from optional performance;
   expected transient/timeout performance failures preserve last CPU/memory
   samples, while authentication and unexpected failures must propagate.
+- **Nullable signal-level firmware regression (issue #2):** a missing
+  optional `signal_level` was already accepted, but an explicit JSON
+  `null` previously failed inventory validation and `TpLinkDeco.update`.
+  Treat only missing/`None` as an empty mapping, without changing the
+  interpretation of valid measurements. Reject lists, strings, numbers
+  and other non-mappings before mutating cached nodes. Exercise both
+  direct model handling and real coordinator refreshes, including a
+  newly discovered satellite, stable master identity, unchanged optional
+  performance, successful-poll cadence and the existing invalid-response
+  health contract. Do not log raw router data or weaken validation.
 - **Manual failure feedback:** Home Assistant's coordinator `async_refresh`
   can consume an API exception; check `last_update_success` and raise a
   sanitized `HomeAssistantError` for the button. If refresh propagates
