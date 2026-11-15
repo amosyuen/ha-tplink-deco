@@ -2,8 +2,10 @@
 
 import asyncio
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from datetime import timedelta
+from datetime import timezone
 import ipaddress
 import logging
 from math import ceil
@@ -27,11 +29,43 @@ from .const import SIGNAL_CLIENT_ADDED
 from .const import SIGNAL_DECO_ADDED
 from .exceptions import LoginForbiddenException
 from .exceptions import LoginInvalidException
+from .exceptions import TimeoutException
 from .exceptions import TransientConnectionException
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 CLIENT_BACKOFF_INITIAL_SECONDS = 30
 CLIENT_BACKOFF_MAX_SECONDS = 300
+
+
+@dataclass
+class CoordinatorHealth:
+    """Non-sensitive, per-entry metrics for real coordinator API polls."""
+
+    last_successful_update: datetime | None = None
+    response_time_ms: int | None = None
+    timeout_count: int = 0
+    consecutive_failures: int = 0
+    last_error: str = "0"
+
+    def record_success(self, started: float) -> None:
+        """Record a completed poll without logging or retaining payloads."""
+        self.last_successful_update = datetime.now(timezone.utc)
+        self.response_time_ms = max(0, round((monotonic() - started) * 1000))
+        self.consecutive_failures = 0
+
+    def record_failure(self, started: float, error: Exception) -> None:
+        """Track failed polls by exception type, never by exception message."""
+        self.response_time_ms = max(0, round((monotonic() - started) * 1000))
+        self.consecutive_failures += 1
+        self.last_error = type(error).__name__
+        if isinstance(error, (TimeoutError, TimeoutException)):
+            self.timeout_count += 1
+
+    def record_incomplete(self, started: float) -> None:
+        """Track a poll where none of the queried nodes returned valid data."""
+        self.response_time_ms = max(0, round((monotonic() - started) * 1000))
+        self.consecutive_failures += 1
+        self.last_error = "NoSuccessfulClientList"
 
 
 def bytes_to_bits(bytes_count):
@@ -195,13 +229,26 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
         self.data = TpLinkDecoData() if data is None else data
 
         self.paused = False
+        self.health = CoordinatorHealth()
 
     async def _async_update_data(self):
-        """Update data via api."""
+        """Measure an actual Deco poll without changing pause semantics."""
         if self.paused:
             _LOGGER.debug("Deco polling is paused")
             return self.data
 
+        started = monotonic()
+        try:
+            data = await self._async_update_data_internal()
+        except Exception as error:
+            self.health.record_failure(started, error)
+            raise
+
+        self.health.record_success(started)
+        return data
+
+    async def _async_update_data_internal(self):
+        """Fetch and reconcile the Deco inventory and optional performance."""
         new_decos = await async_call_and_propagate_config_error(
             self.api.async_list_devices
         )
@@ -325,6 +372,13 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         self._client_backoff_seconds = 0
         self.has_successful_refresh = False
         self.successfully_polled_deco_macs: set[str] = set()
+        self.health = CoordinatorHealth()
+        self._poll_had_valid_response = False
+
+    @property
+    def client_query_mode(self) -> str:
+        """Describe the currently implemented per-Deco client query strategy."""
+        return "per_node"
 
     @property
     def remaining_backoff_seconds(self) -> int:
@@ -370,13 +424,13 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         return clients, False
 
     async def _async_update_data(self):
-        """Update data via api."""
+        """Measure actual client queries, excluding pause and backoff skips."""
         if self._deco_update_coordinator.paused:
-            _LOGGER.debug("Deo client polling is paused")
+            _LOGGER.debug("Deco client polling is paused")
             return self.data
 
-        if len(self._deco_update_coordinator.data.decos) == 0:
-            return
+        if not self._deco_update_coordinator.data.decos:
+            return self.data
 
         if self.remaining_backoff_seconds:
             _LOGGER.debug(
@@ -385,6 +439,22 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             )
             return self.data
 
+        started = monotonic()
+        self._poll_had_valid_response = False
+        try:
+            data = await self._async_update_data_internal()
+        except Exception as error:
+            self.health.record_failure(started, error)
+            raise
+
+        if self._poll_had_valid_response:
+            self.health.record_success(started)
+        else:
+            self.health.record_incomplete(started)
+        return data
+
+    async def _async_update_data_internal(self):
+        """Fetch per-node clients while preserving existing failure recovery."""
         old_clients = self.data
         clients = {}
         client_added = False
@@ -415,6 +485,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             if response is not None
         )
         self.has_successful_refresh = True
+        self._poll_had_valid_response = True
 
         for deco_mac, (deco_clients, _) in zip(deco_macs, deco_client_responses):
             if deco_clients is None:
