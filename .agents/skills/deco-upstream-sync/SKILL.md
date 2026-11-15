@@ -85,7 +85,12 @@ JSON `null`; neither is a usable measurement. Verify the coordinator's
 whole-inventory validation before changing the model: accept missing,
 `None`, or a dictionary, but still reject other shapes before mutation.
 Normalize an explicit `None` to an empty mapping in `TpLinkDeco.update`
-so it has the same signal-sensor behavior as a missing field. Preserve
+so it has the same signal-sensor behavior as a missing field. The model
+update is also called directly: validate its signal mapping **before**
+modifying any existing attributes and raise the same sanitized
+`ValueError` used by the coordinator on invalid input. Verify that
+a bad subsequent update preserves the previously cached name, version
+and signals without logging sensitive payloads. Preserve
 the current master identity, discovered satellite notifications, all
 other device attributes, polling cadence and last-good performance.
 Test initial discovery followed by an optional-null refresh and invalid

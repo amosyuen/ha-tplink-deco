@@ -60,6 +60,50 @@ def test_null_signal_level_matches_missing_telemetry(
     assert deco.signal_band5 is None
 
 
+@pytest.mark.parametrize(
+    "invalid_signal",
+    [
+        [],
+        ["private-signal-token"],
+        "private-signal-token",
+        4,
+        True,
+    ],
+)
+def test_invalid_signal_type_keeps_existing_deco_model_state(
+    invalid_signal: object,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Reject malformed optional signals before modifying cached Deco fields."""
+    deco = TpLinkDeco(MAC)
+    deco.update(
+        {
+            "hardware_ver": "v1",
+            "nickname": "living_room",
+            "signal_level": {"band2_4": 48, "band5": 62},
+        }
+    )
+
+    with pytest.raises(
+        ValueError, match="Deco inventory contains invalid signal data"
+    ) as raised:
+        deco.update(
+            {
+                "hardware_ver": "v2",
+                "nickname": "changed_name",
+                "signal_level": invalid_signal,
+            }
+        )
+
+    assert deco.mac == MAC
+    assert deco.hw_version == "v1"
+    assert deco.name == "Living Room"
+    assert deco.signal_band2_4 == 48
+    assert deco.signal_band5 == 62
+    assert "private-signal-token" not in str(raised.value)
+    assert "private-signal-token" not in caplog.text
+
+
 def test_device_info_without_nickname() -> None:
     """Keep the device registry identifier unchanged when the name is missing."""
     deco = TpLinkDeco(MAC)

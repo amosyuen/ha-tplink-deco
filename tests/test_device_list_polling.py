@@ -227,6 +227,7 @@ async def test_manual_refresh_sanitizes_authentication_failure() -> None:
         [{"mac": MASTER, "signal_level": []}],
         [{"mac": MASTER, "signal_level": "not-a-mapping"}],
         [{"mac": MASTER, "signal_level": 0}],
+        [_node(MASTER, True), {"mac": SATELLITE, "signal_level": []}],
         [_node(MASTER, True), {"mac": SATELLITE, "nickname": 7}],
         ["private_router_response"],
     ],

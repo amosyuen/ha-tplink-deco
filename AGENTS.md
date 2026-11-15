@@ -438,7 +438,13 @@ policy for AI-assisted development.
   direct model handling and real coordinator refreshes, including a
   newly discovered satellite, stable master identity, unchanged optional
   performance, successful-poll cadence and the existing invalid-response
-  health contract. Do not log raw router data or weaken validation.
+  health contract. Also validate optional signal data **at the start
+  of a direct `TpLinkDeco.update`**, before changing the hardware
+  version, nickname or existing signal measurements. An invalid
+  direct update must raise a fixed privacy-safe `ValueError`, not an
+  `AttributeError` after partial mutation. Include secret-bearing input
+  and invalid late-satellite payloads in regression tests. Do not log
+  raw router data or weaken validation.
 - **Manual failure feedback:** Home Assistant's coordinator `async_refresh`
   can consume an API exception; check `last_update_success` and raise a
   sanitized `HomeAssistantError` for the button. If refresh propagates

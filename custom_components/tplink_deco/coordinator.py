@@ -184,7 +184,14 @@ class TpLinkDeco:
         self,
         data: dict[str, Any],
     ) -> None:
-        """Apply a validated firmware record, including nullable signal data."""
+        """Update Deco fields after validating optional signal data."""
+        signal_level = data.get("signal_level")
+        if signal_level is None:
+            signal_level = {}
+        elif not isinstance(signal_level, dict):
+            # Validate before mutating any cached node fields.
+            raise ValueError("Deco inventory contains invalid signal data")
+
         self.hw_version = data.get("hardware_ver")
         self.sw_version = data.get("software_ver")
         self.device_model = data.get("device_model")
@@ -210,9 +217,6 @@ class TpLinkDeco:
         self.bssid_band5 = data.get("bssid_5g")
         self.backhaul_bssid_band2_4 = data.get("bssid_sta_2g")
         self.backhaul_bssid_band5 = data.get("bssid_sta_5g")
-        signal_level = data.get("signal_level")
-        if signal_level is None:
-            signal_level = {}
         self.signal_band2_4 = signal_level.get("band2_4")
         self.signal_band5 = signal_level.get("band5")
         self.backhaul_speed = data.get("backhual_speed")
