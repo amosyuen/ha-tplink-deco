@@ -5,7 +5,8 @@
         "title": "TP-Link Deco",
         "data": {
           "username": "Brukernavn",
-          "password": "Passord"
+          "password": "Passord",
+          "link_client_devices": "Koble klientsporere til enheter via MAC-adresse"
         }
       },
       "reauth_confirm": {
@@ -24,7 +25,8 @@
         "title": "TP-Link Deco",
         "data": {
           "username": "Brukernavn",
-          "password": "Passord"
+          "password": "Passord",
+          "link_client_devices": "Koble klientsporere til enheter via MAC-adresse"
         }
       }
     }
