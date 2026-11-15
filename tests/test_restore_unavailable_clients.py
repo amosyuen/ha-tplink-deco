@@ -355,7 +355,8 @@ async def test_first_deco_refresh_reconciles_clients_before_client_setup() -> No
     assert result["decos"] is deco_coordinator
     assert result["clients"] is client_coordinator
     assert events == ["deco_first_refresh", "client_coordinator_created"]
-    client_coordinator.async_config_entry_first_refresh.assert_awaited_once()
+    # The client request is deferred until entry platforms are ready.
+    client_coordinator.async_config_entry_first_refresh.assert_not_awaited()
     assert restored_deco.decos == {}
     assert deco_coordinator.data is updated_decos
 
