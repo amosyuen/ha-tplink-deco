@@ -69,8 +69,9 @@ def _registry(
     return registry
 
 
-def test_unique_ids_distinguish_config_entries_and_preserve_other_switch_details(
-) -> None:
+def test_unique_ids_distinguish_config_entries_and_preserve_other_switch_details() -> (
+    None
+):
     """Two Deco entries must never create the same polling switch identity."""
     first = DecoPollingSwitch(_coordinator("entry-one"))
     second = DecoPollingSwitch(_coordinator("entry-two"))
@@ -211,26 +212,34 @@ async def test_multiple_entries_only_migrate_the_owning_entry(
             if entry_id == "entry-one":
                 # The old identity must immediately disappear when the
                 # owning config entry migrates it.
-                assert registry.async_get_entity_id(
-                    "switch", DOMAIN, LEGACY_POLLING_UNIQUE_ID
-                ) is None
-                assert registry.async_get_entity_id(
-                    "switch", DOMAIN, polling_unique_id("entry-one")
-                ) == "switch.deco_polling"
+                assert (
+                    registry.async_get_entity_id(
+                        "switch", DOMAIN, LEGACY_POLLING_UNIQUE_ID
+                    )
+                    is None
+                )
+                assert (
+                    registry.async_get_entity_id(
+                        "switch", DOMAIN, polling_unique_id("entry-one")
+                    )
+                    == "switch.deco_polling"
+                )
 
     registry.async_update_entity.assert_called_once_with(
         "switch.deco_polling",
         new_unique_id=polling_unique_id("entry-one"),
     )
-    assert registry.async_get_entity_id(
-        "switch", DOMAIN, LEGACY_POLLING_UNIQUE_ID
-    ) is None
-    assert registry.async_get_entity_id(
-        "switch", DOMAIN, polling_unique_id("entry-one")
-    ) == "switch.deco_polling"
-    assert registry.async_get_entity_id(
-        "switch", DOMAIN, polling_unique_id("entry-two")
-    ) == "switch.deco_polling_entry-two"
+    assert (
+        registry.async_get_entity_id("switch", DOMAIN, LEGACY_POLLING_UNIQUE_ID) is None
+    )
+    assert (
+        registry.async_get_entity_id("switch", DOMAIN, polling_unique_id("entry-one"))
+        == "switch.deco_polling"
+    )
+    assert (
+        registry.async_get_entity_id("switch", DOMAIN, polling_unique_id("entry-two"))
+        == "switch.deco_polling_entry-two"
+    )
     assert [entity.unique_id for entity in added] == [
         polling_unique_id(entry_id) for entry_id in entry_order
     ]
