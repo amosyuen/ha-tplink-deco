@@ -79,7 +79,7 @@ snapshot-identity assertion: each successful refresh builds a new
   node objects must be reused; absent known nodes must be retained and
   marked offline.
 - Mock `async_dispatcher_send` with a synchronous callback that reads
-  `coordinator.data` *during* notification. A post-refresh assertion
+  `coordinator.data` _during_ notification. A post-refresh assertion
   alone cannot reproduce the original stale-data signal bug.
 - Build actual entity platforms with the same patched dispatcher when
   checking discovery across trackers, binary sensors and per-node
