@@ -37,6 +37,7 @@ from .const import CONF_CLIENT_POSTFIX
 from .const import CONF_CLIENT_PREFIX
 from .const import CONF_DECO_POSTFIX
 from .const import CONF_DECO_PREFIX
+from .const import CONF_DEVICE_LIST_INTERVAL
 from .const import CONF_LINK_CLIENT_DEVICES
 from .const import CONF_TIMEOUT_ERROR_RETRIES
 from .const import CONF_TIMEOUT_SECONDS
@@ -81,6 +82,25 @@ def _remove_discovered_decos_from_clients(
         client_data.pop(deco_mac, None)
 
 
+def _get_device_list_interval(
+    config_data: dict[str, Any], update_interval: timedelta | None
+) -> int:
+    """Keep legacy scan cadence when the new option is absent or invalid."""
+    fallback = (
+        int(update_interval.total_seconds())
+        if update_interval is not None
+        else DEFAULT_SCAN_INTERVAL
+    )
+    raw_value = config_data.get(CONF_DEVICE_LIST_INTERVAL, fallback)
+    if isinstance(raw_value, bool) or not isinstance(raw_value, (int, str)):
+        return fallback
+    try:
+        value = int(raw_value)
+    except ValueError:
+        return fallback
+    return value if value == 0 or value >= 10 else fallback
+
+
 async def async_create_and_refresh_coordinators(
     hass: HomeAssistant,
     config_data: dict[str:Any],
@@ -108,7 +128,14 @@ async def async_create_and_refresh_coordinators(
         timeout_seconds,
     )
     deco_coordinator = TplinkDecoUpdateCoordinator(
-        hass, api, config_entry, update_interval, deco_data
+        hass,
+        api,
+        config_entry,
+        update_interval,
+        deco_data,
+        device_list_interval_seconds=_get_device_list_interval(
+            config_data, update_interval
+        ),
     )
     if config_entry is None:
         await deco_coordinator._async_update_data()
