@@ -178,6 +178,25 @@ policy for AI-assisted development.
   handlers, repeated polls and offline/missing nodes. See
   [the runtime discovery skill](.agents/skills/deco-runtime-discovery-validation/SKILL.md).
 
+## Startup client-count correctness (upstream #567/#597)
+
+- **Observed failure:** a restored offline client can have a known Deco
+  association despite no current connection, and count sensors may be
+  registered before a valid node-specific client-list response. Counting all
+  historical associations inflates the `Connected clients` diagnostic;
+  creating it early misrepresents unverified nodes as having zero clients.
+- **Rule:** count only clients with a matching `deco_mac` and truthy
+  `online`. Track which Deco MACs have returned a successful list (an
+  empty list is valid), independently of all-failed polls, HTTP 5xx
+  backoff, paused refreshes and partially successful meshes. Register
+  each `<mac>_client_count` entity once, only after that node's first
+  valid response; use the normal post-update listener so newly discovered
+  nodes get their count later.
+- **Regression:** test empty lists, offline/restored clients, grace-period
+  presence, failed first polls and recovery, per-node partial success,
+  repeated callbacks, multi-config-entry isolation and unchanged unique
+  IDs. Do not alter throughput, tracker state or sessions to change counts.
+
 ## Client tracker discovery after coordinator refresh (upstream #569)
 
 - **Observed gap:** `SIGNAL_CLIENT_ADDED` is emitted during the client
