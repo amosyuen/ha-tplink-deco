@@ -113,6 +113,12 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Run the first optional client-list refresh as a config-entry-owned
+  background task after Home Assistant platforms are initialized, instead
+  of delaying entry setup on client polling. The initial Deco inventory
+  still loads first to preserve restored-device identity and all existing
+  client, sensor, polling and service behavior.
+
 - Defer connected-client count sensors until their Deco has returned a valid
   client list; keep unavailable peers from displaying premature zero counts.
   Count only clients reported as online (including the existing
