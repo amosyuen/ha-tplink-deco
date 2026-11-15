@@ -16,9 +16,9 @@ description: "Use when changing or testing Home Assistant configuration/options 
    submitted `"30"` as a string. Assert the persisted canonical key
    holds integer `30` in both setup and options flows.
 5. Validate submitted values in **both setup and options flows** before credential checks, API traffic or data mutation. Reject unsupported values, malformed strings, `None`, floats and booleans; do not silently clamp or persist them. Return a field-specific error with matching `strings.json` and relevant translations.
-5. Do not conflate the main client polling interval with a future independently configurable device-list interval. Preserve config-entry values and entity unique IDs when adding another control.
-6. Parameterize regressions across supported values, legacy defaults and invalid inputs. Mock authentication/network operations and verify that invalid inputs do **not** invoke them or update config entries. Cover successful integer persistence in both flows, other config fields remaining unchanged, and JSON serialization.
-7. For any config-entry version migration, check the actual `ConfigEntry`
+6. Do not conflate the main client polling interval with a future independently configurable device-list interval. Preserve config-entry values and entity unique IDs when adding another control.
+7. Parameterize regressions across supported values, legacy defaults and invalid inputs. Mock authentication/network operations and verify that invalid inputs do **not** invoke them or update config entries. Cover successful integer persistence in both flows, other config fields remaining unchanged, and JSON serialization.
+8. For any config-entry version migration, check the actual `ConfigEntry`
    API in **both supported Home Assistant versions** before choosing how to
    update version or data. The PR #24 review found that directly assigning
    `config_entry.version` raises `AttributeError` on real entries even
@@ -31,8 +31,8 @@ description: "Use when changing or testing Home Assistant configuration/options 
    values are preserved. A mocked manager verifies the call only; it does
    not prove Home Assistant persisted the result. See the
    [client MAC-linking migration example](../deco-client-device-linking/SKILL.md).
-8. Install test dependencies in an isolated environment using `requirements-test.txt` plus a separately pinned Home Assistant version. **Do not mix** this with `requirements.txt`, which pins legacy `homeassistant==2025.1.0`. Keep the local setup consistent with the CI matrix: Python 3.13/HA 2025.12 and Python 3.14/HA 2026.11.
-9. Run `python -m pytest --no-cov tests/` for the focused suite; check formatting/pre-commit, HACS and Hassfest as available. The standalone regression workflow supports PRs, pushes, daily runs and manual `workflow_dispatch`; it must verify the pinned Home Assistant version and imports before pytest. Distinguish tests added from tests executed and passed; report missing dependencies, unavailable CI or failed checks explicitly.
+9. Install test dependencies in an isolated environment using `requirements-test.txt` plus a separately pinned Home Assistant version. **Do not mix** this with `requirements.txt`, which pins legacy `homeassistant==2025.1.0`. Keep the local setup consistent with the CI matrix: Python 3.13/HA 2025.12 and Python 3.14/HA 2026.11.
+10. Run `python -m pytest --no-cov tests/` for the focused suite; check formatting/pre-commit, HACS and Hassfest as available. The standalone regression workflow supports PRs, pushes, daily runs and manual `workflow_dispatch`; it must verify the pinned Home Assistant version and imports before pytest. Distinguish tests added from tests executed and passed; report missing dependencies, unavailable CI or failed checks explicitly.
 
 ## Windows local test commands
 
