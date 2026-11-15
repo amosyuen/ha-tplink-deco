@@ -12,14 +12,14 @@ in [`.agents/skills/`](.agents/skills/). The repository's governing policy
 remains `AI_POLICY.md`.
 
 **Baseline:** verified against fork `main` at
-`3c3f4162851cdd0a593f96de9288976b4ea3b9a6` (15 November 2026).
+`0b3fc84d1e64220ac197d3afb11f56b24979332c` (15 November 2026).
 This describes the fork, **not** the current upstream architecture.
 Deco discovery (PR #25), client restoration (PR #26), tracker discovery
 (PR #27), per-node client counts (PR #28), non-blocking initial client
-refresh (PR #29), coordinator health sensors (PR #30), the privacy-safe
-diagnostics export (PR #31) and numeric-string telemetry (PR #33)
-are merged. Independent Deco status polling is proposed in this PR,
-not part of this baseline.
+refresh (PR #29), coordinator health (PR #30), privacy-safe diagnostics
+(PR #31), numeric-string telemetry (PR #33) and independent Deco
+status polling (PR #34) are merged. Bounded client-list concurrency is
+proposed in this issue #2 follow-up PR and is not yet on `main`.
 
 ## 1. Integration boundary and data ownership
 
