@@ -398,6 +398,10 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
             signal_level = item.get("signal_level", {})
             if not isinstance(signal_level, dict):
                 raise ValueError("Deco inventory contains invalid signal data")
+            for name_key in ("nickname", "custom_nickname"):
+                name_value = item.get(name_key)
+                if name_value is not None and not isinstance(name_value, str):
+                    raise ValueError("Deco inventory contains invalid name data")
             macs.append(mac)
 
         if len(macs) != len(set(macs)):
