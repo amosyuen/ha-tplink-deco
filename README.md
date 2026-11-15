@@ -113,6 +113,12 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Tolerate numeric strings returned by older Deco firmware for
+  client download/upload rates and master CPU/memory fractions.
+  Invalid or non-finite optional values no longer interrupt these
+  measurements. Legacy S7 encrypted-session authentication is not
+  included in this compatibility update.
+
 - Add a privacy-safe Home Assistant config-entry diagnostics download with
   coordinator last-success timestamps, response times, failure/timeout
   counters, sanitized error types, and aggregate Deco/client counts.
