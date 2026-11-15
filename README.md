@@ -113,6 +113,12 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Defer connected-client count sensors until their Deco has returned a valid
+  client list; keep unavailable peers from displaying premature zero counts.
+  Count only clients reported as online (including the existing
+  `consider_home` grace period), without changing sensor unique IDs or
+  historical client trackers.
+
 - Register newly discovered client trackers after the client coordinator
   commits its refreshed state. This avoids missing a client when the early
   discovery signal observes stale data; existing MAC-based IDs, per-entry
