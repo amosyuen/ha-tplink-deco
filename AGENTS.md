@@ -481,10 +481,15 @@ policy for AI-assisted development.
   config entry; refuse shared, foreign or identified devices and every
   physical Deco device. See the
   [client-device MAC linking skill](.agents/skills/deco-client-device-linking/SKILL.md).
-- **Upgrade behavior:** config-flow version 7 adds the setting while retaining
-  existing values, including explicit `False`. Exercise v5/v6 migration,
-  config/options boolean persistence, form serialization, multiple entries,
-  stable tracker IDs and the safe removal hook in regressions.
+- **Upgrade behavior (PR #24 review):** `ConfigEntry.version` is
+  immutable in the supported Home Assistant releases. Migrating version
+  6→7 (and older versions) must stage the new version locally and call
+  `hass.config_entries.async_update_entry(entry, data=..., version=...)`
+  **once**; never assign `entry.version` directly. Preserve explicit
+  `False` opt-outs. Verify this with a **real** `ConfigEntry`, not
+  `SimpleNamespace` that silently permits invalid attribute writes.
+  Cover config/options persistence, form serialization, multiple entries,
+  stable tracker IDs and owner-only cleanup in regressions.
 
 ## Per-entry polling-switch identity migration (upstream #655)
 
