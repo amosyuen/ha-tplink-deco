@@ -10,6 +10,7 @@ import pytest
 
 from custom_components.tplink_deco import _deco_mac_from_identifiers
 from custom_components.tplink_deco import async_setup_entry
+from custom_components.tplink_deco.const import COORDINATOR_CLIENTS_KEY
 from custom_components.tplink_deco.const import COORDINATOR_DECOS_KEY
 from custom_components.tplink_deco.const import DOMAIN
 from custom_components.tplink_deco.const import SERVICE_REBOOT_DECO
@@ -49,7 +50,10 @@ async def _get_reboot_service() -> tuple[object, AsyncMock]:
     with patch(
         "custom_components.tplink_deco.async_create_config_data",
         new_callable=AsyncMock,
-        return_value={COORDINATOR_DECOS_KEY: deco_coordinator},
+        return_value={
+            COORDINATOR_DECOS_KEY: deco_coordinator,
+            COORDINATOR_CLIENTS_KEY: MagicMock(async_refresh=AsyncMock()),
+        },
     ):
         assert await async_setup_entry(hass, config_entry) is True
 
