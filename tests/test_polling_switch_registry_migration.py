@@ -38,17 +38,31 @@ def _registry(
 ) -> MagicMock:
     """Return a registry that distinguishes old and new unique IDs."""
     registry = MagicMock()
+    entity_ids_by_unique_id: dict[str, str] = {}
+    if legacy_entity_id is not None:
+        entity_ids_by_unique_id[LEGACY_POLLING_UNIQUE_ID] = legacy_entity_id
+    if scoped_entity_id is not None:
+        entity_ids_by_unique_id[polling_unique_id("entry-one")] = scoped_entity_id
 
     def _find_entity_id(domain: str, platform: str, unique_id: str) -> str | None:
-        """Simulate an indexed lookup for the polling switch."""
+        """Look up the current ID, including changes made by migration."""
         assert (domain, platform) == ("switch", DOMAIN)
-        if unique_id == LEGACY_POLLING_UNIQUE_ID:
-            return legacy_entity_id
-        if unique_id == polling_unique_id("entry-one"):
-            return scoped_entity_id
-        return None
+        return entity_ids_by_unique_id.get(unique_id)
 
+    def _update_entity(entity_id: str, *, new_unique_id: str) -> None:
+        """Move an existing registry identity without changing its entity ID."""
+        previous_unique_id = next(
+            unique_id
+            for unique_id, registered_entity_id in entity_ids_by_unique_id.items()
+            if registered_entity_id == entity_id
+        )
+        assert new_unique_id not in entity_ids_by_unique_id
+        del entity_ids_by_unique_id[previous_unique_id]
+        entity_ids_by_unique_id[new_unique_id] = entity_id
+
+    registry.entity_ids_by_unique_id = entity_ids_by_unique_id
     registry.async_get_entity_id.side_effect = _find_entity_id
+    registry.async_update_entity.side_effect = _update_entity
     registry.async_get.return_value = (
         SimpleNamespace(config_entry_id=owner) if owner is not None else None
     )
@@ -178,17 +192,45 @@ async def test_multiple_entries_only_migrate_the_owning_entry(
     }
     added: list[DecoPollingSwitch] = []
 
+    def _add_entities(entities: list[DecoPollingSwitch]) -> None:
+        """Simulate the platform registering its new switch after migration."""
+        for entity in entities:
+            entry_id = entity.coordinator.config_entry.entry_id
+            if registry.async_get_entity_id("switch", DOMAIN, entity.unique_id) is None:
+                registry.entity_ids_by_unique_id[entity.unique_id] = (
+                    f"switch.deco_polling_{entry_id}"
+                )
+            added.append(entity)
+
     with patch(
         "custom_components.tplink_deco.switch.er.async_get",
         return_value=registry,
     ):
         for entry_id in entry_order:
-            await async_setup_entry(hass, _entry(entry_id), added.extend)
+            await async_setup_entry(hass, _entry(entry_id), _add_entities)
+            if entry_id == "entry-one":
+                # The old identity must immediately disappear when the
+                # owning config entry migrates it.
+                assert registry.async_get_entity_id(
+                    "switch", DOMAIN, LEGACY_POLLING_UNIQUE_ID
+                ) is None
+                assert registry.async_get_entity_id(
+                    "switch", DOMAIN, polling_unique_id("entry-one")
+                ) == "switch.deco_polling"
 
     registry.async_update_entity.assert_called_once_with(
         "switch.deco_polling",
-        new_unique_id="tplink_deco_polling_entry-one",
+        new_unique_id=polling_unique_id("entry-one"),
     )
+    assert registry.async_get_entity_id(
+        "switch", DOMAIN, LEGACY_POLLING_UNIQUE_ID
+    ) is None
+    assert registry.async_get_entity_id(
+        "switch", DOMAIN, polling_unique_id("entry-one")
+    ) == "switch.deco_polling"
+    assert registry.async_get_entity_id(
+        "switch", DOMAIN, polling_unique_id("entry-two")
+    ) == "switch.deco_polling_entry-two"
     assert [entity.unique_id for entity in added] == [
         polling_unique_id(entry_id) for entry_id in entry_order
     ]
