@@ -17,9 +17,7 @@ from custom_components.tplink_deco.coordinator import TpLinkDecoData
 from custom_components.tplink_deco.coordinator import TplinkDecoClientUpdateCoordinator
 from custom_components.tplink_deco.coordinator import TplinkDecoUpdateCoordinator
 from custom_components.tplink_deco.exceptions import TimeoutException
-from custom_components.tplink_deco.sensor import (
-    COORDINATOR_HEALTH_SENSOR_DESCRIPTIONS,
-)
+from custom_components.tplink_deco.sensor import COORDINATOR_HEALTH_SENSOR_DESCRIPTIONS
 from custom_components.tplink_deco.sensor import TplinkCoordinatorHealthSensor
 from custom_components.tplink_deco.sensor import async_setup_entry
 
@@ -190,11 +188,7 @@ async def test_health_sensor_publishes_after_consecutive_failed_refreshes(
 ) -> None:
     """Publish health on every actual refresh, despite suppressed HA listeners."""
     deco_coordinator, client_coordinator = _coordinators()
-    coordinator = (
-        deco_coordinator
-        if coordinator_kind == "deco"
-        else client_coordinator
-    )
+    coordinator = deco_coordinator if coordinator_kind == "deco" else client_coordinator
     coordinator.hass.is_stopping = False
     coordinator._schedule_refresh = MagicMock()
 
@@ -223,9 +217,7 @@ async def test_health_sensor_publishes_after_consecutive_failed_refreshes(
             )
         )
 
-    health_sensor.async_write_ha_state = MagicMock(
-        side_effect=_capture_health_state
-    )
+    health_sensor.async_write_ha_state = MagicMock(side_effect=_capture_health_state)
     await health_sensor.async_added_to_hass()
     assert health_sensor.should_poll is False
     assert len(coordinator.health._listeners) == 1
@@ -383,9 +375,7 @@ async def test_health_sensors_wait_for_master_then_register_once() -> None:
         "custom_components.tplink_deco.sensor.async_dispatcher_connect",
         return_value=MagicMock(),
     ):
-        await async_setup_entry(
-            hass, SimpleNamespace(entry_id="mesh-one"), added
-        )
+        await async_setup_entry(hass, SimpleNamespace(entry_id="mesh-one"), added)
 
     listener = deco_coordinator.async_add_listener.call_args.args[0]
     assert _health_entities(added) == []
