@@ -116,9 +116,10 @@ Configurable:
 - Restore previously known client trackers even when Home Assistant saved
   their state as unavailable without a `device_type` attribute. Support
   both legacy and registry-aware Home Assistant restore-state APIs,
-  ignore disabled entries and reconcile provisional clients with Decos
-  confirmed by the initial device refresh. Existing MAC-based entity IDs,
-  known client history and per-entry separation are preserved.
+  ignore disabled entries, identify offline Deco nodes from matching
+  device-registry identifiers, and reconcile remaining provisional clients
+  with Decos confirmed by the initial refresh. Existing MAC-based entity
+  IDs, known client history and per-entry separation are preserved.
 
 - Discover the full existing set of Deco device trackers, binary sensors
   and per-node throughput/diagnostic sensors when an additional Deco
