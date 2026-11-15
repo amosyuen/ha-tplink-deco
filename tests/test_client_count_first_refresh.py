@@ -36,9 +36,7 @@ def _deco(mac: str, *, master: bool = False) -> TpLinkDeco:
     return device
 
 
-def _client(
-    mac: str, *, deco_mac: str | None, online: bool | None
-) -> TpLinkDecoClient:
+def _client(mac: str, *, deco_mac: str | None, online: bool | None) -> TpLinkDecoClient:
     """Build a known client without an external router connection."""
     client = TpLinkDecoClient(mac)
     client.deco_mac = deco_mac
