@@ -81,8 +81,6 @@ async def async_get_config_entry_diagnostics(
             "backoff_remaining_seconds": client_coordinator.remaining_backoff_seconds,
             "has_successful_refresh": client_coordinator.has_successful_refresh,
             "known_clients": len(clients),
-            "online_clients": sum(
-                bool(client.online) for client in clients.values()
-            ),
+            "online_clients": sum(bool(client.online) for client in clients.values()),
         },
     }
