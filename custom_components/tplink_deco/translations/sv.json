@@ -15,7 +15,8 @@
           "client_prefix": "Klientnamn prefix",
           "client_postfix": "Klientnamn suffix",
           "deco_prefix": "Deconamn prefix",
-          "deco_postfix": "Deconamn suffix"
+          "deco_postfix": "Deconamn suffix",
+          "link_client_devices": "Länka klientspårare till enheter via MAC-adress"
         }
       },
       "reauth_confirm": {
@@ -52,7 +53,8 @@
           "client_prefix": "Klientnamn prefix",
           "client_postfix": "Klientnamn suffix",
           "deco_prefix": "Deconamn prefix",
-          "deco_postfix": "Deconamn suffix"
+          "deco_postfix": "Deconamn suffix",
+          "link_client_devices": "Länka klientspårare till enheter via MAC-adress"
         }
       }
     },
