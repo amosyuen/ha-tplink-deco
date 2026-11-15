@@ -12,12 +12,14 @@ in [`.agents/skills/`](.agents/skills/). The repository's governing policy
 remains `AI_POLICY.md`.
 
 **Baseline:** verified against fork `main` at
-`d4c39b91558d1396b0a2d1f2d227fd82cf2955b3` (15 November 2026).
+`3c3f4162851cdd0a593f96de9288976b4ea3b9a6` (15 November 2026).
 This describes the fork, **not** the current upstream architecture.
 Deco discovery (PR #25), client restoration (PR #26), tracker discovery
 (PR #27), per-node client counts (PR #28), non-blocking initial client
-refresh (PR #29), coordinator health sensors (PR #30) and the
-privacy-safe diagnostics download (PR #31) are merged.
+refresh (PR #29), coordinator health sensors (PR #30), the privacy-safe
+diagnostics export (PR #31) and numeric-string telemetry (PR #33)
+are merged. Independent Deco status polling is proposed in this PR,
+not part of this baseline.
 
 ## 1. Integration boundary and data ownership
 
@@ -158,18 +160,29 @@ privacy-safe diagnostics download (PR #31) are merged.
 
 ## 5. Poll scheduling, retries and performance
 
-- The current **main scan interval** has choices 10, 30, 60 and 120
-  seconds (default 30). It drives the existing coordinators; the
-  polling-interval select uses the same config-entry setting. Do not imply
-  that the separate upstream `device_list` interval/startup-only mode has
-  already been implemented.
+- The existing **main scan interval** has choices 10, 30, 60 and 120
+  seconds (default 30). It drives the client and performance refresh
+  cadence and the existing polling-interval select.
+- **Proposed in this PR (upstream #616/#669/#670):** a separate
+  `device_list_interval` determines how often the Deco coordinator
+  fetches mesh status. Missing values inherit the main scan interval
+  for backward compatibility; `0` requests inventory at startup only.
+  Other accepted intervals are integers of at least 10 seconds. Cached
+  node identities stay available and optional performance requests
+  continue when a device-list request is skipped. A master-linked
+  `Refresh Deco status` button forces immediate inventory discovery,
+  including when the main polling switch is paused. Unsuccessful
+  device-list requests retain their due status for the next attempt.
+  Config and options flow validation is separate from the serializable
+  nonnegative numeric form field. No new timer, coordinator or client
+  polling behavior is introduced by this setting.
 - The Deco coordinator's `paused` state gates its own refresh, and the
   client coordinator honors the same pause flag. The switch controls this
   flag; turning polling back on requests a refresh.
 - The Deco coordinator requests the device list and optional master
   performance. Master CPU/memory values have raw readings and smoothed
   readings (currently 70% previous/30% new); missing measurement fields
-  preserve the last known values. **Proposed in [PR #33](https://github.com/HiDiHo01/ha-tplink-deco/pull/33):**
+  preserve the last known values. **Merged in [PR #33](https://github.com/HiDiHo01/ha-tplink-deco/pull/33):**
   normalize finite numeric firmware strings for client down/up rates
   and CPU/memory before arithmetic. Malformed/missing client rates
   become numeric zero so existing per-Deco and network throughput
