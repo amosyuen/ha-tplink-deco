@@ -155,8 +155,17 @@ async def test_setup_migrates_before_registering_new_switch() -> None:
 
 
 @pytest.mark.asyncio
-async def test_multiple_entries_only_migrate_the_owning_entry() -> None:
-    """Setting up a second mesh first must not take the first mesh's switch."""
+@pytest.mark.parametrize(
+    "entry_order",
+    [
+        ("entry-two", "entry-one"),
+        ("entry-one", "entry-two"),
+    ],
+)
+async def test_multiple_entries_only_migrate_the_owning_entry(
+    entry_order: tuple[str, str],
+) -> None:
+    """Migrate only the owner regardless of which mesh is initialized first."""
     registry = _registry(owner="entry-one")
     hass = MagicMock()
     first = _coordinator("entry-one")
@@ -173,17 +182,15 @@ async def test_multiple_entries_only_migrate_the_owning_entry() -> None:
         "custom_components.tplink_deco.switch.er.async_get",
         return_value=registry,
     ):
-        await async_setup_entry(hass, _entry("entry-two"), added.extend)
-        registry.async_update_entity.assert_not_called()
-        await async_setup_entry(hass, _entry("entry-one"), added.extend)
+        for entry_id in entry_order:
+            await async_setup_entry(hass, _entry(entry_id), added.extend)
 
     registry.async_update_entity.assert_called_once_with(
         "switch.deco_polling",
         new_unique_id="tplink_deco_polling_entry-one",
     )
     assert [entity.unique_id for entity in added] == [
-        "tplink_deco_polling_entry-two",
-        "tplink_deco_polling_entry-one",
+        polling_unique_id(entry_id) for entry_id in entry_order
     ]
 
 
