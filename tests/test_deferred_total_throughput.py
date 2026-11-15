@@ -11,6 +11,7 @@ from custom_components.tplink_deco.const import COORDINATOR_DECOS_KEY
 from custom_components.tplink_deco.const import DOMAIN
 from custom_components.tplink_deco.coordinator import TpLinkDeco
 from custom_components.tplink_deco.coordinator import TpLinkDecoData
+from custom_components.tplink_deco.sensor import TplinkCoordinatorHealthSensor
 from custom_components.tplink_deco.sensor import TplinkTotalClientDataRateSensor
 from custom_components.tplink_deco.sensor import async_setup_entry
 
@@ -96,7 +97,9 @@ async def test_network_totals_created_once_when_master_known_at_setup() -> None:
     assert {next(iter(entity.device_info["identifiers"])) for entity in totals} == {
         (DOMAIN, MASTER_MAC)
     }
-    assert len(async_add.call_args_list[0].args[0]) == 2
+    initial_entities = async_add.call_args_list[0].args[0]
+    assert len([item for item in initial_entities if isinstance(item, TplinkTotalClientDataRateSensor)]) == 2
+    assert len([item for item in initial_entities if isinstance(item, TplinkCoordinatorHealthSensor)]) == 8
 
     on_update()
     on_discovery()
