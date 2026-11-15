@@ -334,6 +334,29 @@ policy for AI-assisted development.
   handler: a valid Deco identifier alongside other identifiers, multiple
   selected Decos, missing devices and invalid identifiers.
 
+## Legacy firmware numeric telemetry (upstream #589, partial backport)
+
+- **Observed on fork `main`:** client rates are converted with direct
+  division and Deco CPU/memory fractions with direct multiplication.
+  Older firmware may provide these JSON numeric values as strings, which
+  raises during an otherwise valid refresh. This is separate from S7's
+  legacy **encrypted HTTP login**; numeric parsing alone does not enable
+  an unsupported authentication path.
+- **Rule:** normalize only client down/up rates and master CPU/memory
+  fractions to finite floats before existing arithmetic. Accept finite
+  JSON integers, floats and numeric strings (including `"0"`); reject
+  booleans, missing/malformed values, infinity/NaN and oversized numbers
+  without raising or logging input. Preserve existing byte-rate units,
+  identities, CPU/memory raw values and 70/30 smoothing. A malformed
+  optional performance measurement must not overwrite the last valid
+  reading or interrupt device discovery; zero is a valid measurement.
+- **Validation:** test rates through `TpLinkDecoClient.update`, actual
+  coordinator performance refreshes, successful subsequent updates,
+  smooth transitions and invalid-value retention. Add boundary tests
+  for non-finite numbers and large integer overflow. Do not mark the
+  upstream S7 legacy-session checkbox complete until its distinct
+  authentication/transport functionality is implemented and tested.
+
 ## Name decoding and privacy lessons (PR #3)
 
 - Firmware may return Base64-encoded UTF-8 names, plain-text names, empty
