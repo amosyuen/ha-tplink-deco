@@ -47,9 +47,7 @@ def _stored_state(
 ) -> SimpleNamespace:
     """Create stored state with an optional device classification."""
     attributes = {} if device_type is None else {ATTR_DEVICE_TYPE: device_type}
-    return SimpleNamespace(
-        state=SimpleNamespace(state=status, attributes=attributes)
-    )
+    return SimpleNamespace(state=SimpleNamespace(state=status, attributes=attributes))
 
 
 async def _restore(
@@ -306,9 +304,7 @@ async def test_first_deco_refresh_reconciles_clients_before_client_setup() -> No
     clients = {DECO_MAC: provisional_deco, CLIENT_MAC: known_client}
     restored_deco = TpLinkDecoData()
     discovered_deco = TpLinkDeco(DECO_MAC)
-    updated_decos = TpLinkDecoData(
-        discovered_deco, {DECO_MAC: discovered_deco}
-    )
+    updated_decos = TpLinkDecoData(discovered_deco, {DECO_MAC: discovered_deco})
     events: list[str] = []
     deco_coordinator = MagicMock()
     deco_coordinator.data = restored_deco
@@ -359,6 +355,7 @@ async def test_first_deco_refresh_reconciles_clients_before_client_setup() -> No
     client_coordinator.async_config_entry_first_refresh.assert_not_awaited()
     assert restored_deco.decos == {}
     assert deco_coordinator.data is updated_decos
+
 
 @pytest.mark.asyncio
 async def test_failed_device_refresh_does_not_prune_restored_clients() -> None:
