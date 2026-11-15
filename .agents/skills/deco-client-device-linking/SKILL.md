@@ -23,6 +23,12 @@ description: "Validate optional MAC-based device linking for TP-Link Deco client
    `True`; expose it in both setup and options schemas, and retain the
    current value when editing other options. On version 6→7 migration,
    populate the default without overwriting an explicitly saved `False`.
+   **Home Assistant's `ConfigEntry.version` is immutable**: stage the
+   version in a local variable, then call
+   `hass.config_entries.async_update_entry(entry, data=..., version=...)`
+   once. Never set `entry.version` directly. For regression coverage,
+   construct a real `ConfigEntry`; a `SimpleNamespace` mock cannot
+   detect invalid attribute mutations.
 4. The **client entity unique ID stays the original MAC** whether linking
    is enabled or not. `ScannerEntity.mac_address` exposes the MAC only
    when enabled; when disabled, expose it as a client **state attribute**
