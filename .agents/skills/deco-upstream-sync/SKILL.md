@@ -55,32 +55,48 @@ performance calculations, late-master network totals and MAC-based entity
 IDs. Mark the binary-sensor discovery handler with `@callback`.
 Follow [Deco runtime discovery validation](../deco-runtime-discovery-validation/SKILL.md).
 
-## Downloadable coordinator health diagnostics (upstream #575)
+## Downloadable coordinator health diagnostics (upstream #575, PR #31)
 
-When the fork already exposes `CoordinatorHealth` sensors but lacks a
-Home Assistant diagnostics download, implement
-`async_get_config_entry_diagnostics(hass, config_entry)` in
-`custom_components/tplink_deco/diagnostics.py`. Verify the hook signature
-on both supported HA releases first. Read only the two coordinators stored
-under the requested `entry_id`; never schedule router API requests.
+**When to use:** review or modify the Home Assistant config-entry
+diagnostics export introduced by PR #31. It is distinct from PR #30's
+health sensors and does not implement per-device exports or system logs.
 
-Whitelist a JSON-safe health/status snapshot: timezone-aware ISO 8601
-last-success timestamps, response times, sanitized exception class names,
-timeout and consecutive-failure counts, update interval, client query/backoff
-status, and aggregate online/known counts. Exclude config data/options,
-MAC/IP/BSSID addresses, router/client names, SSIDs, login/session material,
-untrusted error text, raw device/client lists and full firmware payloads.
-Do not port upstream Wi-Fi/mobile diagnostics unless these coordinators
-are implemented here. Missing initial data must produce zero/null counts,
-not an API refresh.
-
-Test normal, failed and missing coordinator snapshots; sentinel secrets
-in config data/object fields; JSON serialization; absence of additional
-router requests; two isolated configuration entries; and malformed
-error text. Validate Python 3.13/HA 2025.12 and Python 3.14/HA 2026.11,
-plus pre-commit/HACS/Hassfest; report missing hardware verification.
-Check off the issue #2 export item **only after merge**, independently
-of the completed PR #30 coordinator health sensor item.
+1. Read the current `AI_POLICY.md`, `AGENTS.md`, this skill and
+   `diagnostics.py` before editing. Verify Home Assistant's
+   `async_get_config_entry_diagnostics(hass, config_entry)` signature
+   against the supported 2025.12 and 2026.11 core versions.
+2. Map each exported field to a trusted **cached** source. Keep a
+   versioned, allowlisted schema of anonymous aggregate counts, UTC-aware
+   last-success timestamps, response times, fixed error-type labels,
+   timeout/failure counters and existing polling/backoff status. Do not
+   perform an API call, refresh, registry mutation or cross-entry lookup.
+3. Inspect the final JSON, including nested keys and values. Never include
+   config data/options, entry IDs, MAC/IP/BSSID addresses, client or
+   router names, SSIDs, cookies, tokens, credentials, session material,
+   individual client/device listings or raw upstream exceptions. Generic
+   recursive redaction of a broad payload is **not** a substitute for
+   choosing safe fields.
+4. Audit error-label provenance. `type(error).__name__` and fixed internal
+   status markers are acceptable; untrusted error **messages** are not.
+   Length checks and `str.isidentifier()` are insufficient to establish
+   that a string is non-sensitive: `PrivateSessionToken` also passes
+   those checks. Test malformed values and plausible identifier-shaped
+   secrets if health values can be injected or overwritten.
+5. Add tests asserting exact top-level/nested keys, JSON serialization,
+   absent/null data, real zero counts, aware timestamps, no router calls,
+   configuration-entry isolation and private sentinel exclusion. A direct
+   call to the diagnostics function verifies its data contract, **not**
+   Home Assistant's registration of the Download diagnostics handler;
+   verify platform registration separately before claiming UI availability.
+6. Run both supported pytest matrices, pre-commit, HACS and Hassfest on
+   the **same final commit SHA**. In PR #31, Black fixed function wrapping
+   before isort flagged `json` import ordering on the next run. Use the
+   exact hook diff to correct files, then rerun all required workflows
+   against the new head. Earlier 316/316 results do not validate later
+   commits. Record unperformed physical-router checks explicitly.
+7. Update README and `home-assistant.md` when behavior changes and
+   synchronize issue #2 accurately. PR #31 is merged; check off only the
+   diagnostics-export item, not unrelated upstream acceptance criteria.
 
 ## Optional coordinator health diagnostics (upstream #575)
 
@@ -127,9 +143,8 @@ success/availability contracts are preserved. Directly calling
 `_async_update_data()` only tests the data path, not Home Assistant
 listener propagation. Execute the Python 3.13/HA 2025.12 and Python
 3.14/HA 2026.11 CI matrix plus formatting and HACS/Hassfest when
-available, or report exact limitations. Note that downloadable
-diagnostics export from upstream #575 is separate because the fork
-currently lacks a `diagnostics.py` module.
+available, or report exact limitations. The diagnostics export was merged separately in fork PR #31;
+use the whitelist and validation procedure above.
 
 ## Initial optional client refresh without startup blocking (upstream #645)
 
