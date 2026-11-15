@@ -72,6 +72,15 @@ def _deco_mac_from_identifiers(identifiers: set[tuple[str, str]]) -> str | None:
     )
 
 
+def _remove_discovered_decos_from_clients(
+    client_data: dict[str, TpLinkDecoClient],
+    deco_data: TpLinkDecoData,
+) -> None:
+    """Reconcile provisional client trackers with confirmed Deco devices."""
+    for deco_mac in deco_data.decos:
+        client_data.pop(deco_mac, None)
+
+
 async def async_create_and_refresh_coordinators(
     hass: HomeAssistant,
     config_data: dict[str:Any],
@@ -105,6 +114,12 @@ async def async_create_and_refresh_coordinators(
         await deco_coordinator._async_update_data()
     else:
         await deco_coordinator.async_config_entry_first_refresh()
+
+    # Unavailable restored trackers may lack device_type. Reclassify any
+    # provisional client that the first device refresh confirms is a Deco.
+    if client_data:
+        _remove_discovered_decos_from_clients(client_data, deco_coordinator.data)
+
     clients_coordinator = TplinkDecoClientUpdateCoordinator(
         hass,
         api,
@@ -142,18 +157,23 @@ async def async_create_config_data(hass: HomeAssistant, config_entry: ConfigEntr
     deco_data = TpLinkDecoData()
     client_data = {}
 
-    # Populate client list with existing entries so that we keep track of disconnected clients
-    # since deco list_clients only returns connected clients.
-    last_states = restore_state.async_get(hass).last_states
+    # Restore clients that are no longer returned by the online-only API.
+    # HA 2026.11 offers a registry-aware lookup; older releases use last_states.
+    restore_data = restore_state.async_get(hass)
+    get_stored_state = getattr(restore_data, "async_get_stored_state", None)
+    if get_stored_state is None:
+        get_stored_state = restore_data.last_states.get
+
     for entry in existing_entries:
-        if entry.domain != DEVICE_TRACKER_DOMAIN:
+        if (
+            entry.domain != DEVICE_TRACKER_DOMAIN
+            or entry.disabled_by is not None
+        ):
             continue
-        state = last_states.get(entry.entity_id)
+        state = get_stored_state(entry.entity_id)
         if state is None:
             continue
         device_type = state.state.attributes.get(ATTR_DEVICE_TYPE)
-        if device_type is None:
-            continue
         if device_type == DEVICE_TYPE_DECO:
             deco = TpLinkDeco(entry.unique_id)
             deco.name = entry.original_name
