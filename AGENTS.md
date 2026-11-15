@@ -334,6 +334,45 @@ policy for AI-assisted development.
   handler: a valid Deco identifier alongside other identifiers, multiple
   selected Decos, missing devices and invalid identifiers.
 
+## Independent device-list cadence (upstream #616/#669/#670)
+
+- **Contract:** the existing `CONF_SCAN_INTERVAL` values (10/30/60/120,
+  default 30) continue to drive client and performance updates and the
+  existing polling select. A new, optional config-entry
+  `device_list_interval` controls only Deco inventory requests.
+  **Absent means inherit the current main interval**; `0` fetches
+  inventory once on initial setup, then only on explicit manual refresh.
+  Other values must be integers of at least ten seconds. Do not
+  silently change old entries, entity IDs, device registry associations,
+  CPU/memory smoothing or the client coordinator's backoff policy.
+- **Scheduling:** do not add a third coordinator, extra background
+  refresh or periodic timer; check a monotonic timestamp in the existing
+  Deco coordinator before each ordinary update. Continue performance
+  updates while inventory polling is skipped. On failed device requests,
+  preserve the last valid data and do not advance the refresh clock;
+  a manual request must bypass interval/startup-only and the pause flag.
+  Process new nodes and notify discovery only on actual inventory
+  responses. Keep the master identity stable for unchanged MACs.
+- **Forms:** preserve the existing string selector for the main cadence.
+  Add the new number field using a **serializable continuous schema**
+  (`vol.Coerce(int)` and `vol.Range(min=0)`); enforce the disjoint
+  valid set (0 or >=10) in explicit setup/options validation, *before*
+  authentication or entry updates. Reject booleans, float values and
+  malformed inputs; display translated, field-specific errors.
+  Store values as integers and do not migrate existing entries simply
+  to add the option.
+- **Button and privacy:** the new manual refresh button belongs to the
+  owning config entry and master Deco, with a stable new unique ID.
+  Never log router inventory payloads or access credentials. Export only
+  the numeric interval in diagnostics, not new identifiers or lists.
+- **Validation:** test first refresh, interval boundaries, startup-only
+  performance updates, manual override while paused, failure retries,
+  discovery identity, two independent meshes, form serialization on
+  both supported Home Assistant versions, integer persistence in setup
+  and options flows, rejected values before login and all required
+  full-head CI. Only check off the corresponding issue #2 item after
+  the complete feature has merged.
+
 ## Legacy firmware numeric telemetry (upstream #589, partial backport)
 
 - **Observed on fork `main`:** client rates are converted with direct
