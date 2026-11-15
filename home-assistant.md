@@ -17,7 +17,7 @@ This describes the fork, **not** the current upstream architecture.
 Deco discovery (PR #25), client restoration (PR #26), tracker discovery
 (PR #27), per-node client counts (PR #28), non-blocking initial client
 refresh (PR #29) and coordinator health sensors (PR #30) are merged.
-The downloadable health export below is proposed in this new issue #2 PR,
+The downloadable health export below is proposed in [PR #31](https://github.com/HiDiHo01/ha-tplink-deco/pull/31),
 not in baseline `main`.
 
 ## 1. Integration boundary and data ownership
