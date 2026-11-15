@@ -12,13 +12,13 @@ in [`.agents/skills/`](.agents/skills/). The repository's governing policy
 remains `AI_POLICY.md`.
 
 **Baseline:** verified against fork `main` at
-`3b033f6dd1ffb2d14c95d00208fc6120e2428c5b` (15 November 2026).
+`2d7df8f0b316bde81e5222ae777f35b5ce97a5fd` (15 November 2026).
 This describes the fork, **not** the current upstream architecture.
 Deco discovery (PR #25), client restoration (PR #26), tracker discovery
-(PR #27), per-node client counts (PR #28), and non-blocking initial client
-refresh (PR #29) are merged. Coordinator health sensors described below
-are proposed in [PR #30](https://github.com/HiDiHo01/ha-tplink-deco/pull/30),
-not yet on baseline `main`.
+(PR #27), per-node client counts (PR #28), non-blocking initial client
+refresh (PR #29) and coordinator health sensors (PR #30) are merged.
+The downloadable health export below is proposed in this new issue #2 PR,
+not in baseline `main`.
 
 ## 1. Integration boundary and data ownership
 
@@ -237,7 +237,7 @@ not yet on baseline `main`.
   Diagnostic entities are created when their initial values are present
   and are disabled by default in the registry. No new diagnostics should
   implicitly delete existing entities.
-- **Coordinator health diagnostics (proposed in this PR):** attach eight
+- **Coordinator health diagnostics (merged in PR #30):** attach eight
   disabled-by-default read-only sensors to the master Deco: last successful
   update, API response time and last error for each existing Deco/client
   coordinator; client timeouts and query mode. Timestamps are UTC-aware,
@@ -249,15 +249,26 @@ not yet on baseline `main`.
   state is retained. No extra router API calls or downloaded diagnostics
   export are added by this change. The health sensors stay readable when
   polling fails and are registered once when the master is available.
-  **PR #30 review correction (proposed, not yet on `main`):** HA 2025.12
+  **PR #30 review correction (merged):** HA 2025.12
   and 2026.11 suppress ordinary coordinator-listener callbacks on
   consecutive failed `async_refresh()` calls. New health sensors instead
   use a separate, push-only `CoordinatorHealth` notification channel,
   updated on each measured success, error or incomplete poll. Health
   callbacks unsubscribe on entity removal, never trigger unrelated
   entity refreshes and cannot turn a successful API poll into a failure.
-  The new regressions exercise actual `async_refresh()` transitions;
-  final-head CI and hardware execution remain unverified.
+  The merged regressions exercise actual `async_refresh()` transitions;
+  both Home Assistant test matrices, pre-commit, HACS and Hassfest passed.
+  Physical hardware validation remains unverified.
+- **Privacy-safe downloadable diagnostics (proposed in this PR):** the
+  Home Assistant `async_get_config_entry_diagnostics` hook exports
+  cached Deco/client coordinator health and aggregate online/known
+  counts. The snapshot is JSON-serializable and makes no router API calls.
+  It excludes configuration data/options, credentials, cookies, tokens,
+  MAC/IP/BSSID addresses, SSIDs, names, raw client/device listings and
+  firmware payloads. Malformed error values are replaced with
+  `UnknownError`. Missing coordinator data produces null/zero health
+  readings. Each export is isolated to one configuration entry; device
+  diagnostics and system-log export remain unimplemented.
 - `switch` controls polling. `select` chooses the main polling interval
   and persists the selected integer in the config entry before reload.
 - Registered services are `tplink_deco.reboot_deco`,
