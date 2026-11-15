@@ -36,6 +36,8 @@ reading these instructions:
   validate master/satellite `DeviceInfo` relationships, legacy/modern API compatibility and existing regression assumptions.
 - [Deco runtime discovery](.agents/skills/deco-runtime-discovery-validation/SKILL.md):
   validate immediate node publication, dispatcher ordering and idempotent entities.
+- [Deco client restore-state compatibility](.agents/skills/deco-client-restore-validation/SKILL.md):
+  recover unavailable client trackers across HA restore APIs and reconcile provisional Decos.
 - [Deco polling-switch registry migration](.agents/skills/deco-polling-switch-registry-migration/SKILL.md):
   validate per-config-entry switch IDs and owner-checked in-place migrations.
 - [Deco client-device MAC linking](.agents/skills/deco-client-device-linking/SKILL.md):
@@ -132,6 +134,25 @@ policy for AI-assisted development.
   an identifier or relationship must change.
 - Test changes against incomplete firmware responses, offline devices,
   multiple Decos, and multiple configuration entries where relevant.
+
+## Restored unavailable client identity (upstream #619)
+
+- **Observed failure:** Home Assistant can persist an unavailable device
+  tracker without `device_type`. Skipping that restored state permanently
+  loses a formerly known offline client even when its stable registry
+  unique ID and original name are available. Restore it provisionally as
+  a client, while preserving already classified Deco entries.
+- **Version compatibility:** HA 2025.12 exposes `last_states`; HA 2026.11
+  provides `async_get_stored_state(entity_id)` with registry-aware
+  storage. Use capability detection and tests for both, rather than
+  assuming that the same mapping exists in all supported releases.
+- **Reconciliation and safety:** skip disabled or non-tracker entities
+  and missing restore records. After the successful initial Deco refresh,
+  remove provisional clients identified as actual Deco MACs **before**
+  creating the client coordinator. Do not clear genuine offline clients,
+  change MAC-based entity IDs or modify another config entry's state.
+  Follow the
+  [client restore validation skill](.agents/skills/deco-client-restore-validation/SKILL.md).
 
 ## Deco runtime node-discovery ordering (upstream #643)
 
