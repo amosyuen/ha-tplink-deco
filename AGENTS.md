@@ -178,6 +178,34 @@ policy for AI-assisted development.
   handlers, repeated polls and offline/missing nodes. See
   [the runtime discovery skill](.agents/skills/deco-runtime-discovery-validation/SKILL.md).
 
+## Coordinator health sensors without extra API polling (upstream #575)
+
+- **Observed gap:** the fork exposes coordinator updates but has no
+  durable, privacy-safe health metrics or optional sensor entities to
+  distinguish actual API failures from paused, deferred or incomplete
+  cycles. Upstream #575 tracks update timestamps, response times, errors,
+  timeouts and query mode with no new router requests.
+- **Rule:** capture health around the actual existing Deco and client
+  API poll methods; never change existing client-backoff, retry or
+  restoration semantics. Skip updating health for paused, empty-inventory
+  and backoff-deferred cycles. Treat an all-failed per-node client cycle
+  as incomplete even if the old client dictionary is returned. A valid
+  empty list is a successful response. Preserve the last successful
+  timezone-aware timestamp across later errors, and sanitize errors
+  to exception class names only. Do not log or retain error messages,
+  response bodies, credentials, SSIDs or raw client lists.
+- **Entity contract:** add opt-in diagnostic sensors to the master
+  Deco only, once its inventory is known. Use stable
+  `<master_mac>_<metric_key>` unique IDs; disable all health sensors by
+  default and keep historical error values available during failures.
+  Report `per_node` query mode for the current fork; do not imply the
+  global client-list fallback is implemented.
+- **Regression:** test success/failure/timeout classification,
+  partial-vs-all-failed polls, valid empty replies, skip conditions,
+  timestamp timezones, sanitized errors, unchanged API request counts,
+  late-master creation, once-per-entry registration, stable device/unique
+  IDs and multi-entry isolation. Follow the upstream-sync skill.
+
 ## Non-blocking initial client refresh (upstream #645)
 
 - **Observed startup path:** `async_create_and_refresh_coordinators`
