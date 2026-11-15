@@ -165,10 +165,7 @@ async def async_create_config_data(hass: HomeAssistant, config_entry: ConfigEntr
         get_stored_state = restore_data.last_states.get
 
     for entry in existing_entries:
-        if (
-            entry.domain != DEVICE_TRACKER_DOMAIN
-            or entry.disabled_by is not None
-        ):
+        if entry.domain != DEVICE_TRACKER_DOMAIN or entry.disabled_by is not None:
             continue
         state = get_stored_state(entry.entity_id)
         if state is None:
