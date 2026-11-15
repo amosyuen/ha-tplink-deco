@@ -12,14 +12,14 @@ in [`.agents/skills/`](.agents/skills/). The repository's governing policy
 remains `AI_POLICY.md`.
 
 **Baseline:** verified against fork `main` at
-`44dc54bfa650377cbe4491db0d9992c1dc83c5b6` (15 November 2026).
+`eaeb7dca124f58e63cdf53890c7229fff5469df5` (15 November 2026).
 This describes the fork, **not** the current upstream architecture.
-Runtime discovery ordering from [PR #25](https://github.com/HiDiHo01/ha-tplink-deco/pull/25)
-is merged on this baseline. **Branch note:** the recovery of unavailable
-client trackers without `device_type` is proposed in
-[PR #26](https://github.com/HiDiHo01/ha-tplink-deco/pull/26); it is not
-yet present on the baseline `main`. Update this guide alongside behavior
-changes; distinguish proposed behavior from deployed code.
+Runtime Deco discovery ordering from [PR #25](https://github.com/HiDiHo01/ha-tplink-deco/pull/25)
+and unavailable-client restoration from [PR #26](https://github.com/HiDiHo01/ha-tplink-deco/pull/26)
+are merged on this baseline. The client tracker post-refresh listener
+below is proposed in the current issue #2 PR, not yet on baseline `main`.
+Update this guide alongside behavior changes; distinguish proposed behavior
+from deployed code.
 
 ## 1. Integration boundary and data ownership
 
@@ -83,7 +83,7 @@ changes; distinguish proposed behavior from deployed code.
 - Before the first entry refresh, `async_create_config_data` reconstructs
   previously known Deco/client objects from **device-tracker registry
   entries and restored state**. The router's connected-client response is
-  not a complete historical client inventory. **Proposed restoration fix:**
+  not a complete historical client inventory. **Restoration behavior:**
   for a stored tracker whose `device_type` attribute is missing (for
   example, an unavailable entity), first inspect its linked device
   registry identity. If that device has the exact identifier
@@ -121,6 +121,13 @@ changes; distinguish proposed behavior from deployed code.
   same known MAC twice. Master-dependent **network-total** sensors
   continue to use the coordinator's normal **post-update listener**,
   which registers totals once per entry. Keep known offline nodes.
+- **Client tracker discovery (proposed in this PR):** `SIGNAL_CLIENT_ADDED`
+  can fire before the client coordinator's refreshed `data` is committed.
+  Retain that dispatcher for compatibility, but also register a normal
+  client-coordinator listener to discover clients after the new snapshot
+  becomes visible. The shared MAC-keyed set prevents duplicate trackers;
+  both subscriptions are removed during coordinator shutdown. This does not
+  change the separate connected-client count sensors or offline grace period.
 
 ## 4. Client presence and measurement semantics
 
