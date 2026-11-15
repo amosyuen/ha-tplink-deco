@@ -699,6 +699,17 @@ policy for AI-assisted development.
   Home Assistant test-matrix entries and for pre-commit, HACS and Hassfest.
   Distinguish failures, skipped jobs, jobs still running and genuine passes;
   include run links in the PR only after the relevant jobs complete.
+- **CI bootstrap failure lesson (PR #30):** the repository's GitHub Actions
+  policy requires every external `uses:` reference to be pinned to a verified
+  **full-length commit SHA**. Jobs using floating references such as
+  `actions/checkout@v6`, `actions/setup-python@v6.2.0`,
+  `hacs/action@main` or `home-assistant/actions/hassfest@master` can
+  fail at `Set up job` before any test or linter executes. Check actual
+  job logs and separate workflow-policy failures from source failures.
+  Fix any affected workflow in a deliberately scoped workflow change
+  using upstream-verified action commit SHAs, preserving versions and
+  required checks; never guess SHAs or relax the allowlist/pinning policy.
+  An attempted run stopped during action setup is **not** a test result.
 - Before describing a PR as ready, verify it targets current `main`, is
   mergeable, and has no unaddressed review threads. Never mark issue #2's
   corresponding checklist entry complete merely because CI is green.
