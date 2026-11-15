@@ -69,6 +69,9 @@ async def async_get_config_entry_diagnostics(
         "deco_coordinator": {
             **_coordinator_snapshot(deco_coordinator),
             "paused": deco_coordinator.paused,
+            "device_list_interval_seconds": (
+                deco_coordinator.device_list_interval_seconds
+            ),
             "known_decos": len(decos),
             "online_decos": sum(bool(deco.online) for deco in decos.values()),
             "master_present": (
