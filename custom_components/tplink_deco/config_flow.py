@@ -312,7 +312,6 @@ class TplinkDecoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._errors = {}
 
         if user_input is not None:
-            _ensure_user_input_optionals(user_input)
             data = dict(self.reauth_entry.data)
             data.update(user_input)
 

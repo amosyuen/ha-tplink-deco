@@ -16,6 +16,10 @@ import pytest
 import voluptuous as vol
 
 from custom_components.tplink_deco import config_flow
+from custom_components.tplink_deco.const import CONF_CLIENT_POSTFIX
+from custom_components.tplink_deco.const import CONF_CLIENT_PREFIX
+from custom_components.tplink_deco.const import CONF_DECO_POSTFIX
+from custom_components.tplink_deco.const import CONF_DECO_PREFIX
 from custom_components.tplink_deco.const import CONF_DEVICE_LIST_INTERVAL
 from custom_components.tplink_deco.const import CONF_SYSLOG_ENABLED
 from custom_components.tplink_deco.const import CONF_SYSLOG_HOST
@@ -176,6 +180,38 @@ async def test_interval_validation_does_not_hide_syslog_validation(kind):
         CONF_SYSLOG_HOST: "syslog_host_required",
     }
     check.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_reauth_keeps_name_and_syslog_settings():
+    flow, entry = _flow("user")
+    entry.data.update(
+        {
+            CONF_CLIENT_PREFIX: "Wi-Fi",
+            CONF_CLIENT_POSTFIX: "Client",
+            CONF_DECO_PREFIX: "Mesh",
+            CONF_DECO_POSTFIX: "Deco",
+            CONF_SYSLOG_ENABLED: True,
+            CONF_SYSLOG_HOST: "192.0.2.10",
+        }
+    )
+    expected = entry.data | {CONF_PASSWORD: "new-password"}
+    flow.reauth_entry = entry
+    flow.hass.config_entries.async_reload = AsyncMock()
+    flow.async_abort = MagicMock(return_value={"type": "abort"})
+
+    with patch.object(
+        config_flow, "_async_test_credentials", AsyncMock(return_value={})
+    ) as check:
+        result = await flow.async_step_reauth_confirm(
+            {CONF_USERNAME: "admin", CONF_PASSWORD: "new-password"}
+        )
+
+    assert result == {"type": "abort"}
+    check.assert_awaited_once_with(flow.hass, expected)
+    flow.hass.config_entries.async_update_entry.assert_called_once_with(
+        entry, data=expected
+    )
 
 
 def test_schema_rejects_negative_interval():
