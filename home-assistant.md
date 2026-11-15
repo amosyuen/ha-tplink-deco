@@ -14,9 +14,11 @@ remains `AI_POLICY.md`.
 **Baseline:** verified against fork `main` at
 `4ccb1dec6b2212e4e87fc45f563647f5b28b24b1` (15 November 2026).
 This is a description of this fork, **not** of the upstream project's current
-architecture. When changing a described behavior, update this guide along
-with the implementation; do not promote planned upstream work to an existing
-feature.
+architecture. **Branch note:** the optional client MAC-linking setting and
+config-flow version 7 below are proposed by [PR #24](https://github.com/HiDiHo01/ha-tplink-deco/pull/24);
+they are **not present** in the baseline `main` commit. When a described
+behavior changes, update this guide alongside its implementation; do not
+promote planned upstream work to an existing feature.
 
 ## 1. Integration boundary and data ownership
 
