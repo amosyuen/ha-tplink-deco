@@ -64,6 +64,34 @@ description: "Validate TP-Link Deco runtime node discovery, synchronous dispatch
     Static inspection and mocked callback assertions do **not** establish
     full Home Assistant runtime or mesh-hardware validation.
 
+## Regression-fixture lesson: compare snapshots at the right time
+
+The PR #25 regression test initially compared an earlier refresh result with
+`coordinator.data` **after a second refresh**. That is not a valid
+snapshot-identity assertion: each successful refresh builds a new
+`TpLinkDecoData` container even when all node MACs remain unchanged.
+
+- Check `result is coordinator.data` **immediately after each refresh**,
+  before initiating the next one. This proves that the published state and
+  the state returned to Home Assistant refer to the same snapshot.
+- Across two refreshes, compare the **MAC-indexed `TpLinkDeco` objects**
+  instead of requiring the two snapshot containers to be the same. Known
+  node objects must be reused; absent known nodes must be retained and
+  marked offline.
+- Mock `async_dispatcher_send` with a synchronous callback that reads
+  `coordinator.data` *during* notification. A post-refresh assertion
+  alone cannot reproduce the original stale-data signal bug.
+- Build actual entity platforms with the same patched dispatcher when
+  checking discovery across trackers, binary sensors and per-node
+  sensors. Repeated API results and manual notifications must not
+  duplicate stable MAC-based unique IDs. Keep master-dependent totals
+  on the separate post-update callback.
+
+The documented expectations are grounded in
+`tests/test_runtime_deco_discovery.py` and the coordinator's
+`_async_update_data` implementation. They are **test construction rules**;
+they do not establish successful pytest or real hardware execution.
+
 ## Tracking
 
 11. Link an isolated backport with `Part of #2`. Update issue #2's in-progress
