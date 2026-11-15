@@ -16,9 +16,7 @@ from custom_components.tplink_deco.coordinator import CoordinatorHealth
 from custom_components.tplink_deco.coordinator import TpLinkDeco
 from custom_components.tplink_deco.coordinator import TpLinkDecoClient
 from custom_components.tplink_deco.coordinator import TpLinkDecoData
-from custom_components.tplink_deco.diagnostics import (
-    async_get_config_entry_diagnostics,
-)
+from custom_components.tplink_deco.diagnostics import async_get_config_entry_diagnostics
 
 PRIVATE_VALUES = (
     "PRIVATE-ROUTER-PASSWORD",
@@ -57,9 +55,7 @@ def _register_entry(
     client_coordinator = MagicMock()
     client_coordinator.data = {client.mac: client}
     client_coordinator.health = CoordinatorHealth()
-    client_coordinator.health.record_failure(
-        0.0, TimeoutError(PRIVATE_VALUES[2])
-    )
+    client_coordinator.health.record_failure(0.0, TimeoutError(PRIVATE_VALUES[2]))
     client_coordinator.last_update_success = False
     client_coordinator.update_interval = timedelta(seconds=30)
     client_coordinator.client_query_mode = "per_node"
@@ -119,9 +115,7 @@ async def test_diagnostics_uses_aware_timestamp_and_keeps_per_entry_isolation() 
     hass = MagicMock()
     hass.data = {}
     first_entry, _, first_client = _register_entry(hass, "first", online=True)
-    second_entry, _, second_client = _register_entry(
-        hass, "second", online=False
-    )
+    second_entry, _, second_client = _register_entry(hass, "second", online=False)
     timestamp = datetime(2026, 11, 15, 12, 0, tzinfo=timezone.utc)
     first_client.health.last_successful_update = timestamp
     second_client.health.timeout_count = 5
@@ -173,9 +167,7 @@ async def test_diagnostics_rejects_non_class_error_text() -> None:
     """Prevent accidental export of a raw upstream error if health is corrupted."""
     hass = MagicMock()
     hass.data = {}
-    entry, _, client_coordinator = _register_entry(
-        hass, "mesh-bad-error", online=False
-    )
+    entry, _, client_coordinator = _register_entry(hass, "mesh-bad-error", online=False)
     client_coordinator.health.last_error = "token=" + PRIVATE_VALUES[2]
 
     result = await async_get_config_entry_diagnostics(hass, entry)
