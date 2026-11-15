@@ -135,6 +135,8 @@ async def test_discovery_creates_trackers_binary_sensors_and_node_sensors() -> N
     coordinator.async_add_listener = MagicMock(return_value=MagicMock())
     clients_coordinator = MagicMock()
     clients_coordinator.data = {}
+    clients_coordinator.has_successful_refresh = False
+    clients_coordinator.successfully_polled_deco_macs = set()
     entry = SimpleNamespace(
         entry_id="mesh-one",
         data={
@@ -213,14 +215,26 @@ async def test_discovery_creates_trackers_binary_sensors_and_node_sensors() -> N
         assert {
             f"{SATELLITE_MAC}_down",
             f"{SATELLITE_MAC}_up",
-            f"{SATELLITE_MAC}_client_count",
         }.issubset(sensor_ids)
+        assert f"{SATELLITE_MAC}_client_count" not in sensor_ids
+
+        # The count entity is created only after the first confirmed poll.
+        clients_coordinator.has_successful_refresh = True
+        clients_coordinator.successfully_polled_deco_macs = {
+            MASTER_MAC,
+            SATELLITE_MAC,
+        }
+        client_listener = clients_coordinator.async_add_listener.call_args.args[0]
+        client_listener()
+        sensor_ids = _unique_ids(added_sensor)
+        assert f"{SATELLITE_MAC}_client_count" in sensor_ids
         for ids in (tracker_ids, binary_ids, sensor_ids):
             assert len(ids) == len(set(ids))
 
         # Identical device lists and repeated notifications must be idempotent.
         await coordinator._async_update_data()
         _send(hass, SIGNAL_DECO_ADDED)
+        client_listener()
         for add, previous in (
             (added_tracker, tracker_ids),
             (added_binary, binary_ids),
