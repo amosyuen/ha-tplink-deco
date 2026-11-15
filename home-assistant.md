@@ -15,10 +15,11 @@ remains `AI_POLICY.md`.
 `44dc54bfa650377cbe4491db0d9992c1dc83c5b6` (15 November 2026).
 This describes the fork, **not** the current upstream architecture.
 Runtime discovery ordering from [PR #25](https://github.com/HiDiHo01/ha-tplink-deco/pull/25)
-is merged on this baseline. **Branch note:** recovering unavailable client
-trackers without `device_type` is proposed in the new backport PR and
-is not yet present on the baseline `main`. Update this guide alongside
-behavior changes; distinguish proposed behavior from deployed code.
+is merged on this baseline. **Branch note:** the recovery of unavailable
+client trackers without `device_type` is proposed in
+[PR #26](https://github.com/HiDiHo01/ha-tplink-deco/pull/26); it is not
+yet present on the baseline `main`. Update this guide alongside behavior
+changes; distinguish proposed behavior from deployed code.
 
 ## 1. Integration boundary and data ownership
 
