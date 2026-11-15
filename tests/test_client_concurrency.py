@@ -205,9 +205,7 @@ async def test_real_api_override_prevents_per_node_timeout_retries() -> None:
         verify_ssl=True,
         timeout_error_retries=2,
     )
-    api._async_list_clients = AsyncMock(
-        side_effect=[TimeoutException("private"), []]
-    )
+    api._async_list_clients = AsyncMock(side_effect=[TimeoutException("private"), []])
     with pytest.raises(TimeoutException):
         await api.async_list_clients(MASTER, timeout_error_retries=0)
     assert api._async_list_clients.await_count == 1
