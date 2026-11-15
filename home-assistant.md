@@ -17,8 +17,8 @@ This describes the fork, **not** the current upstream architecture.
 Deco discovery ordering (PR #25), unavailable-client restoration (PR #26),
 post-refresh client tracker discovery (PR #27) and per-node client counts
 (PR #28) are merged on this baseline. The background initial client
-refresh described below is proposed in the current issue #2 PR, not on
-this baseline `main`. Distinguish deployed and pending behavior.
+refresh described below is proposed in [PR #29](https://github.com/HiDiHo01/ha-tplink-deco/pull/29),
+not on this baseline `main`. Distinguish deployed and pending behavior.
 
 ## 1. Integration boundary and data ownership
 
