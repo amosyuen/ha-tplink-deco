@@ -36,6 +36,8 @@ reading these instructions:
   validate master/satellite `DeviceInfo` relationships, legacy/modern API compatibility and existing regression assumptions.
 - [Deco polling-switch registry migration](.agents/skills/deco-polling-switch-registry-migration/SKILL.md):
   validate per-config-entry switch IDs and owner-checked in-place migrations.
+- [Deco client-device MAC linking](.agents/skills/deco-client-device-linking/SKILL.md):
+  validate opt-out settings, stable client identifiers and safe cleanup of old client devices.
 - [Deco truncated-response and client-state validation](.agents/skills/deco-transient-response-validation/SKILL.md):
   validate bounded retries, retained authentication, per-node clients and optional performance data.
 - [Deco HTTP 5xx client polling backoff](.agents/skills/deco-client-backoff-validation/SKILL.md):
@@ -464,6 +466,25 @@ policy for AI-assisted development.
   then confirm HACS, Hassfest, and CI status where available. Report
   checks that were not run or could not be verified; never claim success
   from tests that have merely been added.
+
+## Optional client-device MAC linking (upstream #605)
+
+- **Compatibility invariant:** a client tracker must retain its MAC-derived
+  `unique_id` regardless of `link_client_devices`. The default is
+  `True` to preserve existing Home Assistant device matching; opting out
+  suppresses the scanner MAC property but makes the address available
+  as a client state attribute. The physical Deco tracker and its device
+  relationships must not change.
+- **Registry safety:** disabling matching does not automatically sever
+  cross-integration device links. Permit manual removal only for a
+  MAC-only legacy client device owned **exclusively** by the requesting
+  config entry; refuse shared, foreign or identified devices and every
+  physical Deco device. See the
+  [client-device MAC linking skill](.agents/skills/deco-client-device-linking/SKILL.md).
+- **Upgrade behavior:** config-flow version 7 adds the setting while retaining
+  existing values, including explicit `False`. Exercise v5/v6 migration,
+  config/options boolean persistence, form serialization, multiple entries,
+  stable tracker IDs and the safe removal hook in regressions.
 
 ## Per-entry polling-switch identity migration (upstream #655)
 
