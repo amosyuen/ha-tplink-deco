@@ -85,14 +85,18 @@ changes; distinguish proposed behavior from deployed code.
   entries and restored state**. The router's connected-client response is
   not a complete historical client inventory. **Proposed restoration fix:**
   for a stored tracker whose `device_type` attribute is missing (for
-  example, an unavailable entity), restore a provisional MAC-keyed client.
-  Exclude disabled trackers and entries without saved state, and preserve
-  already classified Deco/client identities. Home Assistant 2026.11
-  exposes `async_get_stored_state(entity_id)`; HA 2025.12 uses the
-  `last_states` mapping. After a *successful first* Deco refresh, discard
-  provisional client records whose MAC is confirmed in `decos`, before
-  constructing the client coordinator. Do not delete offline genuine
-  client records or alter registry entity IDs.
+  example, an unavailable entity), first inspect its linked device
+  registry identity. If that device has the exact identifier
+  `(tplink_deco, tracker.unique_id)`, restore it as a Deco even when
+  absent from the initial router response. A client sharing the parent
+  Deco's device has a **different MAC** and must not be reclassified.
+  Restore the remaining unclassified trackers as provisional MAC-keyed
+  clients. Exclude disabled trackers and entries without saved state.
+  HA 2026.11 exposes `async_get_stored_state(entity_id)`; HA 2025.12
+  uses `last_states`. After a successful first Deco refresh, discard
+  provisional client records whose MAC is confirmed in `decos` before
+  constructing the client coordinator. Preserve genuine offline clients
+  and all registry entity IDs.
 - `TpLinkDecoClient` tracks MAC, node association (`deco_mac`), `online`,
   `last_activity` and last-known throughput and connection metadata. A
   missing or incomplete poll must not erase these fields.
