@@ -16,8 +16,9 @@ remains `AI_POLICY.md`.
 This describes the fork, **not** the current upstream architecture.
 Runtime Deco discovery ordering (PR #25), unavailable-client restoration
 (PR #26) and post-refresh client tracker discovery (PR #27) are merged.
-The client-count initialization changes below are proposed in the current
-issue #2 PR, not yet on baseline `main`. Update this guide alongside
+The client-count initialization changes below are proposed in
+[PR #28](https://github.com/HiDiHo01/ha-tplink-deco/pull/28),
+not yet on baseline `main`. Update this guide alongside
 behavior changes and distinguish pending behavior from deployed code.
 
 ## 1. Integration boundary and data ownership
