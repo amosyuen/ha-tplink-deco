@@ -114,7 +114,7 @@ not yet on baseline `main`.
   requires a separate runtime fix and regression test.
 - Discovery: new nodes dispatch `SIGNAL_DECO_ADDED` and new clients
   dispatch `SIGNAL_CLIENT_ADDED`. The complete new `TpLinkDecoData`
-  snapshot is published to `coordinator.data` *before* signaling, so
+  snapshot is published to `coordinator.data` _before_ signaling, so
   synchronous `@callback` handlers see newly added MACs immediately.
   Tracker, binary-sensor and per-node sensor platforms avoid adding the
   same known MAC twice. Master-dependent **network-total** sensors
