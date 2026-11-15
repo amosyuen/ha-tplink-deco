@@ -14,8 +14,9 @@ remains `AI_POLICY.md`.
 **Baseline:** verified against fork `main` at
 `93f1a09876daabc833da006ac5335cdf72d66b1a` (15 November 2026).
 This describes this fork, **not** the upstream project's current architecture.
-The improved runtime discovery notification below is **proposed on this PR
-branch**, not present in the baseline `main` commit. Update this guide
+The improved runtime discovery notification below is proposed in
+[PR #25](https://github.com/HiDiHo01/ha-tplink-deco/pull/25), not yet
+present in the baseline `main` commit. Update this guide
 alongside a behavior change and do not present proposed work as deployed.
 
 ## 1. Integration boundary and data ownership
