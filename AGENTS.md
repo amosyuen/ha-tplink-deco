@@ -5,6 +5,20 @@ These instructions apply to the entire `ha-tplink-deco` repository. Read
 Follow this file for repository-specific implementation rules and report
 conflicts before proceeding.
 
+## Integration-specific behavior and invariants
+
+- **Read [`home-assistant.md`](home-assistant.md) before changing the
+  `tplink_deco` integration.** It records this fork's current API,
+  coordinator, firmware, entity, registry, polling, service and lifecycle
+  behavior, together with invariants to preserve across code changes.
+- Update that guide in the same PR whenever an integration-specific behavior
+  or invariant changes. Confirm new claims against the current code and
+  distinguish deployed behavior from pending upstream/backport work.
+- Keep general Home Assistant, Python, security, testing and review standards
+  in `AGENTS.md`, `AI_POLICY.md` and `CLAUDE.md` when present; do not
+  duplicate those general rules in the integration guide. `AI_POLICY.md`
+  remains governing policy and applicable repository skills still apply.
+
 ## Reusable repository skills
 
 For repeatable workflows, use the relevant repository-local skill after
