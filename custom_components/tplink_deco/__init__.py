@@ -131,8 +131,8 @@ async def async_create_and_refresh_coordinators(
     )
     if config_entry is None:
         await deco_coordinator._async_update_data()
-    else:
-        await clients_coordinator.async_config_entry_first_refresh()
+    # A configured entry starts its first client refresh in the background
+    # after platforms have loaded, rather than blocking coordinator creation.
 
     return {
         COORDINATOR_DECOS_KEY: deco_coordinator,
@@ -289,6 +289,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     )
 
     config_entry.async_on_unload(config_entry.add_update_listener(update_listener))
+
+    # Use async_refresh directly: async_request_refresh may schedule a
+    # foreground debouncer task even when called from a background task.
+    config_entry.async_create_background_task(
+        hass,
+        data[COORDINATOR_CLIENTS_KEY].async_refresh(),
+        name="tplink_deco initial client refresh",
+    )
 
     return True
 
