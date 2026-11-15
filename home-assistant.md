@@ -12,14 +12,13 @@ in [`.agents/skills/`](.agents/skills/). The repository's governing policy
 remains `AI_POLICY.md`.
 
 **Baseline:** verified against fork `main` at
-`57efe8399ac339eb2baff4959e97e7c71a0f5eed` (15 November 2026).
+`22468546665ff9a2511f90a1e7ccc5ee311edb6e` (15 November 2026).
 This describes the fork, **not** the current upstream architecture.
-Runtime Deco discovery ordering (PR #25), unavailable-client restoration
-(PR #26) and post-refresh client tracker discovery (PR #27) are merged.
-The client-count initialization changes below are proposed in
-[PR #28](https://github.com/HiDiHo01/ha-tplink-deco/pull/28),
-not yet on baseline `main`. Update this guide alongside
-behavior changes and distinguish pending behavior from deployed code.
+Deco discovery ordering (PR #25), unavailable-client restoration (PR #26),
+post-refresh client tracker discovery (PR #27) and per-node client counts
+(PR #28) are merged on this baseline. The background initial client
+refresh described below is proposed in the current issue #2 PR, not on
+this baseline `main`. Distinguish deployed and pending behavior.
 
 ## 1. Integration boundary and data ownership
 
@@ -147,7 +146,7 @@ behavior changes and distinguish pending behavior from deployed code.
   `deco_mac`; network-wide totals include online clients across nodes.
   Cached rates from offline or unknown-status clients must not contribute
   to live throughput totals.
-- **Connected clients (proposed in this PR):** count only associated clients
+- **Connected clients (merged in PR #28):** count only associated clients
   whose `online` value is truthy; previously restored disconnected clients
   remain available as trackers but do not inflate the connected-client total.
   Delay count-entity registration until the client coordinator has received
@@ -272,10 +271,20 @@ behavior changes and distinguish pending behavior from deployed code.
   to the requesting config entry and has no other integration identifiers.
   Do not permit physical Deco devices or shared/foreign devices to be
   removed by this cleanup hook.
-- On setup, construct/refetch the Deco and client coordinators, restore
-  known objects, then **await** forwarding all existing platforms before
+- On setup, first **await** the Deco coordinator's device-list refresh so
+  provisional client/Deco identities can be reconciled safely. Restore
+  known objects and **await** forwarding all existing platforms before
   registering entry services and the configuration update listener.
   Do not finish entry setup while platform setup is still pending.
+- **Initial client refresh (proposed in this PR):** after platform forwarding,
+  schedule `clients_coordinator.async_refresh()` using the config entry's
+  `async_create_background_task`. Do not await the optional client request
+  during coordinator construction or use `async_request_refresh()` for this
+  initial task: that method may generate a foreground debouncer task.
+  Existing restored client trackers remain visible until client polling
+  completes; later scheduled, manual and entity-driven updates remain
+  unchanged. The first successful per-node poll still determines when its
+  connected-client count sensor is created.
 - Entry unload first asks Home Assistant to unload forwarded platforms.
   If any unload fails, keep the active entry, coordinators and session
   intact. After success, shut down scheduled coordinator updates,
