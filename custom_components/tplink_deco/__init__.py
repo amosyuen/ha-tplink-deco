@@ -171,6 +171,18 @@ async def async_create_config_data(hass: HomeAssistant, config_entry: ConfigEntr
         if state is None:
             continue
         device_type = state.state.attributes.get(ATTR_DEVICE_TYPE)
+        if device_type is None:
+            # An unavailable Deco can lack the state discriminator. Its
+            # device-registry identity remains authoritative even while
+            # the node is missing from the first router response.
+            device_id = getattr(entry, "device_id", None)
+            if device_id is not None:
+                device = device_registry.async_get(hass).async_get(device_id)
+                if (
+                    device is not None
+                    and (DOMAIN, entry.unique_id) in device.identifiers
+                ):
+                    device_type = DEVICE_TYPE_DECO
         if device_type == DEVICE_TYPE_DECO:
             deco = TpLinkDeco(entry.unique_id)
             deco.name = entry.original_name
