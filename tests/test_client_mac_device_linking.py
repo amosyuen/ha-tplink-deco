@@ -130,9 +130,7 @@ async def test_only_legacy_client_devices_may_be_removed(
     result = await async_remove_config_entry_device(
         MagicMock(),
         entry,
-        _device(
-            entry_ids=entry_ids, identifiers=identifiers, connections=connections
-        ),
+        _device(entry_ids=entry_ids, identifiers=identifiers, connections=connections),
     )
 
     assert result is allowed
@@ -179,9 +177,7 @@ async def test_migration_adds_opt_out_with_safe_default(
         True if existing_value is None else existing_value
     )
     assert saved["client_prefix"] == "Home"
-    assert saved["host"] == (
-        "http://192.0.2.1" if version == 5 else "192.0.2.1"
-    )
+    assert saved["host"] == ("http://192.0.2.1" if version == 5 else "192.0.2.1")
 
 
 @pytest.mark.parametrize("enabled", [False, True])
@@ -208,9 +204,7 @@ def test_link_option_is_serializable_and_boolean(enabled: bool) -> None:
 @pytest.mark.asyncio
 @pytest.mark.parametrize("enabled", [False, True])
 @pytest.mark.parametrize("kind", ["setup", "options"])
-async def test_config_flow_persists_mac_link_setting(
-    enabled: bool, kind: str
-) -> None:
+async def test_config_flow_persists_mac_link_setting(enabled: bool, kind: str) -> None:
     """Save both options without changing scan interval or router identity."""
     settings = {
         "host": "http://192.0.2.1",
@@ -238,9 +232,7 @@ async def test_config_flow_persists_mac_link_setting(
             saved = flow.async_create_entry.call_args.kwargs["data"]
         else:
             await flow.async_step_init(settings)
-            saved = flow.hass.config_entries.async_update_entry.call_args.kwargs[
-                "data"
-            ]
+            saved = flow.hass.config_entries.async_update_entry.call_args.kwargs["data"]
 
     assert saved[CONF_LINK_CLIENT_DEVICES] is enabled
     assert saved["scan_interval"] == 30
