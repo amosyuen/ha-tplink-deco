@@ -52,19 +52,31 @@ Use the config-flow validation skill for the setup/options portion.
 ### Error-handling regression checklist for PR #34
 
 - Validate the **entire** inventory payload before modifying any existing
-  Deco: non-list responses, missing or duplicate identifiers and malformed
-  signal information must fail with an error that contains no router data.
-  Failed polls leave cached nodes, the inventory clock and health provenance
-  intact for later retries.
-- Handle expected optional performance timeout/transport failures without
-  discarding valid inventory or erasing CPU/memory samples. Do **not** hide
-  authentication, programming or unexpected API errors.
-- A manually pressed button must surface a failed coordinator poll even if
-  Home Assistant absorbs its original exception. Always clear the forced
-  request state in `finally` so later paused cycles do not perform
-  accidental API requests; a subsequent button press can retry.
-- Test the actual coordinator, anonymized diagnostic state and both
-  supported Home Assistant versions, not just isolated helper functions.
+  Deco: non-list responses, missing/duplicate identifiers, malformed names
+  and invalid signal mappings must raise a fixed, privacy-safe error.
+  A failed poll leaves cached nodes and the *last successful* inventory
+  timestamp untouched, **while recording the error type and failure
+  counter**. Test failures occurring after a valid earlier refresh, not
+  only on an empty initial cache.
+- Process validated inventory before optional performance so a timeout or
+  truncated performance reply cannot discard mesh discovery. Catch only
+  expected performance timeout/transient exceptions; retain existing
+  CPU/memory values. Authentication and unexpected API errors must remain
+  failures, not become an apparently healthy refresh.
+- Verify the manual button with **both** Home Assistant behaviors:
+  `async_refresh()` swallowing a failure (`last_update_success=False`)
+  and an upstream exception escaping from refresh. Emit a fixed
+  `HomeAssistantError` without copying its message or exception context.
+  Preserve `ConfigEntryAuthFailed` as the authentication error type but
+  replace its message, and do not catch cancellation. In `finally`,
+  clear the one-shot forced-refresh flag so a failed manual request cannot
+  accidentally unpause later automatic polling; another press may retry.
+- Exercise actual coordinator refreshes, retained identities, error/timeout
+  health diagnostics, optional performance, and manual button behavior;
+  verify both supported Home Assistant/Python matrices. Apply any
+  Black/isort/Prettier corrections from the exact CI diff, then rerun the
+  full checks on the **new final head**. A previous green head cannot
+  validate later documentation-only commits or tests.
 
 ## Legacy numeric telemetry compatibility (upstream #589)
 
