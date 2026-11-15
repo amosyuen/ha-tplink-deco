@@ -35,6 +35,16 @@ When porting Home Assistant services that consume device registry IDs, follow
 It covers domain-specific identifier lookup, validating all selected devices
 before router calls, real service-handler tests and preservation of stable IDs.
 
+## Unavailable client tracker restoration (upstream #619)
+
+A restored `unavailable` tracker may have no `device_type` but still
+have a valid MAC-based entity-registry identity. Do not silently drop it.
+Restore it provisionally as a client and reconcile against the confirmed
+Deco inventory after the first device refresh. Support the two Home
+Assistant restore-state API shapes, and skip disabled/unrelated entries.
+Follow [Deco client restore-state validation](../deco-client-restore-validation/SKILL.md);
+preserve stable entity IDs and fork-specific client retention/backoff.
+
 ## Runtime Deco entity discovery (upstream #643)
 
 The Deco coordinator's `SIGNAL_DECO_ADDED` notifies current platforms
