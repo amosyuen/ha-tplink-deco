@@ -176,6 +176,11 @@ def _async_setup_clients(
             async_add_entities(new_entities)
 
     add_untracked_clients()
+    # The discovery signal may fire before the coordinator commits new data.
+    # The normal listener also discovers clients after the snapshot is updated.
+    coordinator_clients.on_close(
+        coordinator_clients.async_add_listener(add_untracked_clients)
+    )
     coordinator_clients.on_close(
         async_dispatcher_connect(hass, SIGNAL_CLIENT_ADDED, add_untracked_clients)
     )
