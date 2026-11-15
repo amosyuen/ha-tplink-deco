@@ -113,6 +113,12 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Add a privacy-safe Home Assistant config-entry diagnostics download with
+  coordinator last-success timestamps, response times, failure/timeout
+  counters, sanitized error types, and aggregate Deco/client counts.
+  It never includes passwords, tokens, MAC/IP addresses, client names,
+  SSIDs or raw API payloads, and performs no additional router requests.
+
 - Add eight opt-in coordinator health diagnostics on the master Deco:
   successful update timestamps, API response times, last error types,
   client timeout count and current per-node query mode. They do not
