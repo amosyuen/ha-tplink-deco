@@ -160,11 +160,13 @@ feature.
   cookie and sequence for the encrypted local LuCI session. Do not
   invalidate an otherwise valid session solely because a connection
   drops, a payload is truncated or client polling reports HTTP 5xx.
-- HTTP 401/403 and authenticated API `error_code=-5002` (including supported
-  decrypted error fields) follow the existing session-expiry/re-login
-  handling. Retry at most once for an expired authenticated session; do
-  not apply that interpretation to the initial login or an unrelated
-  endpoint.
+- HTTP **401** and **403** clear authentication, but differ in retry
+  behavior: 401 is propagated as an HTTP error; 403 is converted to
+  `ForbiddenException` and enters the existing bounded re-login flow.
+  Authenticated API `error_code=-5002` (including supported decrypted
+  error fields) also enters that re-login flow. An expired session gets
+  **at most one** re-login attempt. Do not treat an initial-login error
+  or a request to an unrelated endpoint as authenticated session expiry.
 - A same-host HTTP **307 → HTTPS** redirect may update the **runtime**
   API origin, including its port, to preserve subsequent authenticated
   requests. A cross-host redirect must not rewrite the configured router
