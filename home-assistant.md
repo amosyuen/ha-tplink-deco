@@ -12,13 +12,12 @@ in [`.agents/skills/`](.agents/skills/). The repository's governing policy
 remains `AI_POLICY.md`.
 
 **Baseline:** verified against fork `main` at
-`22468546665ff9a2511f90a1e7ccc5ee311edb6e` (15 November 2026).
+`3b033f6dd1ffb2d14c95d00208fc6120e2428c5b` (15 November 2026).
 This describes the fork, **not** the current upstream architecture.
-Deco discovery ordering (PR #25), unavailable-client restoration (PR #26),
-post-refresh client tracker discovery (PR #27) and per-node client counts
-(PR #28) are merged on this baseline. The background initial client
-refresh described below is proposed in [PR #29](https://github.com/HiDiHo01/ha-tplink-deco/pull/29),
-not on this baseline `main`. Distinguish deployed and pending behavior.
+Deco discovery (PR #25), client restoration (PR #26), tracker discovery
+(PR #27), per-node client counts (PR #28), and non-blocking initial client
+refresh (PR #29) are merged. Coordinator health sensors described below
+are proposed in the current issue #2 PR, not yet on baseline `main`.
 
 ## 1. Integration boundary and data ownership
 
@@ -237,6 +236,18 @@ not on this baseline `main`. Distinguish deployed and pending behavior.
   Diagnostic entities are created when their initial values are present
   and are disabled by default in the registry. No new diagnostics should
   implicitly delete existing entities.
+- **Coordinator health diagnostics (proposed in this PR):** attach eight
+  disabled-by-default read-only sensors to the master Deco: last successful
+  update, API response time and last error for each existing Deco/client
+  coordinator; client timeouts and query mode. Timestamps are UTC-aware,
+  durations use milliseconds, error values contain only exception class
+  names, and the query mode is `per_node` until global fallback is
+  separately implemented. Stable identities use `<master_mac>_<metric_key>`.
+  A paused, backoff-skipped or no-device cycle does not change health;
+  completely failed client lists count as unsuccessful, even if client
+  state is retained. No extra router API calls or downloaded diagnostics
+  export are added by this change. The health sensors stay readable when
+  polling fails and are registered once when the master is available.
 - `switch` controls polling. `select` chooses the main polling interval
   and persists the selected integer in the config entry before reload.
 - Registered services are `tplink_deco.reboot_deco`,
@@ -276,7 +287,7 @@ not on this baseline `main`. Distinguish deployed and pending behavior.
   known objects and **await** forwarding all existing platforms before
   registering entry services and the configuration update listener.
   Do not finish entry setup while platform setup is still pending.
-- **Initial client refresh (proposed in this PR):** after platform forwarding,
+- **Initial client refresh (merged in PR #29):** after platform forwarding,
   schedule `clients_coordinator.async_refresh()` using the config entry's
   `async_create_background_task`. Do not await the optional client request
   during coordinator construction or use `async_request_refresh()` for this
