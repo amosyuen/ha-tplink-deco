@@ -373,6 +373,22 @@ policy for AI-assisted development.
   full-head CI. Only check off the corresponding issue #2 item after
   the complete feature has merged.
 
+- **Failure contracts (PR #34):** reject a non-list device reply,
+  invalid/duplicate MAC identifiers and malformed optional signal mappings
+  *before* modifying cached Deco objects or advancing inventory cadence.
+  Raise fixed, descriptive exceptions that never interpolate upstream
+  content. Keep the last valid inventory and retry eligibility on failure.
+  Commit a validated inventory independently from optional performance;
+  expected transient/timeout performance failures preserve last CPU/memory
+  samples, while authentication errors must still propagate.
+- **Manual failure feedback:** Home Assistant's coordinator `async_refresh`
+  can consume an API exception; check `last_update_success` and raise a
+  sanitized `HomeAssistantError` for the button. Clear the manual override
+  on failure as well as success, so a paused polling switch cannot
+  accidentally resume API requests; a later press retries explicitly.
+  Test invalid response atomicity, paused behavior, optional timeouts and
+  credential error propagation on both supported HA versions.
+
 ## Legacy firmware numeric telemetry (upstream #589, partial backport)
 
 - **Observed on fork `main`:** client rates are converted with direct
