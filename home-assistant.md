@@ -249,6 +249,14 @@ not yet on baseline `main`.
   state is retained. No extra router API calls or downloaded diagnostics
   export are added by this change. The health sensors stay readable when
   polling fails and are registered once when the master is available.
+  **Pending PR #30 review finding:** on HA 2025.12 and 2026.11,
+  consecutive failed `async_refresh()` calls suppress repeated ordinary
+  coordinator-listener callbacks. The current implementation updates
+  health data in memory, but enabled sensors may show stale timeout
+  counters, response times and new error types until recovery. A
+  health-only update notification and an `async_refresh()` regression
+  test are required before considering this behavior resolved; simply
+  overriding `available` is insufficient.
 - `switch` controls polling. `select` chooses the main polling interval
   and persists the selected integer in the config entry before reload.
 - Registered services are `tplink_deco.reboot_deco`,
