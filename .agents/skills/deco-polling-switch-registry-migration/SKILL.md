@@ -52,6 +52,12 @@ description: "Use when changing or reviewing the Deco polling switch's unique ID
    behavior, and setup ordering (migration must happen before adding
    the new entity). Update pre-existing tests that assert the old
    global unique ID; retain their other compatibility checks.
+   A registry test double must apply `async_update_entity` to its lookup
+   state: after owner migration the legacy unique ID must disappear, the
+   new scoped ID must resolve to the original entity ID, and a second
+   config entry must register a distinct scoped switch. Static lookup
+   mocks can conceal cross-entry regressions even when both setup
+   orders are parametrized.
 9. Run the full Python 3.13 / Home Assistant 2025.12 and Python 3.14 /
    Home Assistant 2026.11 matrix, plus pre-commit, HACS and Hassfest on
    the **final** PR head. Never claim a live device-registry migration
