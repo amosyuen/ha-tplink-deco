@@ -1,12 +1,46 @@
+from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import COORDINATOR_DECOS_KEY
 from .const import DOMAIN
 from .device import create_device_info
+
+LEGACY_POLLING_UNIQUE_ID = "tplink_deco_polling"
+
+
+def polling_unique_id(config_entry_id: str) -> str:
+    """Return the polling switch unique ID for a single config entry."""
+    return f"{LEGACY_POLLING_UNIQUE_ID}_{config_entry_id}"
+
+
+def _migrate_polling_switch_unique_id(
+    hass: HomeAssistant, config_entry: ConfigEntry
+) -> None:
+    """Migrate only this entry's legacy switch, preserving its entity ID."""
+    registry = er.async_get(hass)
+    legacy_entity_id = registry.async_get_entity_id(
+        SWITCH_DOMAIN, DOMAIN, LEGACY_POLLING_UNIQUE_ID
+    )
+    if legacy_entity_id is None:
+        return
+
+    legacy_entry = registry.async_get(legacy_entity_id)
+    if legacy_entry is None or legacy_entry.config_entry_id != config_entry.entry_id:
+        return
+
+    new_unique_id = polling_unique_id(config_entry.entry_id)
+    # A scoped switch already in the registry must never be overwritten.
+    if registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, new_unique_id) is not None:
+        return
+
+    registry.async_update_entity(
+        legacy_entity_id, new_unique_id=new_unique_id
+    )
 
 
 async def async_setup_entry(
@@ -17,6 +51,7 @@ async def async_setup_entry(
     """Set up switch."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id][COORDINATOR_DECOS_KEY]
 
+    _migrate_polling_switch_unique_id(hass, config_entry)
     async_add_entities([DecoPollingSwitch(coordinator)])
 
 
@@ -26,7 +61,7 @@ class DecoPollingSwitch(SwitchEntity):
     def __init__(self, coordinator) -> None:
         self.coordinator = coordinator
         self._attr_name = "Polling"
-        self._attr_unique_id = "tplink_deco_polling"
+        self._attr_unique_id = polling_unique_id(coordinator.config_entry.entry_id)
         self._attr_icon = "mdi:lan-connect"
 
     @property
