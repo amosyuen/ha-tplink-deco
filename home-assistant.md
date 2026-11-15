@@ -17,7 +17,8 @@ This describes the fork, **not** the current upstream architecture.
 Runtime Deco discovery ordering from [PR #25](https://github.com/HiDiHo01/ha-tplink-deco/pull/25)
 and unavailable-client restoration from [PR #26](https://github.com/HiDiHo01/ha-tplink-deco/pull/26)
 are merged on this baseline. The client tracker post-refresh listener
-below is proposed in the current issue #2 PR, not yet on baseline `main`.
+below is proposed in [PR #27](https://github.com/HiDiHo01/ha-tplink-deco/pull/27),
+not yet on baseline `main`.
 Update this guide alongside behavior changes; distinguish proposed behavior
 from deployed code.
 
