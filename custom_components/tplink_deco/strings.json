@@ -8,6 +8,7 @@
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
           "scan_interval": "Seconds between updates",
+          "device_list_interval": "Seconds between Deco status updates (0 = startup only)",
           "consider_home": "Seconds to wait before marking a device tracker as not home after it is no longer seen.",
           "timeout_seconds": "Timeout seconds",
           "timeout_error_retries": "Timeout error retry count",
@@ -32,7 +33,8 @@
       "invalid_host": "[%key:common::config_flow::error::invalid_host%]",
       "timeout_connect": "[%key:common::config_flow::error::timeout_connect%]",
       "unknown": "[%key:common::config_flow::error::unknown%]",
-      "invalid_scan_interval": "Select a polling interval of 10, 30, 60, or 120 seconds."
+      "invalid_scan_interval": "Select a polling interval of 10, 30, 60, or 120 seconds.",
+      "invalid_device_list_interval": "Enter 0 for startup-only, or at least 10 seconds for Deco status updates."
     },
     "abort": {
       "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
@@ -47,6 +49,7 @@
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
           "scan_interval": "Seconds between updates",
+          "device_list_interval": "Seconds between Deco status updates (0 = startup only)",
           "consider_home": "Seconds to wait before marking a device tracker as not home after it is no longer seen.",
           "timeout_seconds": "Timeout seconds",
           "timeout_error_retries": "Timeout error retry count",
@@ -67,7 +70,8 @@
       "invalid_host": "[%key:common::config_flow::error::invalid_host%]",
       "timeout_connect": "[%key:common::config_flow::error::timeout_connect%]",
       "unknown": "[%key:common::config_flow::error::unknown%]",
-      "invalid_scan_interval": "Select a polling interval of 10, 30, 60, or 120 seconds."
+      "invalid_scan_interval": "Select a polling interval of 10, 30, 60, or 120 seconds.",
+      "invalid_device_list_interval": "Enter 0 for startup-only, or at least 10 seconds for Deco status updates."
     }
   }
 }
