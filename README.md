@@ -113,6 +113,12 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Add eight opt-in coordinator health diagnostics on the master Deco:
+  successful update timestamps, API response times, last error types,
+  client timeout count and current per-node query mode. They do not
+  trigger extra Deco API requests or expose raw responses, credentials
+  or device/client lists.
+
 - Run the first optional client-list refresh as a config-entry-owned
   background task after Home Assistant platforms are initialized, instead
   of delaying entry setup on client polling. The initial Deco inventory
