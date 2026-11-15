@@ -80,11 +80,14 @@ class CoordinatorHealth:
                     type(error).__name__,
                 )
 
-    def record_success(self, started: float) -> None:
-        """Record a completed poll without logging or retaining payloads."""
+    def record_success(self, started: float, *, timed_out: bool = False) -> None:
+        """Record successful data, optionally with a timed-out peer node."""
         self.last_successful_update = datetime.now(timezone.utc)
         self.response_time_ms = max(0, round((monotonic() - started) * 1000))
         self.consecutive_failures = 0
+        if timed_out:
+            self.timeout_count += 1
+            self.last_error = "TimeoutException"
         self._notify_listeners()
 
     def record_failure(self, started: float, error: Exception) -> None:
@@ -96,11 +99,15 @@ class CoordinatorHealth:
             self.timeout_count += 1
         self._notify_listeners()
 
-    def record_incomplete(self, started: float) -> None:
-        """Track a poll where none of the queried nodes returned valid data."""
+    def record_incomplete(
+        self, started: float, *, timed_out: bool = False
+    ) -> None:
+        """Record an all-failed poll and whether any node timed out."""
         self.response_time_ms = max(0, round((monotonic() - started) * 1000))
         self.consecutive_failures += 1
-        self.last_error = "NoSuccessfulClientList"
+        if timed_out:
+            self.timeout_count += 1
+        self.last_error = "TimeoutException" if timed_out else "NoSuccessfulClientList"
         self._notify_listeners()
 
 
@@ -515,6 +522,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         self.successfully_polled_deco_macs: set[str] = set()
         self.health = CoordinatorHealth()
         self._poll_had_valid_response = False
+        self._poll_had_timeout = False
 
     @property
     def client_query_mode(self) -> str:
@@ -557,6 +565,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             )
         except TimeoutException:
             # One failed Deco must not trigger repeated per-node timeouts.
+            self._poll_had_timeout = True
             _LOGGER.debug("Deco client poll timed out")
             return None, False
         except TransientConnectionException:
@@ -609,6 +618,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
 
         started = monotonic()
         self._poll_had_valid_response = False
+        self._poll_had_timeout = False
         try:
             data = await self._async_update_data_internal()
         except Exception as error:
@@ -616,9 +626,9 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             raise
 
         if self._poll_had_valid_response:
-            self.health.record_success(started)
+            self.health.record_success(started, timed_out=self._poll_had_timeout)
         else:
-            self.health.record_incomplete(started)
+            self.health.record_incomplete(started, timed_out=self._poll_had_timeout)
         return data
 
     async def _async_update_data_internal(self):
