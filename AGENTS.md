@@ -207,7 +207,7 @@ policy for AI-assisted development.
   multiple config entries. Missing initial data must not invent devices.
 - **Verification gates:** inspect the actual diagnostics hook in both
   supported Home Assistant releases. Test exact allowed keys and types,
-  JSON serialization, private sentinel exclusion at *all* nested levels,
+  JSON serialization, private sentinel exclusion at _all_ nested levels,
   missing data, no additional API calls and multi-entry isolation. Direct
   invocation of `async_get_config_entry_diagnostics` validates the data
   contract, **not** the Home Assistant diagnostics platform registration;
