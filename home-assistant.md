@@ -172,10 +172,13 @@ not part of this baseline.
   continue when a device-list request is skipped. A master-linked
   `Refresh Deco status` button forces immediate inventory discovery,
   including when the main polling switch is paused. Unsuccessful
-  device-list requests retain their due status for the next attempt.
-  Config and options flow validation is separate from the serializable
-  nonnegative numeric form field. No new timer, coordinator or client
-  polling behavior is introduced by this setting.
+  device-list requests retain their last-success timestamp for the
+  next scheduled or manual retry. Invalid or duplicate router inventory
+  entries are rejected before changing cached devices. A failed manual
+  press shows a sanitized HA error and clears the forced request so
+  paused polling stays paused. Authentication failures retain their
+  distinct error type. Config/options validation remains separate from
+  the serializable numeric form; no new timer or coordinator is added.
 - The Deco coordinator's `paused` state gates its own refresh, and the
   client coordinator honors the same pause flag. The switch controls this
   flag; turning polling back on requests a refresh.
@@ -190,13 +193,11 @@ not part of this baseline.
   CPU/memory fields preserve the previous raw and smoothed readings;
   valid zero is not treated as missing. Keep the existing units,
   identities and 70/30 smoothing. This does **not** add the separate
-  encrypted outer session needed for some legacy S7 firmware. An optional performance request that
-  exhausts **transient-response** retries raises
-  `TransientConnectionException`, which the coordinator catches so
-  the device-list update can proceed. **Current limitation:** an
-  exhausted `TimeoutException` is not caught there and can fail the
-  entire coordinator refresh; treating that timeout as optional would
-  require a separate runtime change and regression test.
+  encrypted outer session needed for some legacy S7 firmware.
+  Optional performance failures caused by bounded transient-response
+  retries or timeouts preserve previous CPU/memory samples without
+  discarding a validated device-list update. Authentication and other
+  unexpected API errors still fail the coordinator refresh.
 - Truncated payloads and server disconnects have bounded retries using
   the configured `timeout_error_retries` count, independently of timeout
   and one-time re-login retry budgets. A temporary transport failure does
