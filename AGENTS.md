@@ -219,7 +219,7 @@ policy for AI-assisted development.
   partial-vs-all-failed polls, valid empty replies, skip conditions,
   timestamp timezones, sanitized errors, unchanged API request counts,
   late-master creation, once-per-entry registration, stable device/unique
-  IDs and multi-entry isolation. Test *real* `async_refresh()` behavior
+  IDs and multi-entry isolation. Test _real_ `async_refresh()` behavior
   through two or more consecutive failures on **both** supported Home
   Assistant versions: enabled health sensors must publish each changed
   failure count/error/duration, while unrelated entities and
