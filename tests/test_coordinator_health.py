@@ -33,7 +33,7 @@ def _coordinators() -> tuple[
     hass = MagicMock()
     deco = TpLinkDeco(MASTER_MAC)
     deco.name = "Test Deco"
-    mesh = TplinkDecoData(deco, {deco.mac: deco})
+    mesh = TpLinkDecoData(deco, {deco.mac: deco})
     deco_coordinator = TplinkDecoUpdateCoordinator(
         hass=hass, api=MagicMock(), config_entry=MagicMock(), data=mesh
     )
