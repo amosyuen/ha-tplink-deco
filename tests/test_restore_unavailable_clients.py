@@ -161,7 +161,6 @@ async def test_restore_passes_exact_coordinator_arguments_and_original_names(
         lookup.assert_called_once_with(entry.entity_id)
 
 
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize("modern_api", [False, True])
 @pytest.mark.parametrize(
