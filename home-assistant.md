@@ -163,7 +163,7 @@ not part of this baseline.
 - The existing **main scan interval** has choices 10, 30, 60 and 120
   seconds (default 30). It drives the client and performance refresh
   cadence and the existing polling-interval select.
-- **Proposed in this PR (upstream #616/#669/#670):** a separate
+- **Proposed in [PR #34](https://github.com/HiDiHo01/ha-tplink-deco/pull/34) (upstream #616/#669/#670):** a separate
   `device_list_interval` determines how often the Deco coordinator
   fetches mesh status. Missing values inherit the main scan interval
   for backward compatibility; `0` requests inventory at startup only.
