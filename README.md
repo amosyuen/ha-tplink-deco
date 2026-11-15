@@ -115,9 +115,10 @@ Configurable:
 
 - Tolerate numeric strings returned by older Deco firmware for
   client download/upload rates and master CPU/memory fractions.
-  Invalid or non-finite optional values no longer interrupt these
-  measurements. Legacy S7 encrypted-session authentication is not
-  included in this compatibility update.
+  Invalid client rates contribute zero to live network/per-Deco
+  throughput totals; malformed optional CPU/memory values preserve
+  the last valid reading. Legacy S7 encrypted-session authentication
+  is not included in this compatibility update.
 
 - Add a privacy-safe Home Assistant config-entry diagnostics download with
   coordinator last-success timestamps, response times, failure/timeout
