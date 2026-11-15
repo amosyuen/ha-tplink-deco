@@ -26,6 +26,7 @@ from homeassistant.util import dt as dt_util
 
 from .api import TplinkDecoApi
 from .api import normalize_name
+from .const import DEFAULT_SCAN_INTERVAL
 from .const import DOMAIN
 from .const import SIGNAL_CLIENT_ADDED
 from .const import SIGNAL_DECO_ADDED
@@ -262,10 +263,22 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
         config_entry: ConfigEntry,
         update_interval: timedelta = None,
         data: TpLinkDecoData = None,
+        device_list_interval_seconds: int | None = None,
     ) -> None:
         """Initialize."""
         self.api = api
         self._on_close: list[Callable] = []
+        self.device_list_interval_seconds = (
+            device_list_interval_seconds
+            if device_list_interval_seconds is not None
+            else (
+                int(update_interval.total_seconds())
+                if update_interval is not None
+                else DEFAULT_SCAN_INTERVAL
+            )
+        )
+        self._last_device_list_update: float | None = None
+        self._force_device_list_refresh = False
 
         super().__init__(
             hass,
@@ -282,7 +295,7 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Measure an actual Deco poll without changing pause semantics."""
-        if self.paused:
+        if self.paused and not self._force_device_list_refresh:
             _LOGGER.debug("Deco polling is paused")
             return self.data
 
@@ -298,9 +311,12 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data_internal(self):
         """Fetch and reconcile the Deco inventory and optional performance."""
-        new_decos = await async_call_and_propagate_config_error(
-            self.api.async_list_devices
-        )
+        # Keep mesh discovery independent from client/performance polling.
+        new_decos = None
+        if self._device_list_refresh_due():
+            new_decos = await async_call_and_propagate_config_error(
+                self.api.async_list_devices
+            )
 
         try:
             performance_data = await async_call_and_propagate_config_error(
@@ -312,32 +328,12 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.debug("Deco performance unavailable after transport retries")
             performance_data = None
 
-        old_decos = self.data.decos
-        master_deco = None
-        deco_added = False
-        decos = {}
-        for new_deco in new_decos:
-            mac = new_deco["mac"]
-            deco = old_decos.get(mac)
-            if deco is None:
-                deco_added = True
-                deco = TpLinkDeco(mac)
-                _LOGGER.debug("_async_update_data: Found new deco mac=%s", deco.mac)
-            deco.update(new_deco)
-            decos[mac] = deco
-            if deco.master:
-                master_deco = deco
+        if new_decos is not None:
+            self._process_device_list(new_decos)
+            self._last_device_list_update = monotonic()
+            self._force_device_list_refresh = False
 
-        for mac, old_deco in old_decos.items():
-            if mac not in decos:
-                _LOGGER.debug(
-                    "_async_update_data: Deco mac=%s not returned by API, marking offline",
-                    mac,
-                )
-                old_deco.online = False
-                old_deco.internet_online = False
-                decos[mac] = old_deco
-
+        master_deco = self.data.master_deco
         # Zet globale performance data op de master Deco
         result = performance_data.get("result", {}) if performance_data else {}
         if master_deco is not None:
@@ -368,13 +364,56 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
                 else:
                     master_deco.mem_usage = round(mem_percent, 1)
 
-        updated_data = TpLinkDecoData(master_deco, decos)
-        # Discovery callbacks inspect coordinator.data synchronously.
-        self.data = updated_data
+        return self.data
+
+    def _device_list_refresh_due(self) -> bool:
+        """Check whether to refresh the mesh inventory this cycle."""
+        if self._force_device_list_refresh or self._last_device_list_update is None:
+            return True
+        if self.device_list_interval_seconds == 0:
+            return False
+        return (
+            monotonic() - self._last_device_list_update
+            >= self.device_list_interval_seconds
+        )
+
+    def _process_device_list(self, new_decos: list[dict[str, Any]]) -> None:
+        """Reconcile Deco nodes while retaining stable MAC-based identities."""
+        old_decos = self.data.decos
+        master_deco = None
+        deco_added = False
+        decos: dict[str, TpLinkDeco] = {}
+        for new_deco in new_decos:
+            mac = new_deco["mac"]
+            deco = old_decos.get(mac)
+            if deco is None:
+                deco_added = True
+                deco = TpLinkDeco(mac)
+                _LOGGER.debug("_async_update_data: Found new deco mac=%s", deco.mac)
+            deco.update(new_deco)
+            decos[mac] = deco
+            if deco.master:
+                master_deco = deco
+
+        for mac, old_deco in old_decos.items():
+            if mac not in decos:
+                _LOGGER.debug(
+                    "_async_update_data: Deco mac=%s not returned by API, marking offline",
+                    mac,
+                )
+                old_deco.online = False
+                old_deco.internet_online = False
+                decos[mac] = old_deco
+
+        # Discovery handlers inspect coordinator.data synchronously.
+        self.data = TpLinkDecoData(master_deco, decos)
         if deco_added:
             async_dispatcher_send(self.hass, SIGNAL_DECO_ADDED)
 
-        return updated_data
+    async def async_request_device_refresh(self) -> None:
+        """Request a real device-list poll, even in startup-only mode."""
+        self._force_device_list_refresh = True
+        await self.async_refresh()
 
     @callback
     def on_close(self, func: CALLBACK_TYPE) -> None:
