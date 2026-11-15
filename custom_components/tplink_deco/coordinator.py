@@ -3,6 +3,7 @@
 import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
+from dataclasses import field
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
@@ -46,12 +47,35 @@ class CoordinatorHealth:
     timeout_count: int = 0
     consecutive_failures: int = 0
     last_error: str = "0"
+    _listeners: list[CALLBACK_TYPE] = field(
+        default_factory=list, repr=False, compare=False
+    )
+
+    @callback
+    def async_add_listener(self, listener: CALLBACK_TYPE) -> CALLBACK_TYPE:
+        """Subscribe to health changes independently of coordinator updates."""
+        self._listeners.append(listener)
+
+        @callback
+        def _unsubscribe() -> None:
+            """Remove this listener safely when its entity is unloaded."""
+            if listener in self._listeners:
+                self._listeners.remove(listener)
+
+        return _unsubscribe
+
+    @callback
+    def _notify_listeners(self) -> None:
+        """Publish every measured change, even after consecutive failures."""
+        for listener in tuple(self._listeners):
+            listener()
 
     def record_success(self, started: float) -> None:
         """Record a completed poll without logging or retaining payloads."""
         self.last_successful_update = datetime.now(timezone.utc)
         self.response_time_ms = max(0, round((monotonic() - started) * 1000))
         self.consecutive_failures = 0
+        self._notify_listeners()
 
     def record_failure(self, started: float, error: Exception) -> None:
         """Track failed polls by exception type, never by exception message."""
@@ -60,12 +84,14 @@ class CoordinatorHealth:
         self.last_error = type(error).__name__
         if isinstance(error, (TimeoutError, TimeoutException)):
             self.timeout_count += 1
+        self._notify_listeners()
 
     def record_incomplete(self, started: float) -> None:
         """Track a poll where none of the queried nodes returned valid data."""
         self.response_time_ms = max(0, round((monotonic() - started) * 1000))
         self.consecutive_failures += 1
         self.last_error = "NoSuccessfulClientList"
+        self._notify_listeners()
 
 
 def bytes_to_bits(bytes_count):
