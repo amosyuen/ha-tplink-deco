@@ -100,6 +100,7 @@ async def test_unexpected_node_error_cancels_other_pending_requests() -> None:
     never_finish = asyncio.Event()
     active: set[str] = set()
     ended: set[str] = set()
+    cancelled: set[str] = set()
 
     async def _clients(
         deco_mac: str, *, timeout_error_retries: int
@@ -115,6 +116,9 @@ async def test_unexpected_node_error_cancels_other_pending_requests() -> None:
                 raise ValueError("malformed response")
             await never_finish.wait()
             return []
+        except asyncio.CancelledError:
+            cancelled.add(deco_mac)
+            raise
         finally:
             ended.add(deco_mac)
             active.discard(deco_mac)
@@ -124,8 +128,12 @@ async def test_unexpected_node_error_cancels_other_pending_requests() -> None:
         await asyncio.wait_for(coordinator._async_update_data(), timeout=3)
 
     assert active == set()
-    assert ended == {MASTER, SATELLITE}
-    assert api.async_list_clients.await_count == 2
+    assert {MASTER, SATELLITE}.issubset(ended)
+    assert SATELLITE in cancelled
+    assert ended == {
+        call.args[0] for call in api.async_list_clients.await_args_list
+    }
+    # A semaphore waiter may briefly start after the first slot releases.
     assert coordinator.health.last_error == "ValueError"
     assert coordinator.health.consecutive_failures == 1
 
