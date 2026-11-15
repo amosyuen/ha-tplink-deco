@@ -377,9 +377,7 @@ class TplinkCoordinatorHealthSensor(SensorEntity):
     def __init__(
         self,
         coordinator_decos: TplinkDecoUpdateCoordinator,
-        coordinator: (
-            TplinkDecoUpdateCoordinator | TplinkDecoClientUpdateCoordinator
-        ),
+        coordinator: TplinkDecoUpdateCoordinator | TplinkDecoClientUpdateCoordinator,
         master_deco_mac: str,
         description: TplinkCoordinatorHealthSensorDescription,
     ) -> None:
