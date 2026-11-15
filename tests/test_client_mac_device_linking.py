@@ -1,6 +1,7 @@
 """Regression tests for opt-out MAC-based Deco client device linking."""
 
 import json
+from types import MappingProxyType
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock
@@ -8,6 +9,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 from homeassistant.components.device_tracker.const import ATTR_MAC
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers.data_entry_flow import _BaseFlowManagerView
 import pytest
@@ -136,6 +138,23 @@ async def test_only_legacy_client_devices_may_be_removed(
     assert result is allowed
 
 
+def _config_entry(version: int, data: dict[str, Any]) -> ConfigEntry:
+    """Construct a real immutable Home Assistant entry for migration tests."""
+    return ConfigEntry(
+        data=data,
+        discovery_keys=MappingProxyType({}),
+        domain=DOMAIN,
+        entry_id="mesh-one",
+        minor_version=1,
+        options={},
+        source="user",
+        subentries_data=None,
+        title="Test Deco",
+        unique_id=None,
+        version=version,
+    )
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("version", [5, 6])
 @pytest.mark.parametrize("existing_value", [None, False, True])
@@ -146,12 +165,16 @@ async def test_migration_adds_opt_out_with_safe_default(
     data: dict[str, Any] = {"host": "192.0.2.1", "client_prefix": "Home"}
     if existing_value is not None:
         data[CONF_LINK_CLIENT_DEVICES] = existing_value
-    entry = SimpleNamespace(version=version, data=data)
+    entry = _config_entry(version, data)
     hass = MagicMock()
 
     assert await async_migrate_entry(hass, entry)
-    assert entry.version == 7
-    saved = hass.config_entries.async_update_entry.call_args.kwargs["data"]
+    # The actual Home Assistant manager, not the integration, sets version.
+    assert entry.version == version
+    hass.config_entries.async_update_entry.assert_called_once()
+    update_kwargs = hass.config_entries.async_update_entry.call_args.kwargs
+    assert update_kwargs["version"] == 7
+    saved = update_kwargs["data"]
     assert saved[CONF_LINK_CLIENT_DEVICES] is (
         True if existing_value is None else existing_value
     )
