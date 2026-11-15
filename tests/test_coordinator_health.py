@@ -184,6 +184,115 @@ async def test_health_tracks_real_partial_and_all_failed_node_polls() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("coordinator_kind", ("deco", "client"))
+async def test_health_sensor_publishes_after_consecutive_failed_refreshes(
+    coordinator_kind: str,
+) -> None:
+    """Publish health on every actual refresh, despite suppressed HA listeners."""
+    deco_coordinator, client_coordinator = _coordinators()
+    coordinator = (
+        deco_coordinator
+        if coordinator_kind == "deco"
+        else client_coordinator
+    )
+    coordinator.hass.is_stopping = False
+    coordinator._schedule_refresh = MagicMock()
+
+    metric_key = f"{coordinator_kind}_last_error"
+    description = next(
+        item
+        for item in COORDINATOR_HEALTH_SENSOR_DESCRIPTIONS
+        if item.key == metric_key
+    )
+    health_sensor = TplinkCoordinatorHealthSensor(
+        coordinator_decos=deco_coordinator,
+        coordinator=coordinator,
+        master_deco_mac=MASTER_MAC,
+        description=description,
+    )
+    published_states: list[tuple[str, int, int]] = []
+
+    def _capture_health_state() -> None:
+        """Capture only the health state that Home Assistant would receive."""
+        health = coordinator.health
+        published_states.append(
+            (
+                health_sensor.native_value,
+                health.timeout_count,
+                health.consecutive_failures,
+            )
+        )
+
+    health_sensor.async_write_ha_state = MagicMock(
+        side_effect=_capture_health_state
+    )
+    await health_sensor.async_added_to_hass()
+    assert health_sensor.should_poll is False
+    assert len(coordinator.health._listeners) == 1
+
+    ordinary_listener = MagicMock()
+    unsubscribe_normal = coordinator.async_add_listener(ordinary_listener)
+
+    calls = iter(("success", "timeout", "second_timeout", "recovered"))
+
+    async def _fetch() -> TpLinkDecoData | dict[str, object]:
+        """Return valid data or throw distinct, safe synthetic errors."""
+        outcome = next(calls)
+        if outcome == "timeout":
+            raise TimeoutError("private response")
+        if outcome == "second_timeout":
+            raise TimeoutException("private response")
+        if coordinator_kind == "client":
+            client_coordinator._poll_had_valid_response = True
+        return coordinator.data
+
+    coordinator._async_update_data_internal = AsyncMock(side_effect=_fetch)
+
+    for iteration in range(4):
+        await coordinator.async_refresh()
+        assert len(published_states) == iteration + 1
+
+    assert published_states == [
+        ("0", 0, 0),
+        ("TimeoutError", 1, 1),
+        ("TimeoutException", 2, 2),
+        ("TimeoutException", 2, 0),
+    ]
+    # HA's normal coordinator updates skip the second consecutive failure;
+    # health state updates nevertheless continue for health consumers.
+    assert ordinary_listener.call_count == 3
+    assert coordinator.last_update_success is True
+    assert coordinator.health.last_successful_update is not None
+    assert coordinator._async_update_data_internal.await_count == 4
+
+    # HA invokes async_on_remove callbacks when an entity is removed.
+    assert health_sensor._on_remove is not None
+    for remove_callback in health_sensor._on_remove:
+        remove_callback()
+    assert coordinator.health._listeners == []
+    unsubscribe_normal()
+
+    before = len(published_states)
+    coordinator.health.record_failure(0, TimeoutError("private response"))
+    assert len(published_states) == before
+
+
+def test_health_listener_unsubscribe_is_idempotent() -> None:
+    """A torn-down health entity must not leak listeners or receive updates."""
+    health = CoordinatorHealth()
+    callback = MagicMock()
+    unsubscribe = health.async_add_listener(callback)
+    health.record_incomplete(0)
+    callback.assert_called_once_with()
+
+    unsubscribe()
+    unsubscribe()
+    health.record_failure(0, TimeoutError("hidden"))
+    callback.assert_called_once_with()
+    assert not health._listeners
+
+
+@pytest.mark.asyncio
 async def test_health_sensors_register_once_and_keep_existing_ids() -> None:
     """Attach eight disabled diagnostics to the master without new API calls."""
     hass = MagicMock()
