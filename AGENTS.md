@@ -34,6 +34,8 @@ reading these instructions:
   validate Deco device selections, batch actions and service regression tests.
 - [Deco device-registry parent links](.agents/skills/deco-device-registry-parent-links/SKILL.md):
   validate master/satellite `DeviceInfo` relationships, legacy/modern API compatibility and existing regression assumptions.
+- [Deco polling-switch registry migration](.agents/skills/deco-polling-switch-registry-migration/SKILL.md):
+  validate per-config-entry switch IDs and owner-checked in-place migrations.
 - [Deco truncated-response and client-state validation](.agents/skills/deco-transient-response-validation/SKILL.md):
   validate bounded retries, retained authentication, per-node clients and optional performance data.
 - [Deco HTTP 5xx client polling backoff](.agents/skills/deco-client-backoff-validation/SKILL.md):
@@ -462,6 +464,28 @@ policy for AI-assisted development.
   then confirm HACS, Hassfest, and CI status where available. Report
   checks that were not run or could not be verified; never claim success
   from tests that have merely been added.
+
+## Per-entry polling-switch identity migration (upstream #655)
+
+- The historical polling-switch unique ID `tplink_deco_polling` is shared
+  between config entries. New switches use
+  `tplink_deco_polling_<config_entry.entry_id>` so independent Deco
+  installations do not collide in the Home Assistant entity registry.
+- Look up the legacy entry with `entity_registry.async_get_entity_id`
+  and migrate **only when its recorded `config_entry_id` matches** the
+  currently setting-up integration entry. Use
+  `entity_registry.async_update_entity(..., new_unique_id=...)` before
+  `async_add_entities`; never delete/recreate the entity or rename its
+  Home Assistant `entity_id`. Leave another entry's old switch untouched.
+- Skip nonexistent, stale or already-migrated entries and guard against
+  conflicts when the scoped ID already exists. Keep the original visible
+  name, icon, services, refresh semantics and master Deco device link.
+- Always inspect earlier regression tests for assumptions about stable
+  `unique_id` values, especially `test_via_device_registry_links.py`.
+  Retain existing entity/device identifier checks while updating only
+  the intentional polling-switch unique ID expectation. Test both
+  supported HA versions and both mesh-setup orders. Follow the
+  [switch migration skill](.agents/skills/deco-polling-switch-registry-migration/SKILL.md).
 
 ## PR validation and upstream tracking lessons
 
