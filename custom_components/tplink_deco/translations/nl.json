@@ -9,7 +9,8 @@
           "username": "Gebruikersnaam",
           "password": "Wachtwoord",
           "interval_seconds": "Aantal seconden tussen updates",
-          "consider_home": "Aantal seconden sinds laatste keer dat het gezien is totdat een device als niet-thuis wordt gemarkeerd"
+          "consider_home": "Aantal seconden sinds laatste keer dat het gezien is totdat een device als niet-thuis wordt gemarkeerd",
+          "link_client_devices": "Koppel clienttrackers aan apparaten via MAC-adres"
         }
       },
       "reauth_confirm": {
@@ -37,7 +38,8 @@
           "username": "Gebruikersnaam",
           "password": "Wachtwoord",
           "interval_seconds": "Aantal seconden tussen updates",
-          "consider_home": "Aantal seconden sinds laatste keer dat het gezien is totdat een device als niet-thuis wordt gemarkeerd"
+          "consider_home": "Aantal seconden sinds laatste keer dat het gezien is totdat een device als niet-thuis wordt gemarkeerd",
+          "link_client_devices": "Koppel clienttrackers aan apparaten via MAC-adres"
         }
       }
     },
