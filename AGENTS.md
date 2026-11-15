@@ -362,10 +362,20 @@ policy for AI-assisted development.
   `TplinkTotalClientDataRateSensor` aggregation for mixed valid and
   invalid **online** clients, in addition to testing the numeric helper;
   an isolated parsing unit test cannot prove downstream compatibility.
-  Check behavior against the latest `main` and rerun all required CI on
-  the final PR commit. Do not mark the upstream S7 legacy-session
-  checkbox complete until its distinct authentication/transport
-  functionality is implemented and tested.
+  **PR #33 review lesson:** when a reviewer proposes changing a
+  downstream sum after malformed firmware data, trace the complete
+  producer-to-consumer path first. If the established sensor contract
+  requires numeric rates, normalizing invalid input to `0.0` at the
+  client-update boundary may fix the verified defect with less risk
+  than changing every consumer. Prove the chosen correction with the
+  actual online-client aggregation test, not just a parsing helper.
+  Reply with the verified code path, final-head CI evidence and remaining
+  hardware limitations; resolve only after the fix is committed and
+  verified, then recheck all unresolved threads. Check behavior against
+  the latest `main` and rerun all required CI on the final PR commit.
+  Do not mark the upstream S7 legacy-session checkbox complete until
+  its distinct authentication/transport functionality is implemented
+  and tested.
 
 ## Name decoding and privacy lessons (PR #3)
 
