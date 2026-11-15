@@ -105,9 +105,9 @@ async def test_new_node_is_committed_before_discovery_notification(
         side_effect=_capture,
     ) as dispatch:
         result = await coordinator._async_update_data()
+        assert result is coordinator.data
         repeated = await coordinator._async_update_data()
 
-    assert result is coordinator.data
     assert repeated is coordinator.data
     assert observed == [(set(node["mac"] for node in devices), MASTER_MAC)]
     dispatch.assert_called_once_with(hass, SIGNAL_DECO_ADDED)
