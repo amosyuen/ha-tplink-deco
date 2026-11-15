@@ -35,13 +35,17 @@ description: "Safely restore unavailable TP-Link Deco client trackers across Hom
 
 ## Restore and reconcile safely
 
-5. A previously unavailable client tracker may have saved attributes
-   without `device_type`. Preserve its MAC-based `unique_id` and
-   `original_name`, and seed a provisional `TpLinkDecoClient` rather
-   than silently dropping it. Explicitly classified `DEVICE_TYPE_DECO`
-   entries remain `TpLinkDeco`; ordinary classified clients retain
-   their usual handling. Do not alter the entity registry or reassign
-   entity IDs as part of restoration.
+5. A previously unavailable tracker may lack `device_type`, whether
+   it was a client or an offline Deco. If it has a registry `device_id`,
+   resolve that device and compare **its exact identifier**
+   `(DOMAIN, entry.unique_id)`. A match proves this record belongs
+   to a Deco, even if the first router response omits the node.
+   **Do not** classify a client as a Deco just because its shared device
+   has `(DOMAIN, some_other_mac)`: client device-info may reference its
+   connected Deco. Restore unmatched entries as provisional clients.
+   Preserve their MAC-based `unique_id` and `original_name`, and
+   retain explicitly classified Deco/client entries unchanged.
+   Never alter entity-registry IDs as part of restoration.
 6. After **successful** first Deco device-list refresh, and **before**
    creating the client coordinator, reconcile the provisional client
    dictionary against `deco_coordinator.data.decos`. Remove only MACs
@@ -58,7 +62,12 @@ description: "Safely restore unavailable TP-Link Deco client trackers across Hom
    **both** supported storage API shapes. Cover states missing
    `device_type` (including `unavailable`), recognized Deco/client
    types, disabled/non-tracker records, missing saved states, and two
-   independent config entries.
+   independent config entries. Include a registered Deco with matching
+   `(DOMAIN, own_mac)` that is absent on its first refresh and appears
+   later: it must remain a Deco with the same object identity. Also
+   include a client attached to a Deco's device whose identifier contains
+   `(DOMAIN, parent_deco_mac)` rather than its **own** MAC; it must stay
+   a client and retain its MAC-derived unique ID.
 9. Simulate the **real integration setup order** with mocked API and
    coordinator methods: confirm the first Deco refresh completes before
    client coordinator construction, and verify that provisional clients
