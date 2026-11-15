@@ -29,12 +29,18 @@ support, isolate the **numeric-value** change into a small backport:
    input values; do not translate them into authentication failures.
 3. For malformed CPU/memory values, keep prior raw and smoothed values;
    process the other valid field independently and continue Deco
-   discovery. For malformed client rates, avoid exceptions while keeping
-   client association, online state and timeout behavior unchanged.
-4. Add parameterized parsing tests, client-update tests, and real
+   discovery. For malformed/missing client rates, store numeric zero
+   rather than `None`: existing per-Deco/network throughput sensors
+   sum online clients directly. Preserve client association, online
+   state, historical identity and timeout behavior.
+4. Add parameterized parsing tests, client-update tests, real
    coordinator-refresh tests for invalid-to-valid transitions and 70/30
-   smoothing. Run both supported Home Assistant/Python pytest matrices
-   plus pre-commit, HACS and Hassfest on the **final head SHA**.
+   smoothing, **and tests of the actual throughput sensor aggregation**
+   with mixed valid/invalid online client rates. Confirm a failed
+   optional measurement does not propagate into unrelated entities.
+   Apply exact Black/isort fixes from CI rather than relaxing hooks.
+   Rerun both supported Home Assistant/Python pytest matrices plus
+   pre-commit, HACS and Hassfest on the **final head SHA**.
 5. Report this as a **partial** upstream #589 backport. Leave the issue
    #2 S7 encrypted-session support unchecked. The HTTP outer session,
    login fallback and cryptographic request format require a separate
