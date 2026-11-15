@@ -350,6 +350,11 @@ policy for AI-assisted development.
   identities, CPU/memory raw values and 70/30 smoothing. A malformed
   optional performance measurement must not overwrite the last valid
   reading or interrupt device discovery; zero is a valid measurement.
+  **Downstream contract:** existing live throughput sensors sum numeric
+  client attributes for online clients. Invalid or absent client rates
+  must therefore be stored as numeric `0.0`, **not** `None`, while
+  genuinely valid zero is also preserved. Do not change established
+  units, sensor IDs or client association/presence when normalizing rates.
 - **Validation:** test rates through `TpLinkDecoClient.update`, actual
   coordinator performance refreshes, successful subsequent updates,
   smooth transitions and invalid-value retention. Add boundary tests
