@@ -49,6 +49,7 @@ def _register_entry(
     deco_coordinator.health = CoordinatorHealth()
     deco_coordinator.health.record_success(0.0)
     deco_coordinator.paused = False
+    deco_coordinator.device_list_interval_seconds = 0
     deco_coordinator.last_update_success = True
     deco_coordinator.update_interval = timedelta(seconds=60)
 
@@ -92,6 +93,7 @@ async def test_diagnostics_redacts_network_and_configuration_information() -> No
     assert result["deco_coordinator"]["online_decos"] == 1
     assert result["deco_coordinator"]["master_present"] is True
     assert result["deco_coordinator"]["update_interval_seconds"] == 60
+    assert result["deco_coordinator"]["device_list_interval_seconds"] == 0
     assert result["client_coordinator"]["known_clients"] == 1
     assert result["client_coordinator"]["online_clients"] == 1
     assert result["client_coordinator"]["query_mode"] == "per_node"
