@@ -178,6 +178,28 @@ policy for AI-assisted development.
   handlers, repeated polls and offline/missing nodes. See
   [the runtime discovery skill](.agents/skills/deco-runtime-discovery-validation/SKILL.md).
 
+## Non-blocking initial client refresh (upstream #645)
+
+- **Observed startup path:** `async_create_and_refresh_coordinators`
+  awaits the first client refresh after Deco discovery. A slow optional
+  client-list request therefore holds up Home Assistant entry setup and
+  platform forwarding even when restored clients and the Deco inventory
+  are already available. Upstream #645 uses entry-owned background tasks
+  and `async_refresh()` rather than a debounced refresh request.
+- **Rule:** continue awaiting the first **Deco** device-list refresh and
+  reconcile provisional Deco/client identities before constructing the
+  client coordinator. Do not await the initial optional **client** refresh.
+  After all platforms are forwarded, schedule the client's
+  `async_refresh()` via `ConfigEntry.async_create_background_task`.
+  Using `async_request_refresh()` may create foreground debouncer tasks.
+- **Regression:** verify no client API request is awaited during coordinator
+  construction; entry setup awaits platform forwarding before scheduling;
+  initial task ownership belongs to the same config entry; first-refresh
+  failure does not block setup; and previously restored clients, stable
+  MAC IDs, connected-client count readiness, shutdown and multiple entries
+  remain unaffected. Do not add unsupported wireless/mobile coordinators
+  as part of this client-only port. See the upstream-sync skill.
+
 ## Startup client-count correctness (upstream #567/#597)
 
 - **Observed failure:** a restored offline client can have a known Deco
