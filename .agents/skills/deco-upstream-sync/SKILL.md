@@ -55,6 +55,27 @@ performance calculations, late-master network totals and MAC-based entity
 IDs. Mark the binary-sensor discovery handler with `@callback`.
 Follow [Deco runtime discovery validation](../deco-runtime-discovery-validation/SKILL.md).
 
+## Client tracker registration after coordinator refresh (upstream #569)
+
+The fork currently publishes `SIGNAL_CLIENT_ADDED` while computing
+`_async_update_data`, before the new client dictionary becomes
+`coordinator_clients.data`. For a missing tracker, check whether the
+platform sees stale data during dispatcher delivery before changing the
+coordinator's shared timing contract. Add a post-update
+`coordinator_clients.async_add_listener(add_untracked_clients)` subscription
+alongside the existing dispatcher, and register both unsubscribe callbacks
+with `coordinator_clients.on_close`.
+
+Validate with a regression that fires the early dispatcher before the data
+change, then commits the new client dictionary and invokes the post-update
+listener. Verify per-MAC deduplication across repeated refreshes and
+notifications, newly discovered clients on later refreshes, isolation between
+configuration entries, stable tracker unique IDs and the optional MAC device
+linking behavior. Do not alter `sensor.py` connected-client counts or the
+`consider_home` grace period in this narrowly scoped fix; upstream #567/#597
+require separate review. Run the existing Python/Home Assistant matrix and
+pre-commit/HACS/Hassfest when available, and report unrun checks explicitly.
+
 ## Master/satellite device-registry migrations (upstream #579, fork PR #18)
 
 For changes to entity `device_info` parent relationships, follow
