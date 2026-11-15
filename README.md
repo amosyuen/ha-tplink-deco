@@ -59,6 +59,14 @@ Two types of sensors are available:
 - Switch entity:
   - `switch.deco_polling`
 
+> **Compatibility note:** When the polling switch is migrated to a
+> per-configuration-entry unique ID, its Home Assistant entity ID is retained
+> on upgrade. **Downgrading to a version that still uses the legacy global
+> `tplink_deco_polling` unique ID is not supported after this migration.**
+> An older version can register a second switch instead of reusing the
+> migrated entity, disrupting existing automations. Keep an entity-registry
+> backup before upgrading and use the new integration version thereafter.
+
 ---
 
 #### Polling interval control
