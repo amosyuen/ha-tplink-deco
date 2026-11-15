@@ -52,15 +52,16 @@ def test_schema_is_serializable_and_uses_valid_defaults(value: object) -> None:
     """Use a continuous schema; validate the disjoint rule outside it."""
     schema = vol.Schema(config_flow._get_schema(_values(value)))
     view = _BaseFlowManagerView(MagicMock())
-    result = view._prepare_result_json({
-        "type": FlowResultType.FORM,
-        "data_schema": schema,
-    })
+    result = view._prepare_result_json(
+        {
+            "type": FlowResultType.FORM,
+            "data_schema": schema,
+        }
+    )
     assert json.dumps(result)
     fields = result["data_schema"]
     interval = next(
-        item for item in fields
-        if item["name"] == CONF_DEVICE_LIST_INTERVAL
+        item for item in fields if item["name"] == CONF_DEVICE_LIST_INTERVAL
     )
     expected = int(value) if int(value) == 0 or int(value) >= 10 else 30
     assert interval["default"] == expected
@@ -117,7 +118,6 @@ def test_legacy_form_inherits_existing_scan_interval() -> None:
     """Avoid changing device polling on existing entries lacking the new key."""
     schema = vol.Schema(config_flow._get_schema({CONF_SCAN_INTERVAL: 60}))
     key = next(
-        marker for marker in schema.schema
-        if marker.schema == CONF_DEVICE_LIST_INTERVAL
+        marker for marker in schema.schema if marker.schema == CONF_DEVICE_LIST_INTERVAL
     )
     assert key.default() == 60
