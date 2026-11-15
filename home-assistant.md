@@ -92,8 +92,12 @@ feature.
   identities.
 - Firmware can return Base64/UTF-8 text, plain text, legacy
   `<Error Decoding ...>` wrappers or missing/empty fields. Normalize
-  names and accept optional wireless/backhaul fields without requiring
-  a specific firmware variant.
+  names and preserve supported optional wireless/backhaul fields
+  without requiring a specific firmware variant. **Current limitation:**
+  `TpLinkDeco.update` accepts an absent `signal_level` field but calls
+  `.get` on an explicitly `null` value; such a response raises
+  `AttributeError` and interrupts discovery. Handling this case
+  requires a separate runtime fix and regression test.
 - Discovery: new nodes dispatch `SIGNAL_DECO_ADDED` and new clients
   dispatch `SIGNAL_CLIENT_ADDED`. Tracker, binary-sensor and per-node
   sensor platforms subscribe as needed and avoid adding the same known
@@ -137,9 +141,14 @@ feature.
   flag; turning polling back on requests a refresh.
 - The Deco coordinator requests the device list and optional master
   performance. Master CPU/memory values have raw readings and smoothed
-  readings (currently 70% previous/30% new); missing performance data
-  leaves the last known value intact. A still-incomplete **optional**
-  performance request does not prevent a successful device-list update.
+  readings (currently 70% previous/30% new); missing measurement fields
+  preserve the last known values. An optional performance request that
+  exhausts **transient-response** retries raises
+  `TransientConnectionException`, which the coordinator catches so
+  the device-list update can proceed. **Current limitation:** an
+  exhausted `TimeoutException` is not caught there and can fail the
+  entire coordinator refresh; treating that timeout as optional would
+  require a separate runtime change and regression test.
 - Truncated payloads and server disconnects have bounded retries using
   the configured `timeout_error_retries` count, independently of timeout
   and one-time re-login retry budgets. A temporary transport failure does
