@@ -358,9 +358,14 @@ policy for AI-assisted development.
 - **Validation:** test rates through `TpLinkDecoClient.update`, actual
   coordinator performance refreshes, successful subsequent updates,
   smooth transitions and invalid-value retention. Add boundary tests
-  for non-finite numbers and large integer overflow. Do not mark the
-  upstream S7 legacy-session checkbox complete until its distinct
-  authentication/transport functionality is implemented and tested.
+  for non-finite numbers and large integer overflow. Verify the actual
+  `TplinkTotalClientDataRateSensor` aggregation for mixed valid and
+  invalid **online** clients, in addition to testing the numeric helper;
+  an isolated parsing unit test cannot prove downstream compatibility.
+  Check behavior against the latest `main` and rerun all required CI on
+  the final PR commit. Do not mark the upstream S7 legacy-session
+  checkbox complete until its distinct authentication/transport
+  functionality is implemented and tested.
 
 ## Name decoding and privacy lessons (PR #3)
 
