@@ -23,7 +23,7 @@ def test_config_flow_preserves_base_class_and_entry_version(
     from homeassistant import config_entries
 
     assert issubclass(config_flow.TplinkDecoFlowHandler, config_entries.ConfigFlow)
-    assert config_flow.TplinkDecoFlowHandler.VERSION == 6
+    assert config_flow.TplinkDecoFlowHandler.VERSION == 7
     assert "CONNECTION_CLASS" not in vars(config_flow.TplinkDecoFlowHandler)
 
 
