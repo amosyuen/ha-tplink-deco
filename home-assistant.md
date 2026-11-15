@@ -97,7 +97,11 @@ and development guidance.
   uses `last_states`. After a successful first Deco refresh, discard
   provisional client records whose MAC is confirmed in `decos` before
   constructing the client coordinator. Preserve genuine offline clients
-  and all registry entity IDs.
+  and all registry entity IDs. Malformed stored records lacking a nested
+  state or attribute mapping are skipped with privacy-safe warnings,
+  allowing other offline clients to restore. Missing `device_type` in
+  an otherwise valid mapping still uses the registry fallback; unknown
+  discriminator values also require the exact Deco identifier check.
 - `TpLinkDecoClient` tracks MAC, node association (`deco_mac`), `online`,
   `last_activity` and last-known throughput and connection metadata. A
   missing or incomplete poll must not erase these fields.

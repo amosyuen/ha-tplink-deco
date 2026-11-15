@@ -153,6 +153,14 @@ policy for AI-assisted development.
   provides `async_get_stored_state(entity_id)` with registry-aware
   storage. Use capability detection and tests for both, rather than
   assuming that the same mapping exists in all supported releases.
+- **Malformed restore-state hardening (PR #36):** older or damaged stored
+  trackers may lack a nested state or have non-mapping attributes. Validate
+  both layers before inspecting `device_type`; skip only the invalid
+  record and log a generic warning without identifiers or stored data.
+  An unknown discriminator is not authoritative: check the exact owning
+  Deco registry identifier before assuming it is a provisional client.
+  Never suppress errors from the restore storage API or initial Deco
+  refresh; cover these cases using both HA restore APIs in regression tests.
 - **Reconciliation and safety:** skip disabled or non-tracker entities
   and missing restore records. After the successful initial Deco refresh,
   remove provisional clients identified as actual Deco MACs **before**

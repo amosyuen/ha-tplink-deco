@@ -6,6 +6,7 @@ https://github.com/amosyuen/ha-tplink-deco
 """
 
 import asyncio
+from collections.abc import Mapping
 from datetime import timedelta
 import logging
 from typing import Any
@@ -50,6 +51,7 @@ from .const import DEFAULT_LINK_CLIENT_DEVICES
 from .const import DEFAULT_SCAN_INTERVAL
 from .const import DEFAULT_TIMEOUT_ERROR_RETRIES
 from .const import DEFAULT_TIMEOUT_SECONDS
+from .const import DEVICE_TYPE_CLIENT
 from .const import DEVICE_TYPE_DECO
 from .const import DOMAIN
 from .const import PLATFORMS
@@ -194,11 +196,19 @@ async def async_create_config_data(hass: HomeAssistant, config_entry: ConfigEntr
     for entry in existing_entries:
         if entry.domain != DEVICE_TRACKER_DOMAIN or entry.disabled_by is not None:
             continue
-        state = get_stored_state(entry.entity_id)
-        if state is None:
+        stored_state = get_stored_state(entry.entity_id)
+        if stored_state is None:
             continue
-        device_type = state.state.attributes.get(ATTR_DEVICE_TYPE)
-        if device_type is None:
+        restored_state = getattr(stored_state, "state", None)
+        attributes = getattr(restored_state, "attributes", None)
+        if not isinstance(attributes, Mapping):
+            # Skip corrupt records without leaking private state in logs.
+            _LOGGER.warning(
+                "Skipping tracker with malformed restored-state attributes"
+            )
+            continue
+        device_type = attributes.get(ATTR_DEVICE_TYPE)
+        if device_type not in (DEVICE_TYPE_DECO, DEVICE_TYPE_CLIENT):
             # An unavailable Deco can lack the state discriminator. Its
             # device-registry identity remains authoritative even while
             # the node is missing from the first router response.

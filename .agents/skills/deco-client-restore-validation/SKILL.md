@@ -32,6 +32,11 @@ description: "Safely restore unavailable TP-Link Deco client trackers across Hom
    config entry. Skip entries outside `device_tracker`, entries
    disabled in the entity registry and entries without a saved state.
    Do not rebuild entities from unrelated configuration entries.
+   If a stored record lacks a nested state or mapping-like attributes,
+   skip just that malformed record and issue a generic warning without
+   entity IDs, names or stored values. Do not mistake a missing
+   `device_type` key in an otherwise valid mapping for corrupt
+   state: it still requires provisional restoration.
 
 ## Restore and reconcile safely
 
@@ -45,7 +50,10 @@ description: "Safely restore unavailable TP-Link Deco client trackers across Hom
    connected Deco. Restore unmatched entries as provisional clients.
    Preserve their MAC-based `unique_id` and `original_name`, and
    retain explicitly classified Deco/client entries unchanged.
-   Never alter entity-registry IDs as part of restoration.
+   Never alter entity-registry IDs as part of restoration. Treat an
+   unrecognized/non-string `device_type` like a missing discriminator:
+   check the exact registered Deco identifier before using the
+   provisional-client fallback. Do not swallow storage API exceptions.
 6. After **successful** first Deco device-list refresh, and **before**
    creating the client coordinator, reconcile the provisional client
    dictionary against `deco_coordinator.data.decos`. Remove only MACs
@@ -67,7 +75,10 @@ description: "Safely restore unavailable TP-Link Deco client trackers across Hom
    later: it must remain a Deco with the same object identity. Also
    include a client attached to a Deco's device whose identifier contains
    `(DOMAIN, parent_deco_mac)` rather than its **own** MAC; it must stay
-   a client and retain its MAC-derived unique ID.
+   a client and retain its MAC-derived unique ID. Include corrupt
+   restored-state wrappers and non-mapping attributes alongside valid
+   peers; one broken record must not block all clients. Assert generic
+   warnings do not disclose entity IDs or state contents.
 9. Simulate the **real integration setup order** with mocked API and
    coordinator methods: confirm the first Deco refresh completes before
    client coordinator construction, and verify that provisional clients

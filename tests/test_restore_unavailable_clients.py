@@ -161,6 +161,73 @@ async def test_restore_passes_exact_coordinator_arguments_and_original_names(
         lookup.assert_called_once_with(entry.entity_id)
 
 
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("modern_api", [False, True])
+@pytest.mark.parametrize(
+    "malformed_state",
+    [
+        SimpleNamespace(state=None),
+        SimpleNamespace(state=SimpleNamespace()),
+        SimpleNamespace(state=SimpleNamespace(attributes=None)),
+        SimpleNamespace(state=SimpleNamespace(attributes=[])),
+    ],
+)
+async def test_malformed_restored_state_does_not_block_other_clients(
+    modern_api: bool,
+    malformed_state: SimpleNamespace,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Skip corrupt restore records while retaining valid offline clients."""
+    broken_entry = _entry(DECO_MAC)
+    client_entry = _entry(CLIENT_MAC)
+    states = {
+        broken_entry.entity_id: malformed_state,
+        client_entry.entity_id: _stored_state(),
+    }
+
+    decos, clients, _ = await _restore(
+        [broken_entry, client_entry], states, modern_api=modern_api
+    )
+
+    assert decos.decos == {}
+    assert list(clients) == [CLIENT_MAC]
+    assert clients[CLIENT_MAC].name == client_entry.original_name
+    assert clients[CLIENT_MAC].online is False
+    assert "Skipping tracker with malformed restored-state attributes" in caplog.text
+    assert broken_entry.entity_id not in caplog.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("modern_api", [False, True])
+@pytest.mark.parametrize("invalid_device_type", ["unrecognized", 42, []])
+async def test_unrecognized_device_type_checks_exact_registry_identity(
+    modern_api: bool,
+    invalid_device_type: object,
+) -> None:
+    """Classify unknown types by the registry's exact Deco MAC if available."""
+    deco_entry = _entry(DECO_MAC, device_id="registered-deco")
+    devices = MagicMock()
+    devices.async_get.return_value = SimpleNamespace(identifiers={(DOMAIN, DECO_MAC)})
+    stored_state = SimpleNamespace(
+        state=SimpleNamespace(attributes={ATTR_DEVICE_TYPE: invalid_device_type})
+    )
+
+    with patch(
+        "custom_components.tplink_deco.device_registry.async_get",
+        return_value=devices,
+    ):
+        decos, clients, _ = await _restore(
+            [deco_entry],
+            {deco_entry.entity_id: stored_state},
+            modern_api=modern_api,
+        )
+
+    assert set(decos.decos) == {DECO_MAC}
+    assert clients == {}
+    assert decos.decos[DECO_MAC].name == deco_entry.original_name
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("modern_api", [False, True])
 async def test_restore_multiple_offline_clients_keeps_registry_names(
