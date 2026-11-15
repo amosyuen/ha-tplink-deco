@@ -86,10 +86,12 @@ async def _restore(
     coordinator_factory.assert_awaited_once()
     call_args = coordinator_factory.await_args.args
     if modern_api:
-        assert restore_lookup.call_count == len(
-            [item for item in entries if item.domain == "device_tracker"
-             and item.disabled_by is None]
-        )
+        eligible_entries = [
+            item
+            for item in entries
+            if item.domain == "device_tracker" and item.disabled_by is None
+        ]
+        assert restore_lookup.call_count == len(eligible_entries)
     return call_args[5], call_args[6], restore_lookup
 
 
@@ -261,3 +263,37 @@ async def test_first_deco_refresh_reconciles_clients_before_client_setup() -> No
     client_coordinator.async_config_entry_first_refresh.assert_awaited_once()
     assert restored_deco.decos == {}
     assert deco_coordinator.data is updated_decos
+
+@pytest.mark.asyncio
+async def test_failed_device_refresh_does_not_prune_restored_clients() -> None:
+    """Keep provisional clients untouched when the initial Deco query fails."""
+    restored_client = TpLinkDecoClient(CLIENT_MAC)
+    client_data = {CLIENT_MAC: restored_client}
+    deco_coordinator = MagicMock()
+    deco_coordinator.data = TpLinkDecoData()
+    deco_coordinator.async_config_entry_first_refresh = AsyncMock(
+        side_effect=RuntimeError("device discovery failed")
+    )
+
+    with (
+        patch("custom_components.tplink_deco.async_get_clientsession"),
+        patch("custom_components.tplink_deco.TplinkDecoApi"),
+        patch(
+            "custom_components.tplink_deco.TplinkDecoUpdateCoordinator",
+            return_value=deco_coordinator,
+        ),
+        patch(
+            "custom_components.tplink_deco.TplinkDecoClientUpdateCoordinator"
+        ) as client_constructor,
+    ):
+        with pytest.raises(RuntimeError, match="device discovery failed"):
+            await async_create_and_refresh_coordinators(
+                hass=MagicMock(),
+                config_data={},
+                config_entry=SimpleNamespace(entry_id="mesh-one"),
+                deco_data=deco_coordinator.data,
+                client_data=client_data,
+            )
+
+    assert client_data == {CLIENT_MAC: restored_client}
+    client_constructor.assert_not_called()
