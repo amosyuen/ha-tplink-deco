@@ -171,9 +171,12 @@ privacy-safe diagnostics download (PR #31) are merged.
   readings (currently 70% previous/30% new); missing measurement fields
   preserve the last known values. **Proposed in [PR #33](https://github.com/HiDiHo01/ha-tplink-deco/pull/33):**
   normalize finite numeric firmware strings for client down/up rates
-  and CPU/memory before arithmetic; ignore malformed/non-finite optional
-  values without clearing earlier valid CPU/memory readings. Keep the
-  existing units and smoothing. This does **not** add the separate
+  and CPU/memory before arithmetic. Malformed/missing client rates
+  become numeric zero so existing per-Deco and network throughput
+  aggregation remains safe for online clients. Invalid optional
+  CPU/memory fields preserve the previous raw and smoothed readings;
+  valid zero is not treated as missing. Keep the existing units,
+  identities and 70/30 smoothing. This does **not** add the separate
   encrypted outer session needed for some legacy S7 firmware. An optional performance request that
   exhausts **transient-response** retries raises
   `TransientConnectionException`, which the coordinator catches so
