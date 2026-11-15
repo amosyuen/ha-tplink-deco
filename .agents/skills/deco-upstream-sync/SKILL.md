@@ -231,6 +231,44 @@ For setup/unload, scheduled-refresh cleanup and router logout, follow
 The fork currently has Deco and client coordinators; review available
 components before copying a newer upstream teardown implementation.
 
+## Regression repair after startup and diagnostic changes (PR #30)
+
+Use this procedure when an upstream backport changes coordinator setup,
+adds new sensor entities, or fails the repository's full regression suite:
+
+1. Read the **actual** Python 3.13/HA 2025.12 and Python 3.14/HA 2026.11
+   pytest job logs; group failures by root cause before modifying code.
+   In PR #30, 18 failed test cases shared four causes rather than
+   18 independent production defects.
+2. Check all existing tests mocking
+   `custom_components.tplink_deco.async_create_config_data`. Once the
+   integration schedules a first client refresh, the mock result must
+   contain **both** `COORDINATOR_DECOS_KEY` and
+   `COORDINATOR_CLIENTS_KEY`; provide
+   `MagicMock(async_refresh=AsyncMock())` for the latter. Preserve
+   assertions that platforms finish forwarding before background work,
+   and that failed platform forwarding does not schedule client polling.
+3. For sensor tests, filter added entities by class and stable
+   `unique_id`. Eight opt-in health diagnostics can share the master
+   Deco's first `async_add_entities` call with two throughput totals;
+   an assertion that the entire batch has length two is no longer
+   valid. Assert existing totals remain exactly two **and** health
+   sensors remain present, disabled by default and nonduplicated.
+4. In config-flow tests, import `CONF_SCAN_INTERVAL` from Home Assistant
+   rather than using the literal `"scan_interval"`. The supported key
+   is currently `"interval_seconds"`; submit the string selector value
+   `"30"` and verify persisted value `30` is an integer. Check both
+   setup and options flows without weakening the original contract.
+5. Fix missing or misspelled test imports with Flake8, then inspect the
+   full-repository Black, isort and Prettier hook diffs. Apply only
+   verified formatting changes (including existing files touched by the
+   all-files hooks); do **not** disable hooks or change production code
+   to satisfy an obsolete test assumption.
+6. Rerun all required workflows against the new PR-head SHA, inspect
+   each matrix job and pre-commit/HACS/Hassfest separately, and update
+   the PR and tracking issue with the **final** run links. Keep physical
+   hardware validation explicitly unverified if it was not performed.
+
 ## CI repair and issue #2 bookkeeping
 
 1. Inspect the actual PR-head commit and both workflows:
