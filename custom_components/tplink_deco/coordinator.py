@@ -39,6 +39,7 @@ from .exceptions import TransientConnectionException
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 CLIENT_BACKOFF_INITIAL_SECONDS = 30
 CLIENT_BACKOFF_MAX_SECONDS = 300
+MAX_CONCURRENT_CLIENT_REQUESTS = 2
 
 
 @dataclass
@@ -549,8 +550,14 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         """Return clients and whether an HTTP 5xx response occurred."""
         try:
             clients = await async_call_and_propagate_config_error(
-                self.api.async_list_clients, deco_mac
+                self.api.async_list_clients,
+                deco_mac,
+                timeout_error_retries=0,
             )
+        except TimeoutException:
+            # One failed Deco must not trigger repeated per-node timeouts.
+            _LOGGER.debug("Deco client poll timed out")
+            return None, False
         except TransientConnectionException:
             # A failed request is not equivalent to a valid empty client list.
             _LOGGER.debug("Deco client poll incomplete after transport retries")
@@ -561,6 +568,27 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.debug("Deco client poll returned HTTP %d", err.status)
             return None, True
         return clients, False
+
+    async def _async_list_clients_per_deco(
+        self, deco_macs: list[str]
+    ) -> list[tuple[list[dict[str, Any]] | None, bool]]:
+        """Poll at most two Decos concurrently and cancel pending work on error."""
+        semaphore = asyncio.Semaphore(MAX_CONCURRENT_CLIENT_REQUESTS)
+
+        async def _poll_one(deco_mac: str) -> tuple[list[dict[str, Any]] | None, bool]:
+            """Bound the request without blocking the Home Assistant event loop."""
+            async with semaphore:
+                return await self._async_clients_for_deco(deco_mac)
+
+        tasks = [asyncio.create_task(_poll_one(mac)) for mac in deco_macs]
+        try:
+            return await asyncio.gather(*tasks)
+        except (Exception, asyncio.CancelledError):
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
 
     async def _async_update_data(self):
         """Measure actual client queries, excluding pause and backoff skips."""
@@ -601,9 +629,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         utc_point_in_time = dt_util.utcnow()
 
         # Retain successful per-node responses even when a peer fails.
-        deco_client_responses = await asyncio.gather(
-            *(self._async_clients_for_deco(deco_mac) for deco_mac in deco_macs)
-        )
+        deco_client_responses = await self._async_list_clients_per_deco(deco_macs)
         failed_deco_macs = {
             deco_mac
             for deco_mac, (response, _) in zip(deco_macs, deco_client_responses)
