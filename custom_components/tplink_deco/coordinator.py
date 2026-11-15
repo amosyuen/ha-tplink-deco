@@ -137,9 +137,10 @@ def snake_case_to_title_space(name: str) -> str:
     return " ".join(word.title() for word in name.split("_"))
 
 
-async def async_call_and_propagate_config_error(func, *args):
+async def async_call_and_propagate_config_error(func, *args, **kwargs):
+    """Forward API arguments and keep the established auth-failure mapping."""
     try:
-        return await func(*args)
+        return await func(*args, **kwargs)
     except (LoginForbiddenException, LoginInvalidException) as err:
         raise ConfigEntryAuthFailed from err
 
