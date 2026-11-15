@@ -203,9 +203,7 @@ async def async_create_config_data(hass: HomeAssistant, config_entry: ConfigEntr
         attributes = getattr(restored_state, "attributes", None)
         if not isinstance(attributes, Mapping):
             # Skip corrupt records without leaking private state in logs.
-            _LOGGER.warning(
-                "Skipping tracker with malformed restored-state attributes"
-            )
+            _LOGGER.warning("Skipping tracker with malformed restored-state attributes")
             continue
         device_type = attributes.get(ATTR_DEVICE_TYPE)
         if device_type not in (DEVICE_TYPE_DECO, DEVICE_TYPE_CLIENT):
