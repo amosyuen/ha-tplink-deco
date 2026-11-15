@@ -480,6 +480,12 @@ policy for AI-assisted development.
 - Skip nonexistent, stale or already-migrated entries and guard against
   conflicts when the scoped ID already exists. Keep the original visible
   name, icon, services, refresh semantics and master Deco device link.
+- **Downgrade limitation (review PR #22):** once the legacy
+  `tplink_deco_polling` registry unique ID is migrated, older integration
+  versions using that global ID cannot rediscover the migrated switch and
+  may create another entity. Document downgrades across this migration as
+  unsupported in the user-facing README; preserve the in-place forward
+  migration and advise making an entity-registry backup before upgrading.
 - Always inspect earlier regression tests for assumptions about stable
   `unique_id` values, especially `test_via_device_registry_links.py`.
   Retain existing entity/device identifier checks while updating only
