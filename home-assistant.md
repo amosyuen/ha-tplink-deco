@@ -12,12 +12,13 @@ in [`.agents/skills/`](.agents/skills/). The repository's governing policy
 remains `AI_POLICY.md`.
 
 **Baseline:** verified against fork `main` at
-`93f1a09876daabc833da006ac5335cdf72d66b1a` (15 November 2026).
-This describes this fork, **not** the upstream project's current architecture.
-The improved runtime discovery notification below is proposed in
-[PR #25](https://github.com/HiDiHo01/ha-tplink-deco/pull/25), not yet
-present in the baseline `main` commit. Update this guide
-alongside a behavior change and do not present proposed work as deployed.
+`44dc54bfa650377cbe4491db0d9992c1dc83c5b6` (15 November 2026).
+This describes the fork, **not** the current upstream architecture.
+Runtime discovery ordering from [PR #25](https://github.com/HiDiHo01/ha-tplink-deco/pull/25)
+is merged on this baseline. **Branch note:** recovering unavailable client
+trackers without `device_type` is proposed in the new backport PR and
+is not yet present on the baseline `main`. Update this guide alongside
+behavior changes; distinguish proposed behavior from deployed code.
 
 ## 1. Integration boundary and data ownership
 
@@ -81,7 +82,16 @@ alongside a behavior change and do not present proposed work as deployed.
 - Before the first entry refresh, `async_create_config_data` reconstructs
   previously known Deco/client objects from **device-tracker registry
   entries and restored state**. The router's connected-client response is
-  not a complete historical client inventory.
+  not a complete historical client inventory. **Proposed restoration fix:**
+  for a stored tracker whose `device_type` attribute is missing (for
+  example, an unavailable entity), restore a provisional MAC-keyed client.
+  Exclude disabled trackers and entries without saved state, and preserve
+  already classified Deco/client identities. Home Assistant 2026.11
+  exposes `async_get_stored_state(entity_id)`; HA 2025.12 uses the
+  `last_states` mapping. After a *successful first* Deco refresh, discard
+  provisional client records whose MAC is confirmed in `decos`, before
+  constructing the client coordinator. Do not delete offline genuine
+  client records or alter registry entity IDs.
 - `TpLinkDecoClient` tracks MAC, node association (`deco_mac`), `online`,
   `last_activity` and last-known throughput and connection metadata. A
   missing or incomplete poll must not erase these fields.
@@ -99,15 +109,13 @@ alongside a behavior change and do not present proposed work as deployed.
   `AttributeError` and interrupts discovery. Handling this case
   requires a separate runtime fix and regression test.
 - Discovery: new nodes dispatch `SIGNAL_DECO_ADDED` and new clients
-  dispatch `SIGNAL_CLIENT_ADDED`. **Runtime discovery change proposed
-  in this PR:** publish the complete new `TpLinkDecoData` snapshot
-  to `coordinator.data` *before* signaling, so synchronous
-  `@callback` handlers can see newly added MACs immediately.
-  Tracker, binary-sensor and per-node sensor platforms subscribe as
-  needed and avoid adding the same known MAC twice. Master-dependent
-  **network-total** sensors continue to use the coordinator's normal
-  **post-update listener**, which registers those totals at most
-  once per entry. Keep already-known offline nodes and their MAC IDs.
+  dispatch `SIGNAL_CLIENT_ADDED`. The complete new `TpLinkDecoData`
+  snapshot is published to `coordinator.data` *before* signaling, so
+  synchronous `@callback` handlers see newly added MACs immediately.
+  Tracker, binary-sensor and per-node sensor platforms avoid adding the
+  same known MAC twice. Master-dependent **network-total** sensors
+  continue to use the coordinator's normal **post-update listener**,
+  which registers totals once per entry. Keep known offline nodes.
 
 ## 4. Client presence and measurement semantics
 
