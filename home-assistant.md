@@ -43,16 +43,16 @@ feature.
 
 ## 2. Persistent identity and relationships
 
-| Object | Identity contract | Source |
-| --- | --- | --- |
-| Deco device | Registry identifier `(DOMAIN, deco.mac)` | `device.py` |
-| Deco tracker | Stable MAC-based entity identity | `device_tracker.py` |
-| Client tracker | Stable client MAC; optional display name/hostname does not replace it | `device_tracker.py` |
-| Per-Deco Down/Up | `<deco_mac>_down` / `<deco_mac>_up` | `sensor.py` |
-| Network-wide Down/Up | `<master_mac>_total_down` / `<master_mac>_total_up` | `sensor.py` |
-| Connected clients | `<deco_mac>_client_count` | `sensor.py` |
-| Deco online / Internet online | `<deco_mac>_online` / `<deco_mac>_internet_online` | `binary_sensor.py` |
-| Polling interval select | `<entry_id>_polling_interval` | `select.py` |
+| Object                        | Identity contract                                                     | Source              |
+| ----------------------------- | --------------------------------------------------------------------- | ------------------- |
+| Deco device                   | Registry identifier `(DOMAIN, deco.mac)`                              | `device.py`         |
+| Deco tracker                  | Stable MAC-based entity identity                                      | `device_tracker.py` |
+| Client tracker                | Stable client MAC; optional display name/hostname does not replace it | `device_tracker.py` |
+| Per-Deco Down/Up              | `<deco_mac>_down` / `<deco_mac>_up`                                   | `sensor.py`         |
+| Network-wide Down/Up          | `<master_mac>_total_down` / `<master_mac>_total_up`                   | `sensor.py`         |
+| Connected clients             | `<deco_mac>_client_count`                                             | `sensor.py`         |
+| Deco online / Internet online | `<deco_mac>_online` / `<deco_mac>_internet_online`                    | `binary_sensor.py`  |
+| Polling interval select       | `<entry_id>_polling_interval`                                         | `select.py`         |
 
 - Register or resolve the master before linking a satellite. When
   `DeviceInfo` supports `via_device_id`, link a satellite to the **actual
@@ -236,7 +236,7 @@ feature.
 ## 9. Integration-specific change checklist
 
 Before merging a change that touches the areas above, confirm the relevant
-invariants for the *modified subsystem*:
+invariants for the _modified subsystem_:
 
 1. **Identity:** existing MAC-based trackers, device identifiers, entity
    unique IDs, satellite links and user-assigned entity IDs remain stable,
