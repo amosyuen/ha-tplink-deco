@@ -292,6 +292,21 @@ def test_health_listener_unsubscribe_is_idempotent() -> None:
     assert not health._listeners
 
 
+def test_broken_health_listener_cannot_fail_router_poll(caplog) -> None:
+    """Do not propagate callback failures or disclose sensitive error text."""
+    health = CoordinatorHealth()
+    broken = MagicMock(side_effect=RuntimeError("private-credential"))
+    healthy = MagicMock()
+    health.async_add_listener(broken)
+    health.async_add_listener(healthy)
+
+    health.record_success(0)
+    broken.assert_called_once_with()
+    healthy.assert_called_once_with()
+    assert "private-credential" not in caplog.text
+    assert "RuntimeError" in caplog.text
+
+
 @pytest.mark.asyncio
 async def test_health_sensors_register_once_and_keep_existing_ids() -> None:
     """Attach eight disabled diagnostics to the master without new API calls."""
