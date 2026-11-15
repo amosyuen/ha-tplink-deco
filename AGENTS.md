@@ -710,6 +710,25 @@ policy for AI-assisted development.
   using upstream-verified action commit SHAs, preserving versions and
   required checks; never guess SHAs or relax the allowlist/pinning policy.
   An attempted run stopped during action setup is **not** a test result.
+- **PR #30 regression lesson (312 tests on both HA versions):** when
+  changing config-entry startup or introducing optional diagnostic entities,
+  revisit existing tests that mock the whole integration, not just new
+  feature tests. Startup fixtures must provide both
+  `COORDINATOR_DECOS_KEY` and `COORDINATOR_CLIENTS_KEY`, including a
+  mocked async client refresh, so tests exercise the real setup contract
+  instead of failing with an irrelevant `KeyError`. Assert existing
+  throughput totals by sensor class/unique ID, not by the total size of
+  `async_add_entities` batches that can legitimately include additional,
+  disabled-by-default diagnostics. In config-flow tests, import the
+  canonical Home Assistant `CONF_SCAN_INTERVAL` key (currently
+  `interval_seconds`) instead of inventing `scan_interval`, and verify
+  integer persistence after selector input. Check undefined test names
+  and imports with Flake8 before treating pytest failures as runtime bugs.
+  After applying precise formatting fixes from the full-repository
+  pre-commit log, require fresh green Python 3.13/HA 2025.12 and
+  Python 3.14/HA 2026.11 pytest, pre-commit, HACS and Hassfest runs on
+  the **same final head SHA**. A 312/312 result from an earlier head
+  does not validate later documentation or code changes.
 - Before describing a PR as ready, verify it targets current `main`, is
   mergeable, and has no unaddressed review threads. Never mark issue #2's
   corresponding checklist entry complete merely because CI is green.
