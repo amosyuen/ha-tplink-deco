@@ -20,6 +20,7 @@ from homeassistant.core import CALLBACK_TYPE
 from homeassistant.core import HomeAssistant
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
@@ -311,31 +312,36 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data_internal(self):
         """Fetch and reconcile the Deco inventory and optional performance."""
-        # Keep mesh discovery independent from client/performance polling.
-        new_decos = None
+        # Commit a validated inventory before optional performance. A slow or
+        # failing performance API must not discard a successful device list.
         if self._device_list_refresh_due():
             new_decos = await async_call_and_propagate_config_error(
                 self.api.async_list_devices
             )
+            self._process_device_list(new_decos)
+            self._last_device_list_update = monotonic()
+            self._force_device_list_refresh = False
 
         try:
             performance_data = await async_call_and_propagate_config_error(
                 self.api.async_get_performance
             )
-        except TransientConnectionException:
-            # Keep previously sampled CPU/memory data if an optional request
-            # is still incomplete after its bounded transport retries.
-            _LOGGER.debug("Deco performance unavailable after transport retries")
+        except (TransientConnectionException, TimeoutException, TimeoutError) as err:
+            # Performance is optional. Authentication and unexpected failures
+            # must still propagate. Never log upstream exception messages.
+            _LOGGER.debug(
+                "Optional Deco performance request failed (%s)",
+                type(err).__name__,
+            )
             performance_data = None
-
-        if new_decos is not None:
-            self._process_device_list(new_decos)
-            self._last_device_list_update = monotonic()
-            self._force_device_list_refresh = False
 
         master_deco = self.data.master_deco
         # Zet globale performance data op de master Deco
+        if not isinstance(performance_data, dict):
+            performance_data = None
         result = performance_data.get("result", {}) if performance_data else {}
+        if not isinstance(result, dict):
+            result = {}
         if master_deco is not None:
             cpu_raw = result.get("cpu_usage")
             mem_raw = result.get("mem_usage")
@@ -378,7 +384,25 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
         )
 
     def _process_device_list(self, new_decos: list[dict[str, Any]]) -> None:
-        """Reconcile Deco nodes while retaining stable MAC-based identities."""
+        """Validate the complete inventory before modifying cached nodes."""
+        if not isinstance(new_decos, list):
+            raise ValueError("Deco inventory response must contain a device list")
+
+        macs: list[str] = []
+        for item in new_decos:
+            if not isinstance(item, dict):
+                raise ValueError("Deco inventory contains an invalid device")
+            mac = item.get("mac")
+            if not isinstance(mac, str) or not mac.strip():
+                raise ValueError("Deco inventory contains an invalid device ID")
+            signal_level = item.get("signal_level", {})
+            if not isinstance(signal_level, dict):
+                raise ValueError("Deco inventory contains invalid signal data")
+            macs.append(mac)
+
+        if len(macs) != len(set(macs)):
+            raise ValueError("Deco inventory contains duplicate device IDs")
+
         old_decos = self.data.decos
         master_deco = None
         deco_added = False
@@ -414,6 +438,12 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
         """Request a real device-list poll, even in startup-only mode."""
         self._force_device_list_refresh = True
         await self.async_refresh()
+        if not self.last_update_success:
+            # DataUpdateCoordinator.async_refresh can absorb poll exceptions.
+            # Raise a safe error so the manual button reports failure to HA.
+            raise HomeAssistantError(
+                "Unable to refresh Deco status; check the router connection"
+            )
 
     @callback
     def on_close(self, func: CALLBACK_TYPE) -> None:
