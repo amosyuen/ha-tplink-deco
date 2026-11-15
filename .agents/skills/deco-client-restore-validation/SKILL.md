@@ -73,7 +73,14 @@ description: "Safely restore unavailable TP-Link Deco client trackers across Hom
    client coordinator construction, and verify that provisional clients
    matching confirmed Deco MACs are removed while genuine clients remain.
    On a failed Deco refresh, verify no reconciliation or client coordinator
-   initialization occurs.
+   initialization occurs. **Upstream #621 parity lesson:** do not write
+   startup mocks that assume all coordinator arguments are keyword-based.
+   `async_create_config_data` passes seven positional arguments to
+   `async_create_and_refresh_coordinators`: `hass`, original config
+   data and entry, consider-home seconds, a `timedelta` scan interval,
+   Deco data and client data. Assert that exact ordering and verify
+   original registry names for _multiple_ offline clients under both
+   restore-state API shapes. Keep tests using fixed, anonymous MACs.
 10. Run targeted pytest and both Python 3.13/HA 2025.12 and Python
     3.14/HA 2026.11 CI suites on the final PR head. Run the repository
     pre-commit, HACS and Hassfest checks. Static review and committed

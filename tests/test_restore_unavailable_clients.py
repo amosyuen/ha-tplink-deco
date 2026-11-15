@@ -1,10 +1,13 @@
 """Regressions for restoring unavailable client trackers across HA releases."""
 
+from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
+from homeassistant.components.device_tracker.const import CONF_CONSIDER_HOME
+from homeassistant.components.device_tracker.const import CONF_SCAN_INTERVAL
 import pytest
 
 from custom_components.tplink_deco import _remove_discovered_decos_from_clients
@@ -96,6 +99,96 @@ async def _restore(
         ]
         assert restore_lookup.call_count == len(eligible_entries)
     return call_args[5], call_args[6], restore_lookup
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("modern_api", [False, True])
+async def test_restore_passes_exact_coordinator_arguments_and_original_names(
+    modern_api: bool,
+) -> None:
+    """Match the real positional startup contract for both HA restore APIs."""
+    entry = _entry(CLIENT_MAC)
+    config_entry = SimpleNamespace(
+        entry_id="mesh-positional",
+        data={CONF_SCAN_INTERVAL: 60, CONF_CONSIDER_HOME: 240},
+    )
+    stored_state = _stored_state()
+    lookup = MagicMock(return_value=stored_state)
+    restore_data = (
+        SimpleNamespace(async_get_stored_state=lookup)
+        if modern_api
+        else SimpleNamespace(last_states={entry.entity_id: stored_state})
+    )
+    hass = MagicMock()
+    coordinator_factory = AsyncMock(return_value={"decos": None, "clients": None})
+
+    with (
+        patch(
+            "custom_components.tplink_deco.entity_registry."
+            "async_entries_for_config_entry",
+            return_value=[entry],
+        ) as registry,
+        patch("custom_components.tplink_deco.entity_registry.async_get"),
+        patch(
+            "custom_components.tplink_deco.restore_state.async_get",
+            return_value=restore_data,
+        ),
+        patch(
+            "custom_components.tplink_deco.async_create_and_refresh_coordinators",
+            new=coordinator_factory,
+        ),
+    ):
+        actual = await async_create_config_data(hass, config_entry)
+
+    assert actual == {"decos": None, "clients": None}
+    registry.assert_called_once()
+    assert registry.call_args.args[1] == "mesh-positional"
+    coordinator_factory.assert_awaited_once()
+    arguments = coordinator_factory.await_args.args
+    assert len(arguments) == 7
+    assert coordinator_factory.await_args.kwargs == {}
+    assert arguments[0] is hass
+    assert arguments[1] is config_entry.data
+    assert arguments[2] is config_entry
+    assert arguments[3] == 240
+    assert arguments[4] == timedelta(seconds=60)
+    assert isinstance(arguments[5], TpLinkDecoData)
+    assert arguments[5].decos == {}
+    assert list(arguments[6]) == [CLIENT_MAC]
+    assert arguments[6][CLIENT_MAC].name == entry.original_name
+    assert arguments[6][CLIENT_MAC].online is False
+    if modern_api:
+        lookup.assert_called_once_with(entry.entity_id)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("modern_api", [False, True])
+async def test_restore_multiple_offline_clients_keeps_registry_names(
+    modern_api: bool,
+) -> None:
+    """Do not collapse client identity or discard names when several are offline."""
+    first_entry = _entry(CLIENT_MAC)
+    second_entry = _entry(OTHER_CLIENT_MAC)
+    first_entry.original_name = "Kitchen phone"
+    second_entry.original_name = "Hall tablet"
+    restored = {
+        first_entry.entity_id: _stored_state(status="unknown"),
+        second_entry.entity_id: _stored_state(status="unavailable"),
+    }
+
+    decos, clients, lookup = await _restore(
+        [first_entry, second_entry],
+        restored,
+        modern_api=modern_api,
+    )
+
+    assert decos.decos == {}
+    assert set(clients) == {CLIENT_MAC, OTHER_CLIENT_MAC}
+    assert clients[CLIENT_MAC].name == "Kitchen phone"
+    assert clients[OTHER_CLIENT_MAC].name == "Hall tablet"
+    assert all(client.online is False for client in clients.values())
+    if modern_api:
+        assert lookup.call_count == 2
 
 
 @pytest.mark.asyncio

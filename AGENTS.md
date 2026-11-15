@@ -158,6 +158,13 @@ policy for AI-assisted development.
   remove provisional clients identified as actual Deco MACs **before**
   creating the client coordinator. Do not clear genuine offline clients,
   change MAC-based entity IDs or modify another config entry's state.
+  **Upstream #621 test-parity lesson:** coordinator setup takes a fixed
+  positional argument contract. Test its argument ordering, per-entry
+  configuration values, actual `timedelta` polling interval and restored
+  `original_name` values for multiple offline clients on both supported
+  Home Assistant versions. Avoid catch-all `*args, **kwargs` fixtures
+  that conceal a changed integration call signature. Such tests improve
+  regression coverage but do **not** complete upstream test-suite parity.
   Follow the
   [client restore validation skill](.agents/skills/deco-client-restore-validation/SKILL.md).
 
