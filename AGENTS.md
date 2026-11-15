@@ -34,6 +34,8 @@ reading these instructions:
   validate Deco device selections, batch actions and service regression tests.
 - [Deco device-registry parent links](.agents/skills/deco-device-registry-parent-links/SKILL.md):
   validate master/satellite `DeviceInfo` relationships, legacy/modern API compatibility and existing regression assumptions.
+- [Deco runtime discovery](.agents/skills/deco-runtime-discovery-validation/SKILL.md):
+  validate immediate node publication, dispatcher ordering and idempotent entities.
 - [Deco polling-switch registry migration](.agents/skills/deco-polling-switch-registry-migration/SKILL.md):
   validate per-config-entry switch IDs and owner-checked in-place migrations.
 - [Deco client-device MAC linking](.agents/skills/deco-client-device-linking/SKILL.md):
@@ -130,6 +132,23 @@ policy for AI-assisted development.
   an identifier or relationship must change.
 - Test changes against incomplete firmware responses, offline devices,
   multiple Decos, and multiple configuration entries where relevant.
+
+## Deco runtime node-discovery ordering (upstream #643)
+
+- **Review finding:** the Deco coordinator previously sent
+  `SIGNAL_DECO_ADDED` while its `data` still referred to the old inventory.
+  Synchronous tracker, binary-sensor and per-node sensor callbacks therefore
+  could not see the newly discovered MAC until a later signal.
+- **Rule:** build and assign the full `TpLinkDecoData` snapshot **before**
+  calling `async_dispatcher_send`, and return that same snapshot from the
+  coordinator. Only signal when new MACs were actually found; retain
+  already-known offline nodes and their object identities.
+- Use `@callback` for synchronous Home Assistant dispatcher handlers and
+  preserve the per-platform MAC deduplication. Master-dependent network
+  totals still use the coordinator's post-update listener, not only the
+  discovery signal. Test a real coordinator invoking all three platform
+  handlers, repeated polls and offline/missing nodes. See
+  [the runtime discovery skill](.agents/skills/deco-runtime-discovery-validation/SKILL.md).
 
 ## Device-registry service identifier handling
 
