@@ -46,7 +46,7 @@ def _registered_clients(add_entities: MagicMock) -> list[TplinkDecoClientDeviceT
 
 
 @pytest.mark.asyncio
-async def test_client_refresh_discovers_after_commit_without_duplicate_trackers() -> None:
+async def test_post_refresh_client_discovery_is_idempotent() -> None:
     """Recover from early dispatcher delivery and keep separate meshes isolated."""
     hass = MagicMock()
     hass.data = {DOMAIN: {}}
@@ -134,7 +134,8 @@ async def test_client_refresh_discovers_after_commit_without_duplicate_trackers(
         post_refresh_callbacks["mesh-two"]()
 
         assert [
-            client.unique_id for client in _registered_clients(add_callbacks["mesh-one"])
+            client.unique_id
+            for client in _registered_clients(add_callbacks["mesh-one"])
         ] == [FIRST_MAC, SECOND_MAC]
         second_clients = _registered_clients(add_callbacks["mesh-two"])
         assert [client.unique_id for client in second_clients] == [OTHER_ENTRY_MAC]
