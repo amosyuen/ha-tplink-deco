@@ -323,6 +323,8 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         self.data = {} if data is None else data
         self._client_backoff_until = 0.0
         self._client_backoff_seconds = 0
+        self.has_successful_refresh = False
+        self.successfully_polled_deco_macs: set[str] = set()
 
     @property
     def remaining_backoff_seconds(self) -> int:
@@ -404,6 +406,15 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             if any(server_error for _, server_error in deco_client_responses):
                 self._apply_client_backoff()
             return old_clients
+
+        # An empty but successful response still confirms this Deco's count.
+        # Do not create a misleading zero-count entity for an unpolled peer.
+        self.successfully_polled_deco_macs.update(
+            mac
+            for mac, (response, _) in zip(deco_macs, deco_client_responses)
+            if response is not None
+        )
+        self.has_successful_refresh = True
 
         for deco_mac, (deco_clients, _) in zip(deco_macs, deco_client_responses):
             if deco_clients is None:
