@@ -694,7 +694,7 @@ class TplinkDecoApi:
                     "Re-login and retry potential expired auth error: %s",
                     err,
                 )
-            except TimeoutException as err:
+            except TimeoutException:
                 if timeout_retries >= max_timeout_retries:
                     # Reached max retries
                     raise
