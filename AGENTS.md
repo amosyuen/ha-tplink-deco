@@ -178,6 +178,24 @@ policy for AI-assisted development.
   handlers, repeated polls and offline/missing nodes. See
   [the runtime discovery skill](.agents/skills/deco-runtime-discovery-validation/SKILL.md).
 
+## Client tracker discovery after coordinator refresh (upstream #569)
+
+- **Observed gap:** `SIGNAL_CLIENT_ADDED` is emitted during the client
+  coordinator's `_async_update_data`, before Home Assistant commits the
+  returned client mapping to `coordinator.data`. A dispatcher-only handler
+  can miss the newly discovered MAC when it reads the previous mapping.
+- **Rule:** subscribe client tracker discovery to the normal client
+  coordinator update listener **as well as** the existing dispatcher.
+  Both callbacks use the same MAC deduplication set; unsubscribe both through
+  `coordinator_clients.on_close`. Do not change device IDs, client-presence
+  behavior, linked-device options or connected-client count semantics.
+- **Regression:** simulate the early dispatcher callback and a subsequent
+  committed client snapshot. Verify immediate post-refresh discovery,
+  exactly-once entity creation after repeated notifications, per-entry
+  isolation and unchanged MAC identities and opt-out behavior. See the
+  upstream synchronization skill; the separate startup count fixes
+  (upstream #567/#597) still require their own implementation and tests.
+
 ## Device-registry service identifier handling
 
 - Home Assistant devices may have zero, one or multiple registry identifiers.
