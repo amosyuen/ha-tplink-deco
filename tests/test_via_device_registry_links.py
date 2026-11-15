@@ -247,7 +247,7 @@ def test_polling_entities_stay_on_master_device() -> None:
             assert info["identifiers"] == {(DOMAIN, MASTER_MAC)}
             assert "via_device_id" not in info
 
-    assert polling_switch.unique_id == "tplink_deco_polling"
+    assert polling_switch.unique_id == "tplink_deco_polling_mesh-entry"
     assert polling_select.unique_id == "mesh-entry_polling_interval"
     get_registry.assert_not_called()
 
