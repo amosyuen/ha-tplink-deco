@@ -55,6 +55,33 @@ performance calculations, late-master network totals and MAC-based entity
 IDs. Mark the binary-sensor discovery handler with `@callback`.
 Follow [Deco runtime discovery validation](../deco-runtime-discovery-validation/SKILL.md).
 
+## Optional coordinator health diagnostics (upstream #575)
+
+First inspect the existing fork's Deco and client update methods and
+optional/failed API semantics. Keep existing response handling, per-node
+client polling, cache retention, startup order and 5xx backoff unchanged.
+Record health around **actual API attempts only**: a paused or deferred
+coordinator must not manufacture a new success or latency. A returned
+historical client dictionary after an all-failed poll must not be treated
+as a successful query; a valid empty list does count as success.
+
+Store the last successful aware UTC timestamp, measured API duration,
+sanitized error **type** (never exception text), and client timeout
+count. Keep current `client_query_mode` factual (`per_node` until the
+global fallback exists). Do not add router requests solely for health.
+Attach all new sensor entities to the known master, disabled by default,
+with stable MAC-prefixed unique IDs. Register them once and support late
+master discovery, partial mesh failures and separate config entries.
+Do not change existing diagnostics or network throughput sensors.
+
+Add focused tests for actual and skipped refreshes, failures, valid
+empty/all-failed client polls, sanitized API errors, timestamp timezone,
+idempotent sensor registration and device identity. Execute the Python
+3.13/HA 2025.12 and Python 3.14/HA 2026.11 CI matrix plus formatting
+and HACS/Hassfest when available, or report exact limitations. Note that
+downloadable diagnostics export from upstream #575 is separate because
+the fork currently lacks a `diagnostics.py` module.
+
 ## Initial optional client refresh without startup blocking (upstream #645)
 
 When this fork's `async_create_and_refresh_coordinators` awaits the client
