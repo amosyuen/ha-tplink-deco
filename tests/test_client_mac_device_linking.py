@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 from homeassistant.components.device_tracker.const import ATTR_MAC
+from homeassistant.components.device_tracker.const import CONF_SCAN_INTERVAL
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers.data_entry_flow import _BaseFlowManagerView
@@ -210,7 +211,7 @@ async def test_config_flow_persists_mac_link_setting(enabled: bool, kind: str) -
         "host": "http://192.0.2.1",
         "username": "admin",
         "password": "test-only",
-        "scan_interval": "30",
+        CONF_SCAN_INTERVAL: "30",
         CONF_LINK_CLIENT_DEVICES: enabled,
     }
     entry = SimpleNamespace(entry_id="mesh-one", data=dict(settings))
@@ -235,7 +236,7 @@ async def test_config_flow_persists_mac_link_setting(enabled: bool, kind: str) -
             saved = flow.hass.config_entries.async_update_entry.call_args.kwargs["data"]
 
     assert saved[CONF_LINK_CLIENT_DEVICES] is enabled
-    assert saved["scan_interval"] == 30
+    assert saved[CONF_SCAN_INTERVAL] == 30
     assert saved["host"] == "http://192.0.2.1"
 
 
