@@ -15,7 +15,8 @@
           "client_prefix": "Klient názov predpony",
           "client_postfix": "Klient názov koncovky",
           "deco_prefix": "Deco názov predpony",
-          "deco_postfix": "Deco názov koncovky"
+          "deco_postfix": "Deco názov koncovky",
+          "link_client_devices": "Prepojiť sledovače klientov so zariadeniami podľa adresy MAC"
         }
       },
       "reauth_confirm": {
@@ -52,7 +53,8 @@
           "client_prefix": "Klient názov predpony",
           "client_postfix": "Klient názov koncovky",
           "deco_prefix": "Deco názov predpony",
-          "deco_postfix": "Deco názov koncovky"
+          "deco_postfix": "Deco názov koncovky",
+          "link_client_devices": "Prepojiť sledovače klientov so zariadeniami podľa adresy MAC"
         }
       }
     },
