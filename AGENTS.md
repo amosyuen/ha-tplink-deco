@@ -178,6 +178,27 @@ policy for AI-assisted development.
   handlers, repeated polls and offline/missing nodes. See
   [the runtime discovery skill](.agents/skills/deco-runtime-discovery-validation/SKILL.md).
 
+## Privacy-safe downloadable diagnostics (upstream #575 follow-up)
+
+- **Confirmed gap after PR #30:** Home Assistant can download per-integration
+  diagnostics via `diagnostics.py`, but the fork had no such module.
+  Health sensors and an export are separate features; an enabled sensor
+  does not automatically provide a downloadable report.
+- **Rule:** implement `async_get_config_entry_diagnostics` for the two
+  existing, entry-owned coordinators using cached values only. Whitelist
+  health metrics and aggregate counts. Never export `config_entry.data`
+  or `.options`, raw Deco/client objects or lists, MAC/IP/BSSID values,
+  names/SSIDs, login/session material, upstream error text, or firmware
+  payloads. Never add router requests solely to construct diagnostics.
+  Keep UTC-aware timestamps serialized as ISO 8601; retain meaningful
+  zero/null values when coordinator data is not initialized.
+- **Validation:** verify JSON serialization, absence of sentinel secrets,
+  no additional API calls, two independent config entries, missing
+  inventory/client data, expected field types and replacement of malformed
+  `last_error` strings. Verify the HA diagnostics hook signature against
+  both supported core versions; avoid upstream Wi-Fi/mobile branches
+  until those coordinators exist in this fork. See the upstream-sync skill.
+
 ## Coordinator health sensors without extra API polling (upstream #575)
 
 - **Observed gap:** the fork exposes coordinator updates but has no
