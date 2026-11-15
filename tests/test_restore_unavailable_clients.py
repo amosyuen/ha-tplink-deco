@@ -262,7 +262,11 @@ async def test_unavailable_deco_remains_a_deco_when_initially_offline(
         missing = await coordinator._async_update_data()
         assert missing.decos[DECO_MAC] is saved_deco
         assert saved_deco.online is False
-        restored = await coordinator._async_update_data()
+        # Ordinary status polling is now interval-controlled: force a
+        # manual refresh to simulate the restored Deco becoming visible.
+        coordinator.async_refresh = AsyncMock(side_effect=coordinator._async_update_data)
+        await coordinator.async_request_device_refresh()
+        restored = coordinator.data
 
     assert restored.decos[DECO_MAC] is saved_deco
     assert restored.master_deco is saved_deco
