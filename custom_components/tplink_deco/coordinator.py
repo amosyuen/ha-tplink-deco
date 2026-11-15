@@ -234,8 +234,9 @@ class TpLinkDecoClient:
         self.online = data.get("online")
         self.connection_type = data.get("connection_type")
         self.interface = data.get("interface")
-        self.down_kilobytes_per_s = bytes_to_bits(data.get("down_speed", 0))
-        self.up_kilobytes_per_s = bytes_to_bits(data.get("up_speed", 0))
+        # Unknown rates contribute zero, not None, to live throughput totals.
+        self.down_kilobytes_per_s = bytes_to_bits(data.get("down_speed", 0)) or 0.0
+        self.up_kilobytes_per_s = bytes_to_bits(data.get("up_speed", 0)) or 0.0
         self.last_activity = utc_point_in_time
 
 
