@@ -49,6 +49,23 @@ Use the config-flow validation skill for the setup/options portion.
    as `Part of #2`, not an automatic issue closer. The issue #2
    checklist remains open until a verified merge.
 
+### Error-handling regression checklist for PR #34
+
+- Validate the **entire** inventory payload before modifying any existing
+  Deco: non-list responses, missing or duplicate identifiers and malformed
+  signal information must fail with an error that contains no router data.
+  Failed polls leave cached nodes, the inventory clock and health provenance
+  intact for later retries.
+- Handle expected optional performance timeout/transport failures without
+  discarding valid inventory or erasing CPU/memory samples. Do **not** hide
+  authentication, programming or unexpected API errors.
+- A manually pressed button must surface a failed coordinator poll even if
+  Home Assistant absorbs its original exception. Always clear the forced
+  request state in `finally` so later paused cycles do not perform
+  accidental API requests; a subsequent button press can retry.
+- Test the actual coordinator, anonymized diagnostic state and both
+  supported Home Assistant versions, not just isolated helper functions.
+
 ## Legacy numeric telemetry compatibility (upstream #589)
 
 The fork's Deco/client coordinators previously used firmware fields
