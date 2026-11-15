@@ -178,26 +178,41 @@ policy for AI-assisted development.
   handlers, repeated polls and offline/missing nodes. See
   [the runtime discovery skill](.agents/skills/deco-runtime-discovery-validation/SKILL.md).
 
-## Privacy-safe downloadable diagnostics (upstream #575 follow-up)
+## Privacy-safe downloadable diagnostics (upstream #575, fork PR #31)
 
-- **Confirmed gap after PR #30:** Home Assistant can download per-integration
-  diagnostics via `diagnostics.py`, but the fork had no such module.
-  Health sensors and an export are separate features; an enabled sensor
-  does not automatically provide a downloadable report.
-- **Rule:** implement `async_get_config_entry_diagnostics` for the two
-  existing, entry-owned coordinators using cached values only. Whitelist
-  health metrics and aggregate counts. Never export `config_entry.data`
-  or `.options`, raw Deco/client objects or lists, MAC/IP/BSSID values,
-  names/SSIDs, login/session material, upstream error text, or firmware
-  payloads. Never add router requests solely to construct diagnostics.
-  Keep UTC-aware timestamps serialized as ISO 8601; retain meaningful
-  zero/null values when coordinator data is not initialized.
-- **Validation:** verify JSON serialization, absence of sentinel secrets,
-  no additional API calls, two independent config entries, missing
-  inventory/client data, expected field types and replacement of malformed
-  `last_error` strings. Verify the HA diagnostics hook signature against
-  both supported core versions; avoid upstream Wi-Fi/mobile branches
-  until those coordinators exist in this fork. See the upstream-sync skill.
+- **Evidence and boundary:** PR #30 introduced coordinator health sensors,
+  while PR #31 added the separate Home Assistant config-entry diagnostics
+  download. The export is not a per-device diagnostic, system-log download
+  or future Wi-Fi/mobile coordinator export. Do not infer that a sensor
+  implies download support, or that an exported function alone proves
+  Home Assistant has registered the diagnostic handler.
+- **Stable, minimal schema:** export a versioned, JSON-serializable
+  **allowlist** of cached coordinator health/status scalars and anonymous
+  aggregate counts. Require a privacy review and focused tests for every
+  added or renamed field. Never return `config_entry.data`/`.options`,
+  entry IDs, MAC/IP/BSSID addresses, client or router names, SSIDs,
+  credentials, tokens, cookies, session material, exceptions, individual
+  client/device collections or raw firmware responses. Generic payload
+  redaction is **not** an alternative to selecting safe fields.
+- **Error-label provenance:** record error labels from controlled exception
+  **types** or fixed internal markers, never from upstream exception
+  messages. An `isidentifier()` or string-length check alone cannot prove
+  privacy: a secret containing only letters is also an identifier. Audit
+  new error sources before exporting them; add adversarial regression tests
+  for both malformed and plausible identifier-shaped private strings.
+- **No side effects or false state:** read only the current config entry's
+  cached coordinators, without router requests, refresh scheduling or
+  entity/registry mutations. Preserve aware ISO 8601 timestamps, meaningful
+  zero/null values, paused/backoff/incomplete states and separation between
+  multiple config entries. Missing initial data must not invent devices.
+- **Verification gates:** inspect the actual diagnostics hook in both
+  supported Home Assistant releases. Test exact allowed keys and types,
+  JSON serialization, private sentinel exclusion at *all* nested levels,
+  missing data, no additional API calls and multi-entry isolation. Direct
+  invocation of `async_get_config_entry_diagnostics` validates the data
+  contract, **not** the Home Assistant diagnostics platform registration;
+  check discovery separately before claiming UI availability. Consult the
+  upstream-sync skill and final-commit CI rules.
 
 ## Coordinator health sensors without extra API polling (upstream #575)
 
