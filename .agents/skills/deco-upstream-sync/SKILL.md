@@ -49,6 +49,16 @@ preserve the original identity/name assertions, and run **both** supported
 Home Assistant versions after updating stale expectations. Keep the main
 tracking issue open until the PR has actually been merged.
 
+## Optional client-device MAC linking (upstream #605)
+
+For opt-out MAC matching, preserve the client tracker's original MAC-based
+entity `unique_id` and the default-enabled scanner MAC. Disabling the
+option must affect only scanner matching, not physical Deco nodes or
+entity identity. Add a versioned config migration and protect shared and
+foreign registry devices from the manual cleanup hook. Use the
+[client MAC-linking skill](../deco-client-device-linking/SKILL.md) for the
+config-flow and registry regression matrix.
+
 ## Per-config-entry polling switch registry migration (upstream #655)
 
 When multiple Deco entries can exist, do not keep the single shared
