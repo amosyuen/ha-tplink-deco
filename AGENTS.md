@@ -356,7 +356,7 @@ policy for AI-assisted development.
 - **Forms:** preserve the existing string selector for the main cadence.
   Add the new number field using a **serializable continuous schema**
   (`vol.Coerce(int)` and `vol.Range(min=0)`); enforce the disjoint
-  valid set (0 or >=10) in explicit setup/options validation, *before*
+  valid set (0 or >=10) in explicit setup/options validation, _before_
   authentication or entry updates. Reject booleans, float values and
   malformed inputs; display translated, field-specific errors.
   Store values as integers and do not migrate existing entries simply
