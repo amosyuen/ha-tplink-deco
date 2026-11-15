@@ -44,6 +44,43 @@ description: "Use when changing or reviewing the Deco polling switch's unique ID
    master device linking, existing polling interval selectors,
    services and startup lifecycle intact.
 
+## Reproduce and prevent stale-registry-mock regressions
+
+The PR #22 CodeRabbit review exposed a test double that kept returning
+`tplink_deco_polling` after `async_update_entity` had supposedly moved
+it. Parameterizing entry order alone does not verify a persisted rename.
+
+1. **Arrange:** begin with a registry mapping
+   `tplink_deco_polling -> switch.deco_polling`, owned by `entry-one`.
+   Use the real HA test registry if available, otherwise a dict-backed
+   fake for `async_get_entity_id` and `async_get`.
+2. **Apply writes:** make the fake's `async_update_entity` move the
+   existing entity ID from the legacy unique ID to
+   `tplink_deco_polling_entry-one` immediately. It must reject a
+   conflicting scoped ID rather than inventing a replacement.
+3. **Exercise both orders:** parametrically call
+   `async_setup_entry` for `entry-one -> entry-two` and
+   `entry-two -> entry-one`. In the `async_add_entities` callback,
+   simulate Home Assistant registering any new switch under its
+   config-entry-scoped unique ID; never replace the migrated entry.
+4. **Assert intermediate and final state:** before owner migration the
+   legacy mapping exists; immediately after it the legacy lookup
+   returns `None`, the owner-scoped lookup returns the **same**
+   `switch.deco_polling` entity ID, and the second entry has an
+   independent scoped ID and distinct entity ID. Confirm
+   `async_update_entity` was called **once**, by the owning entry,
+   regardless of setup order.
+5. **Check re-entry and exclusions:** reloading an already migrated
+   owner must not migrate again. Missing, foreign-owned or conflicting
+   legacy entries must not be taken over. Preserve the switch's
+   pause/resume/refresh behavior and existing registry relationships.
+6. **Validate and report:** inspect the resulting test and production
+   diff, then execute both supported HA regression matrices and the
+   repository's lint/pre-commit/HACS/Hassfest gates on the **final head**
+   when execution is available. Distinguish source inspection, test
+   implementation and real test execution. Optional review CLIs do not
+   substitute for these checks.
+
 ## Validation and tracking
 
 8. Test two independent config entries, both setup orders, existing
@@ -51,13 +88,9 @@ description: "Use when changing or reviewing the Deco polling switch's unique ID
    conflicting scoped IDs, reloading after migration, untouched switch
    behavior, and setup ordering (migration must happen before adding
    the new entity). Update pre-existing tests that assert the old
-   global unique ID; retain their other compatibility checks.
-   A registry test double must apply `async_update_entity` to its lookup
-   state: after owner migration the legacy unique ID must disappear, the
-   new scoped ID must resolve to the original entity ID, and a second
-   config entry must register a distinct scoped switch. Static lookup
-   mocks can conceal cross-entry regressions even when both setup
-   orders are parametrized.
+   global unique ID; retain their other compatibility checks. Use the
+   stateful validation sequence below: static lookup mocks can conceal
+   cross-entry regressions even when both setup orders are parametrized.
 9. Run the full Python 3.13 / Home Assistant 2025.12 and Python 3.14 /
    Home Assistant 2026.11 matrix, plus pre-commit, HACS and Hassfest on
    the **final** PR head. Never claim a live device-registry migration
