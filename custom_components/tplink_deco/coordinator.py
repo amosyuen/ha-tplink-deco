@@ -66,9 +66,15 @@ class CoordinatorHealth:
 
     @callback
     def _notify_listeners(self) -> None:
-        """Publish every measured change, even after consecutive failures."""
+        """Publish each measured change without breaking the ongoing API poll."""
         for listener in tuple(self._listeners):
-            listener()
+            try:
+                listener()
+            except Exception as error:
+                _LOGGER.warning(
+                    "Deco health listener update failed (%s)",
+                    type(error).__name__,
+                )
 
     def record_success(self, started: float) -> None:
         """Record a completed poll without logging or retaining payloads."""
