@@ -422,8 +422,7 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
         for mac, old_deco in old_decos.items():
             if mac not in decos:
                 _LOGGER.debug(
-                    "_async_update_data: Deco mac=%s not returned by API, marking offline",
-                    mac,
+                    "Deco node not present in current inventory; marking offline"
                 )
                 old_deco.online = False
                 old_deco.internet_online = False
@@ -437,7 +436,12 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
     async def async_request_device_refresh(self) -> None:
         """Request a real device-list poll, even in startup-only mode."""
         self._force_device_list_refresh = True
-        await self.async_refresh()
+        try:
+            await self.async_refresh()
+        finally:
+            # A failed manual press must not silently unpause later polling.
+            # A second press may force another request.
+            self._force_device_list_refresh = False
         if not self.last_update_success:
             # DataUpdateCoordinator.async_refresh can absorb poll exceptions.
             # Raise a safe error so the manual button reports failure to HA.
