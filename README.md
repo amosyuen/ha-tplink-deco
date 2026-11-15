@@ -27,6 +27,21 @@ This integration provides local polling control and diagnostics for TP-Link Deco
 - Memory usage (raw + smoothed)
 - Backhaul and network diagnostics
 
+### Optional client device linking
+
+**Link client trackers to devices by MAC address** is enabled by default,
+preserving Home Assistant's existing automatic device matching. To prevent
+client trackers from joining devices exposed by other integrations, disable
+the option in the Deco integration options.
+
+When disabled, each client tracker keeps its existing entity ID and MAC-based
+unique ID, while its MAC is available as a state attribute instead of the
+scanner's automatic matching field. Physical Deco trackers are unaffected.
+Previously linked Home Assistant devices are **not** automatically unlinked;
+legacy client-only device entries belonging exclusively to this Deco
+configuration entry may be removed manually. Shared or Deco devices remain
+protected. The setting can be changed per Deco integration entry.
+
 ### CPU / Memory sensors
 
 Two types of sensors are available:
@@ -97,6 +112,12 @@ Configurable:
 ## 📝 Changelog
 
 ### Unreleased — upstream sync (issue #2)
+
+- Add optional MAC-based device linking for client trackers (default on),
+  preserving existing tracker unique IDs and physical Deco device identities.
+  Disabling the option prevents future automatic matching while allowing
+  safe manual cleanup of old client-only device entries. Existing
+  cross-integration device links are not changed automatically.
 
 - Scope polling-switch unique IDs to each Home Assistant configuration
   entry to prevent collisions when multiple Deco networks are added.
