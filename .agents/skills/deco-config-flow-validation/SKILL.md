@@ -16,7 +16,7 @@ description: "Use when changing or testing Home Assistant configuration/options 
    submitted `"30"` as a string. Assert the persisted canonical key
    holds integer `30` in both setup and options flows.
 5. Validate submitted values in **both setup and options flows** before credential checks, API traffic or data mutation. Reject unsupported values, malformed strings, `None`, floats and booleans; do not silently clamp or persist them. Return a field-specific error with matching `strings.json` and relevant translations.
-6. Do not conflate the main client polling interval with a future independently configurable device-list interval. Preserve config-entry values and entity unique IDs when adding another control.
+6. Keep the main client/performance polling interval distinct from the independent Deco `device_list_interval`. Preserve existing values, unique IDs and the original scan-interval selector. For the new field accept integer 0 (startup-only) or >=10 seconds; use a continuous serializable schema and validate the disjoint constraint at the flow layer in both setup and options, including rejected 1–9 without authentication.
 7. Parameterize regressions across supported values, legacy defaults and invalid inputs. Mock authentication/network operations and verify that invalid inputs do **not** invoke them or update config entries. Cover successful integer persistence in both flows, other config fields remaining unchanged, and JSON serialization.
 8. For any config-entry version migration, check the actual `ConfigEntry`
    API in **both supported Home Assistant versions** before choosing how to
