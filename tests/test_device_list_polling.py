@@ -22,19 +22,24 @@ SATELLITE = "02:00:00:00:10:02"
 
 def _node(mac: str, master: bool = False) -> dict[str, str]:
     """Return anonymous valid node data."""
-    return {"mac": mac, "role": "master" if master else "slave",
-            "group_status": "connected", "inet_status": "online"}
+    return {
+        "mac": mac,
+        "role": "master" if master else "slave",
+        "group_status": "connected",
+        "inet_status": "online",
+    }
 
 
 def _coordinator(interval: int) -> TplinkDecoUpdateCoordinator:
     """Create a real coordinator with no live network access."""
     api = MagicMock()
     api.async_list_devices = AsyncMock(return_value=[_node(MASTER, True)])
-    api.async_get_performance = AsyncMock(return_value={
-        "result": {"cpu_usage": "0.2", "mem_usage": "0.4"}
-    })
+    api.async_get_performance = AsyncMock(
+        return_value={"result": {"cpu_usage": "0.2", "mem_usage": "0.4"}}
+    )
     return TplinkDecoUpdateCoordinator(
-        hass=MagicMock(), api=api,
+        hass=MagicMock(),
+        api=api,
         config_entry=SimpleNamespace(entry_id="mesh-one"),
         update_interval=timedelta(seconds=30),
         device_list_interval_seconds=interval,
@@ -82,7 +87,8 @@ async def test_forced_refresh_bypasses_disabled_interval_and_pause() -> None:
     old_master = coordinator.data.master_deco
     coordinator.paused = True
     coordinator.api.async_list_devices.return_value = [
-        _node(MASTER, True), _node(SATELLITE)
+        _node(MASTER, True),
+        _node(SATELLITE),
     ]
     coordinator.async_refresh = AsyncMock(side_effect=coordinator._async_update_data)
     with patch(
@@ -115,10 +121,20 @@ async def test_failed_manual_refresh_preserves_cache_and_retry_flag() -> None:
     assert "private token" not in repr(coordinator.health)
 
 
-@pytest.mark.parametrize(("saved", "expected"), [
-    (None, 30), (0, 0), ("0", 0), ("300", 300), (300, 300),
-    (5, 30), (-1, 30), (True, 30), ("invalid", 30),
-])
+@pytest.mark.parametrize(
+    ("saved", "expected"),
+    [
+        (None, 30),
+        (0, 0),
+        ("0", 0),
+        ("300", 300),
+        (300, 300),
+        (5, 30),
+        (-1, 30),
+        (True, 30),
+        ("invalid", 30),
+    ],
+)
 def test_legacy_config_defaults(saved: object, expected: int) -> None:
     """Retain old scan cadence unless a valid new option was saved."""
     values = {} if saved is None else {CONF_DEVICE_LIST_INTERVAL: saved}
