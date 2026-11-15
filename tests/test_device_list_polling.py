@@ -239,6 +239,7 @@ async def test_invalid_device_list_preserves_cached_state(
 
     old_data = coordinator.data
     old_master = old_data.master_deco
+    old_master.name = "Previously saved Deco"
     old_name = old_master.name
     old_timestamp = coordinator._last_device_list_update
     coordinator.api.async_list_devices.return_value = invalid_response
