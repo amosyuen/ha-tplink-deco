@@ -14,6 +14,41 @@ description: "Use when comparing, backporting, reviewing, or implementing change
 7. Add focused tests for the change and run the available checks. For test setup and HA form regressions, use the related `deco-config-flow-validation` skill. Report test limitations explicitly; do not say tests passed merely because they are present.
 8. Open or update a **small PR** linked as `Part of #2`, not `Fixes #2`. Address valid review findings and resolve threads only after the corresponding change is committed or an explanation is supplied. Update issue #2's checklist only after the relevant scope has been merged; leave unported items open.
 
+## Independent Deco inventory scheduling (upstream #616/#669/#670)
+
+Port this feature as one compatible, independently tested backport.
+Use the config-flow validation skill for the setup/options portion.
+
+1. Compare the fork's existing scan-interval selector, two-coordinator
+   startup, pause switch, client-list backoff and discovery dispatch with
+   upstream #616, #669 and #670 before editing. An old config entry
+   without `device_list_interval` must keep its original cadence.
+2. Separate `device_list` polling from performance and client polling
+   **inside the existing Deco coordinator**. Use `monotonic()` and a
+   last-successful-device-list timestamp; `0` means startup-only.
+   Keep performance updates and their previous-value semantics even
+   when the inventory request is skipped. Never advance the timestamp
+   on a failed request or invent a new master/registry identity.
+3. Provide one per-entry, master-linked `Refresh Deco status` button.
+   Its immediate refresh must override startup-only and pause, while
+   propagating failures safely. Do not use a debouncer or trigger extra
+   refresh cycles to simulate device-list scheduling.
+4. Use a serializable number schema (`vol.Coerce(int)` plus
+   `vol.Range(min=0)`) and **flow-level** validation to reject 1–9,
+   negative, boolean and malformed values. Ensure both setup and
+   options flows return `invalid_device_list_interval` before testing
+   credentials. Store integers, add English/Dutch labels and errors,
+   and preserve the canonical `CONF_SCAN_INTERVAL` selector.
+5. Test real coordinator startup/cache/interval/manual/failure behavior,
+   actual Home Assistant form JSON serialization, two independent
+   config entries, identity stability, device discovery and
+   diagnostics. Validate both supported Python/Home Assistant
+   matrices, pre-commit, HACS and Hassfest on the final head SHA.
+   Keep hardware validation explicitly unverified when not performed.
+6. Update the README and integration-specific guide and track the PR
+   as `Part of #2`, not an automatic issue closer. The issue #2
+   checklist remains open until a verified merge.
+
 ## Legacy numeric telemetry compatibility (upstream #589)
 
 The fork's Deco/client coordinators previously used firmware fields
