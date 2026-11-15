@@ -417,7 +417,7 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
             if deco is None:
                 deco_added = True
                 deco = TpLinkDeco(mac)
-                _LOGGER.debug("_async_update_data: Found new deco mac=%s", deco.mac)
+                _LOGGER.debug("New Deco node discovered during inventory refresh")
             deco.update(new_deco)
             decos[mac] = deco
             if deco.master:
