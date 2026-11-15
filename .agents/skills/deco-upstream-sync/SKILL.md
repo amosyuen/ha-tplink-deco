@@ -84,6 +84,11 @@ does not change that. Before accepting a health feature, implement a
 separate, lifecycle-safe health notification mechanism for each changed
 failure metric, without turning an unsuccessful refresh into a success
 or notifying unrelated entities. Ensure listener removal on unload.
+The PR #30 fix uses independent `CoordinatorHealth.async_add_listener`
+subscriptions: health sensors are nonpolling `SensorEntity` instances,
+unsubscribe via `async_on_remove`, and receive updates on success,
+failure and incomplete polls. A faulty subscriber must not abort or
+reclassify an API poll; do not log its unredacted error message.
 
 Add focused tests for actual and skipped refreshes, failures, valid
 empty/all-failed client polls, sanitized API errors, timestamp timezone,
