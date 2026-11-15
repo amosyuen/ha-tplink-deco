@@ -113,6 +113,13 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Add an independent Deco status polling interval. Choose 0 to fetch
+  the mesh inventory only at startup, or an interval of at least ten
+  seconds. Client and CPU/memory polling continue at the existing main
+  interval. A new **Refresh Deco status** button refreshes inventory
+  manually, including while automatic status polling is disabled.
+  Older configurations keep their previous polling behavior.
+
 - Tolerate numeric strings returned by older Deco firmware for
   client download/upload rates and master CPU/memory fractions.
   Invalid client rates contribute zero to live network/per-Deco
