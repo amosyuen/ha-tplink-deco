@@ -618,7 +618,7 @@ policy for AI-assisted development.
   concurrency-only port. Never mark the global fallback complete solely
   because concurrent requests are bounded.
 - **Concurrency and retries:** permit **at most two** concurrent
-  `client_list` requests *per coordinator*, using an async semaphore
+  `client_list` requests _per coordinator_, using an async semaphore
   (never `sleep()` or a global lock). Pass a request-local timeout retry
   budget of **zero** to each per-node request to avoid multiplying
   timeouts across a mesh. Other authenticated API calls keep the
