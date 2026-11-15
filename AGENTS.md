@@ -28,6 +28,8 @@ reading these instructions:
   compare and port upstream features in small, compatibility-safe PRs.
 - [GitHub merge-reference synchronization](.agents/skills/github-merge-sync/SKILL.md):
   validate secure merge-triggered updates to linked issues and related open PRs.
+- [GitHub PR branch maintenance](.agents/skills/github-pr-branch-maintenance/SKILL.md):
+  distinguish rebaseability from mergeability and rewrite branches with lease protection.
 - [Config flow and test validation](.agents/skills/deco-config-flow-validation/SKILL.md):
   validate Home Assistant forms, polling interval storage and CI regressions.
 - [Device-registry service validation](.agents/skills/deco-service-registry-validation/SKILL.md):
@@ -120,6 +122,33 @@ policy for AI-assisted development.
   Manually verify the merged implementation when assessing overall issue
   completion; the workflow does not replace this review.
 
+## GitHub PR branch maintenance and final-head verification
+
+- **PR #36 evidence:** GitHub reported `rebaseable=false` while
+  `mergeable=true`, `mergeable_state=clean`, and the PR head was already
+  up to date with `main`. These fields describe different conditions:
+  never equate a failed rebaseability check with a merge conflict. Compare
+  the actual head/base SHAs, merge base, ahead/behind counts and changed
+  paths before deciding whether any branch update is needed.
+- Rewrite a PR branch only when the user explicitly requests a rebase or
+  another justified change. Preserve the intended diff and do not silently
+  replace a multi-commit history with a squash. If history is rewritten,
+  use `--force-with-lease` (or an equivalent update using the observed
+  head SHA as an expected value); reject stale leases instead of
+  overwriting concurrent commits.
+- **PR #36 follow-up:** changing commit history can reset reviews and
+  invalidate earlier CI, even if the resulting file tree is identical.
+  Check the final PR head, branch comparison, mergeability, review threads,
+  approvals and *all* required CI jobs again. A running or skipped check
+  is not a passed check; `mergeable_state=unstable` while CI runs is not
+  proof of a content conflict.
+- Automated reviewers may edit PR descriptions or append outdated
+  summaries after a push. Re-read the live PR body and issue tracker
+  before reporting completion; correct only verified stale claims about
+  scope, head SHA or CI. Preserve independently useful review history
+  rather than overwriting it unnecessarily. See the
+  [PR branch-maintenance skill](.agents/skills/github-pr-branch-maintenance/SKILL.md).
+
 ## Preserve fork compatibility
 
 - Treat upstream synchronization (tracking issue #2) as a series of small,
@@ -153,14 +182,16 @@ policy for AI-assisted development.
   provides `async_get_stored_state(entity_id)` with registry-aware
   storage. Use capability detection and tests for both, rather than
   assuming that the same mapping exists in all supported releases.
-- **Malformed restore-state hardening (PR #36):** older or damaged stored
-  trackers may lack a nested state or have non-mapping attributes. Validate
-  both layers before inspecting `device_type`; skip only the invalid
-  record and log a generic warning without identifiers or stored data.
-  An unknown discriminator is not authoritative: check the exact owning
-  Deco registry identifier before assuming it is a provisional client.
-  Never suppress errors from the restore storage API or initial Deco
-  refresh; cover these cases using both HA restore APIs in regression tests.
+- **Malformed restore-state hardening (PR #36):** the verified failure
+  path dereferenced `stored_state.state.attributes` without checking the
+  nested state or mapping shape. Validate those fields before reading
+  `device_type`. Skip only malformed *records* with a fixed warning that
+  excludes entity IDs, names and saved values. A valid mapping without
+  `device_type` is not malformed; an unknown discriminator still requires
+  the exact Deco registry-identifier check. Do not hide exceptions from
+  the restore storage API, registry lookup or initial Deco refresh.
+  Test damaged and valid records together, including error propagation,
+  with both supported Home Assistant restore APIs.
 - **Reconciliation and safety:** skip disabled or non-tracker entities
   and missing restore records. After the successful initial Deco refresh,
   remove provisional clients identified as actual Deco MACs **before**

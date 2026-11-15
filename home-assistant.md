@@ -19,8 +19,10 @@ Deco discovery (PR #25), client restoration (PR #26), tracker discovery
 refresh (PR #29), coordinator health (PR #30), privacy-safe diagnostics
 (PR #31), numeric-string telemetry (PR #33) and independent Deco
 status polling (PR #34) and bounded client-list concurrency (PR #35)
-are merged. The upstream #621 restore parity follow-up adds only tests
-and development guidance.
+are merged. PR #36 (upstream #621 restore parity) is still open and
+adds targeted restore-state error handling, regression tests and
+development guidance; these pending changes are not part of this
+`main` baseline.
 
 ## 1. Integration boundary and data ownership
 

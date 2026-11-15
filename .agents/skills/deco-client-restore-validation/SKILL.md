@@ -32,11 +32,13 @@ description: "Safely restore unavailable TP-Link Deco client trackers across Hom
    config entry. Skip entries outside `device_tracker`, entries
    disabled in the entity registry and entries without a saved state.
    Do not rebuild entities from unrelated configuration entries.
-   If a stored record lacks a nested state or mapping-like attributes,
-   skip just that malformed record and issue a generic warning without
-   entity IDs, names or stored values. Do not mistake a missing
-   `device_type` key in an otherwise valid mapping for corrupt
-   state: it still requires provisional restoration.
+   If a stored record lacks a nested state or `Mapping`-compatible
+   attributes, skip only that malformed record with a fixed warning;
+   never interpolate an entity ID, name, stored value or exception text.
+   A valid attribute mapping with no `device_type` still requires
+   provisional restoration. Keep storage lookup failures distinct from
+   malformed returned data: never catch them and pretend restoration
+   succeeded.
 
 ## Restore and reconcile safely
 
@@ -53,7 +55,8 @@ description: "Safely restore unavailable TP-Link Deco client trackers across Hom
    Never alter entity-registry IDs as part of restoration. Treat an
    unrecognized/non-string `device_type` like a missing discriminator:
    check the exact registered Deco identifier before using the
-   provisional-client fallback. Do not swallow storage API exceptions.
+   provisional-client fallback. Preserve explicit valid client/Deco types.
+   Do not swallow registry lookup or storage API exceptions.
 6. After **successful** first Deco device-list refresh, and **before**
    creating the client coordinator, reconcile the provisional client
    dictionary against `deco_coordinator.data.decos`. Remove only MACs
@@ -76,9 +79,13 @@ description: "Safely restore unavailable TP-Link Deco client trackers across Hom
    include a client attached to a Deco's device whose identifier contains
    `(DOMAIN, parent_deco_mac)` rather than its **own** MAC; it must stay
    a client and retain its MAC-derived unique ID. Include corrupt
-   restored-state wrappers and non-mapping attributes alongside valid
-   peers; one broken record must not block all clients. Assert generic
-   warnings do not disclose entity IDs or state contents.
+   restored-state wrappers (`state=None`, absent attributes, `None`
+   or non-mapping attributes) alongside valid peers; one bad record
+   must not block the others. Cover unknown `device_type` values, a
+   matching own-MAC Deco, and a client linked to a parent Deco. Assert
+   warnings contain no entity IDs, names or stored values, and that
+   stored-state lookup exceptions propagate rather than becoming an
+   empty client inventory.
 9. Simulate the **real integration setup order** with mocked API and
    coordinator methods: confirm the first Deco refresh completes before
    client coordinator construction, and verify that provisional clients
@@ -96,7 +103,11 @@ description: "Safely restore unavailable TP-Link Deco client trackers across Hom
     3.14/HA 2026.11 CI suites on the final PR head. Run the repository
     pre-commit, HACS and Hassfest checks. Static review and committed
     tests are **not** equivalent to executed tests. Do not claim
-    live firmware validation without it.
+    live firmware validation without it. If a formatting hook fails,
+    inspect the exact CI diff, commit only the required correction and
+    rerun all checks on the *new* head. Verify final PR and issue text
+    after any automated review edits; see the
+    [PR branch-maintenance skill](../github-pr-branch-maintenance/SKILL.md).
 
 ## Issue tracking
 
