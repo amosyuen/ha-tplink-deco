@@ -199,7 +199,6 @@ async def test_manual_refresh_reports_a_failed_home_assistant_poll() -> None:
     assert coordinator._force_device_list_refresh is False
 
 
-
 @pytest.mark.asyncio
 async def test_manual_refresh_sanitizes_authentication_failure() -> None:
     """Preserve Home Assistant's auth signal without leaking upstream details."""
