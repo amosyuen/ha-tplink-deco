@@ -439,8 +439,10 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
         try:
             await self.async_refresh()
         except ConfigEntryAuthFailed:
-            # Preserve the auth failure type so HA can identify reauth.
-            raise
+            # Keep the HA auth failure type without exposing an API message.
+            raise ConfigEntryAuthFailed(
+                "Deco authentication failed; check integration credentials"
+            ) from None
         except Exception:
             # A refresh can also propagate a raw upstream exception.
             # Do not expose its message, which may contain session tokens.
