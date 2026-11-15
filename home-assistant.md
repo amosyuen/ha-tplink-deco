@@ -232,7 +232,9 @@ feature.
   connection timeout, bounded timeout retry count, TLS verification,
   `consider_home`, optional Deco/client name prefixes/postfixes and
   `link_client_devices` (defaults to `True`). Version 6 entries migrate
-  to version 7 with this default. The setting is independent per entry.
+  to version 7 with this default through
+  `hass.config_entries.async_update_entry`, without modifying the immutable
+  `ConfigEntry.version` directly. The setting is independent per entry.
   Preserve existing field meanings and migration paths for older
   config-entry versions.
 - Legacy MAC-only client device registrations may be removed manually
