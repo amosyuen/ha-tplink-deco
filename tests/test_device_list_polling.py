@@ -40,7 +40,7 @@ def _coordinator(interval: int) -> TplinkDecoUpdateCoordinator:
     return TplinkDecoUpdateCoordinator(
         hass=MagicMock(),
         api=api,
-        config_entry=SimpleNamespace(entry_id="mesh-one"),
+        config_entry=MagicMock(entry_id="mesh-one"),
         update_interval=timedelta(seconds=30),
         device_list_interval_seconds=interval,
     )
