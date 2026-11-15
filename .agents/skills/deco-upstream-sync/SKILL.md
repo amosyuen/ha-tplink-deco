@@ -366,10 +366,14 @@ long-running client requests. It is distinct from global-list fallback.
    other API methods. Validate negative, boolean, float and string
    overrides before network access.
 3. Handle per-node timeout exhaustion as a failed/incomplete node without
-   resetting online flags or starting the HTTP 5xx backoff. Preserve
-   valid empty responses, successful peers, 5xx recovery and explicit
-   authentication failures. Do not log credentials, MACs, raw responses
-   or exception messages.
+   resetting online flags or starting the HTTP 5xx backoff. Maintain
+   health sensor/diagnostics parity: count **one timeout per real poll
+   cycle** even if multiple nodes time out, preserve a successful health
+   timestamp on valid partial replies, keep failure counts on all-failed
+   cycles, and emit only one health listener notification for the cycle.
+   Preserve valid empty responses, successful peers, 5xx recovery and
+   explicit authentication failures. Do not log credentials, MACs,
+   raw responses or exception messages.
 4. Await all scheduled requests and cancel unfinished siblings on
    unexpected errors and task cancellation. Test semaphore waiters as
    well as active requests; avoid leaked tasks and extra router polls.
