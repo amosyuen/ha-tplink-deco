@@ -10,6 +10,7 @@ from datetime import timezone
 import ipaddress
 import logging
 from math import ceil
+from math import isfinite
 from time import monotonic
 from typing import Any
 
@@ -100,8 +101,23 @@ class CoordinatorHealth:
         self._notify_listeners()
 
 
-def bytes_to_bits(bytes_count):
-    return bytes_count / 8 if bytes_count is not None else bytes_count
+def _coerce_finite_float(value: object) -> float | None:
+    """Parse legacy firmware numeric strings without accepting invalid values."""
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return None
+
+    try:
+        number = float(value)
+    except (OverflowError, TypeError, ValueError):
+        return None
+
+    return number if isfinite(number) else None
+
+
+def bytes_to_bits(bytes_count: object) -> float | None:
+    """Preserve the existing byte-rate conversion for finite JSON numbers."""
+    numeric_value = _coerce_finite_float(bytes_count)
+    return numeric_value / 8 if numeric_value is not None else None
 
 
 def filter_invalid_ip(ip_address):
@@ -327,8 +343,9 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
             cpu_raw = result.get("cpu_usage")
             mem_raw = result.get("mem_usage")
 
-            if cpu_raw is not None:
-                cpu_percent = cpu_raw * 100
+            cpu_value = _coerce_finite_float(cpu_raw)
+            if cpu_value is not None:
+                cpu_percent = cpu_value * 100
                 master_deco.cpu_usage_raw = round(cpu_percent, 1)
 
                 if master_deco.cpu_usage is not None:
@@ -338,8 +355,9 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
                 else:
                     master_deco.cpu_usage = round(cpu_percent, 1)
 
-            if mem_raw is not None:
-                mem_percent = mem_raw * 100
+            mem_value = _coerce_finite_float(mem_raw)
+            if mem_value is not None:
+                mem_percent = mem_value * 100
                 master_deco.mem_usage_raw = round(mem_percent, 1)
 
                 if master_deco.mem_usage is not None:
