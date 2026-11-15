@@ -67,10 +67,11 @@ upgrade:
    and `new = dict(config_entry.data)`. Apply each historical migration
    in sequence to these **local** values, and use `setdefault` for
    newly introduced options that must preserve an existing `False`.
-3. **Commit through the manager.** Pass the staged values in **one**
-   `hass.config_entries.async_update_entry(config_entry, data=new,
-   version=version)` call. Do not assign protected attributes on
-   `ConfigEntry` and do not update its `data` mapping in place.
+3. **Commit through the manager.** Call
+   `hass.config_entries.async_update_entry` **once**, passing the staged
+   `config_entry`, `data=new` and `version=version` together. Do not
+   assign protected attributes on `ConfigEntry` or mutate its `data`
+   mapping in place.
 4. **Test the failure mechanism.** Build a real `ConfigEntry` using
    the required constructor fields from the installed HA version.
    Exercise version 5 and version 6 inputs with the new setting absent,
