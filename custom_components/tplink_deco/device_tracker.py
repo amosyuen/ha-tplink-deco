@@ -5,6 +5,7 @@ from typing import Any
 
 from homeassistant.components.device_tracker.config_entry import ScannerEntity
 from homeassistant.components.device_tracker.const import ATTR_IP
+from homeassistant.components.device_tracker.const import ATTR_MAC
 from homeassistant.components.device_tracker.const import SourceType
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_HW_VERSION
@@ -37,8 +38,10 @@ from .const import CONF_CLIENT_POSTFIX
 from .const import CONF_CLIENT_PREFIX
 from .const import CONF_DECO_POSTFIX
 from .const import CONF_DECO_PREFIX
+from .const import CONF_LINK_CLIENT_DEVICES
 from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
+from .const import DEFAULT_LINK_CLIENT_DEVICES
 from .const import DEVICE_TYPE_CLIENT
 from .const import DEVICE_TYPE_DECO
 from .const import DOMAIN
@@ -73,6 +76,9 @@ async def async_setup_entry(
     client_postfix = entry.data[CONF_CLIENT_POSTFIX]
     deco_prefix = entry.data[CONF_DECO_PREFIX]
     deco_postfix = entry.data[CONF_DECO_POSTFIX]
+    link_client_devices = entry.data.get(
+        CONF_LINK_CLIENT_DEVICES, DEFAULT_LINK_CLIENT_DEVICES
+    )
     _async_setup_decos(
         hass, async_add_entities, coordinator_decos, deco_prefix, deco_postfix
     )
@@ -83,6 +89,7 @@ async def async_setup_entry(
         coordinator_clients,
         client_prefix,
         client_postfix,
+        link_client_devices,
     )
 
 
@@ -139,6 +146,7 @@ def _async_setup_clients(
     coordinator_clients: TplinkDecoClientUpdateCoordinator,
     client_prefix: str,
     client_postfix: str,
+    link_client_devices: bool,
 ):
     tracked_clients = set()
 
@@ -159,6 +167,7 @@ def _async_setup_clients(
                     client,
                     client_prefix,
                     client_postfix,
+                    link_client_devices,
                 )
             )
             tracked_clients.add(mac)
@@ -340,6 +349,7 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
         client: TpLinkDecoClient,
         client_prefix: str,
         client_postfix: str,
+        link_client_devices: bool = DEFAULT_LINK_CLIENT_DEVICES,
     ) -> None:
         """Initialize a TP-Link Deco device."""
         self._attr_connection_type = None
@@ -351,6 +361,7 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
         self._client_postfix = client_postfix
         self._client_prefix = client_prefix
         self._coordinator_decos = coordinator_decos
+        self._link_client_devices = link_client_devices
         self._mac_address = client.mac
         self._update_from_client()
         super().__init__(coordinator_clients)
@@ -375,8 +386,13 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
             self.async_write_ha_state()
 
     @property
-    def mac_address(self) -> str:
-        """Return the mac address of the device."""
+    def mac_address(self) -> str | None:
+        """Return the client MAC only when automatic device linking is enabled."""
+        return self._mac_address if self._link_client_devices else None
+
+    @property
+    def unique_id(self) -> str:
+        """Preserve the stable client MAC as the entity registry identifier."""
         return self._mac_address
 
     @property
@@ -408,7 +424,7 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
     def extra_state_attributes(self) -> dict[str:Any]:
         """Return extra state attributes."""
         deco = self._coordinator_decos.data.decos.get(self._attr_deco_mac)
-        return {
+        attributes = {
             ATTR_CONNECTION_TYPE: self._attr_connection_type,
             ATTR_DEVICE_TYPE: DEVICE_TYPE_CLIENT,
             ATTR_INTERFACE: self._attr_interface,
@@ -418,6 +434,9 @@ class TplinkDecoClientDeviceTracker(CoordinatorEntity, RestoreEntity, ScannerEnt
             ATTR_DECO_MAC: self._attr_deco_mac,
             ATTR_UI_DEVICE_NAME: self._attr_name,
         }
+        if not self._link_client_devices:
+            attributes[ATTR_MAC] = self._mac_address
+        return attributes
 
     @property
     def device_info(self) -> DeviceInfo:
