@@ -627,10 +627,17 @@ policy for AI-assisted development.
 - **Failure isolation:** a timed-out node is **incomplete**, not a valid
   empty client list and not an HTTP 5xx backoff event. Successful peers
   still update; cached online state, last activity and node associations
-  of failed peers survive. Unexpected and authentication errors still
-  propagate. On an exception or cancellation, cancel and await all
-  scheduled sibling requests, including ones awaiting the semaphore;
-  never leave abandoned router requests or leak session messages.
+  of failed peers survive. **Health metrics:** if one or more nodes
+  time out during a client poll, increase the client timeout counter
+  **once per poll cycle**, including a partially successful cycle.
+  Keep a successful timestamp and zero consecutive failures for valid
+  peer responses, and retain a failure count for all-failed responses;
+  publish the timeout type to health sensors in the same notification.
+  Do not record multiple coordinator failures for multiple failed nodes.
+  Unexpected and authentication errors still propagate. On an exception
+  or cancellation, cancel and await all scheduled sibling requests,
+  including ones awaiting the semaphore; never leave abandoned router
+  requests or leak session messages.
 - **Tests:** assert a deterministic maximum of two in-flight requests
   with more than two nodes, sibling cleanup after unexpected exceptions
   and cancellation, true timeout-vs-5xx classification, partial recovery,
