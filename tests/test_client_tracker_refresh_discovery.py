@@ -55,9 +55,7 @@ async def test_post_refresh_client_discovery_is_idempotent() -> None:
     client_coordinators: dict[str, MagicMock] = {}
     add_callbacks: dict[str, MagicMock] = {}
 
-    def _register_listener(
-        listener: Callable[[], None], *, entry_id: str
-    ) -> MagicMock:
+    def _register_listener(listener: Callable[[], None], *, entry_id: str) -> MagicMock:
         """Capture a callback registered for one config entry."""
         post_refresh_callbacks[entry_id] = listener
         return MagicMock()
