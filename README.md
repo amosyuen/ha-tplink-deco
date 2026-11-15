@@ -90,6 +90,13 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Scope polling-switch unique IDs to each Home Assistant configuration
+  entry to prevent collisions when multiple Deco networks are added.
+  Existing switches migrate in place to retain their current entity ID
+  (such as `switch.deco_polling`), customizations and automations;
+  the visible switch name, master-device link and pause/resume behavior
+  remain unchanged. Other switches and entities are unaffected.
+
 - Reduce repeated Deco client-list HTTP 5xx errors using a non-blocking
   exponential polling delay (30, 60, 120, 240, then at most 300 seconds).
   Keep known clients and the authenticated session through temporary
