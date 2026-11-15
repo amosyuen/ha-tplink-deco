@@ -210,6 +210,11 @@ policy for AI-assisted development.
   falsely marking the data coordinator successful or forcing all
   unrelated entities to refresh. Register and remove any health
   listeners with their owner, avoiding orphaned callbacks.
+  **Applied in PR #30:** `CoordinatorHealth` owns a separate subscriber
+  registry and emits each recorded result; health sensors subscribe as
+  push-based `SensorEntity` objects and unregister through
+  `async_on_remove`. Subscriber exceptions are contained and logged by
+  exception class only so they cannot turn a good Deco poll into a failure.
 - **Regression:** test success/failure/timeout classification,
   partial-vs-all-failed polls, valid empty replies, skip conditions,
   timestamp timezones, sanitized errors, unchanged API request counts,
