@@ -111,8 +111,8 @@ async def test_forced_refresh_bypasses_disabled_interval_and_pause() -> None:
 
 
 @pytest.mark.asyncio
-async def test_failed_manual_refresh_preserves_cache_and_retry_flag() -> None:
-    """Do not consume a manual request when a router call times out."""
+async def test_failed_manual_refresh_preserves_cache_and_pause() -> None:
+    """Sanitize timeouts without unpausing or modifying cached mesh data."""
     coordinator = _coordinator(0)
     with patch("custom_components.tplink_deco.coordinator.async_dispatcher_send"):
         await coordinator._async_update_data()
@@ -120,9 +120,10 @@ async def test_failed_manual_refresh_preserves_cache_and_retry_flag() -> None:
     coordinator.paused = True
     coordinator.api.async_list_devices.side_effect = TimeoutError("private token")
     coordinator.async_refresh = AsyncMock(side_effect=coordinator._async_update_data)
-    with pytest.raises(TimeoutError):
+    with pytest.raises(HomeAssistantError, match="Unable to refresh") as caught:
         await coordinator.async_request_device_refresh()
 
+    assert "private token" not in str(caught.value)
     assert coordinator.data is old_data
     assert coordinator.paused is True
     assert coordinator._force_device_list_refresh is False
@@ -195,6 +196,24 @@ async def test_manual_refresh_reports_a_failed_home_assistant_poll() -> None:
         await coordinator.async_request_device_refresh()
 
     coordinator.async_refresh.assert_awaited_once_with()
+    assert coordinator._force_device_list_refresh is False
+
+
+
+@pytest.mark.asyncio
+async def test_manual_refresh_sanitizes_authentication_failure() -> None:
+    """Preserve Home Assistant's auth signal without leaking upstream details."""
+    coordinator = _coordinator(0)
+    coordinator.async_refresh = AsyncMock(
+        side_effect=ConfigEntryAuthFailed("private-session-token")
+    )
+
+    with pytest.raises(
+        ConfigEntryAuthFailed, match="Deco authentication failed"
+    ) as caught:
+        await coordinator.async_request_device_refresh()
+
+    assert "private-session-token" not in str(caught.value)
     assert coordinator._force_device_list_refresh is False
 
 
