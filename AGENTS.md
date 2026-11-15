@@ -445,6 +445,20 @@ policy for AI-assisted development.
   `AttributeError` after partial mutation. Include secret-bearing input
   and invalid late-satellite payloads in regression tests. Do not log
   raw router data or weaken validation.
+- **Two-stage inventory validation (PR #37):** validate the entire
+  device list in `_process_device_list` before mutating any cached
+  Deco, including an invalid satellite following a valid master.
+  Also validate `signal_level` at the beginning of a direct
+  `TpLinkDeco.update`, since callers can bypass the coordinator.
+  Missing/`None` means absent optional signal data; a dictionary
+  retains the existing signal-value semantics. Reject other container
+  types with the same fixed `ValueError`, without logging their
+  contents. For this invalid-signal path, preserve the old name,
+  hardware version, MAC and signal readings. Test cache identity,
+  timestamp, forced-refresh retry eligibility, health status and
+  log redaction when the *later* mesh entry is invalid.
+  This evidence does not establish atomic updates for every other
+  unvalidated firmware field; avoid claiming broader guarantees.
 - **Manual failure feedback:** Home Assistant's coordinator `async_refresh`
   can consume an API exception; check `last_update_success` and raise a
   sanitized `HomeAssistantError` for the button. If refresh propagates

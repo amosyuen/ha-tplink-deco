@@ -78,24 +78,54 @@ Use the config-flow validation skill for the setup/options portion.
   full checks on the **new final head**. A previous green head cannot
   validate later documentation-only commits or tests.
 
-## Nullable optional firmware signal data (issue #2)
+## Nullable optional firmware signal data (issue #2, PR #37)
 
-For Deco inventory replies, `signal_level` may be absent or explicitly
-JSON `null`; neither is a usable measurement. Verify the coordinator's
-whole-inventory validation before changing the model: accept missing,
-`None`, or a dictionary, but still reject other shapes before mutation.
-Normalize an explicit `None` to an empty mapping in `TpLinkDeco.update`
-so it has the same signal-sensor behavior as a missing field. The model
-update is also called directly: validate its signal mapping **before**
-modifying any existing attributes and raise the same sanitized
-`ValueError` used by the coordinator on invalid input. Verify that
-a bad subsequent update preserves the previously cached name, version
-and signals without logging sensitive payloads. Preserve
-the current master identity, discovered satellite notifications, all
-other device attributes, polling cadence and last-good performance.
-Test initial discovery followed by an optional-null refresh and invalid
-non-mapping responses on both supported Home Assistant versions. This
-is a narrow firmware-compatibility fix, not global client-list fallback.
+**Verified trigger:** The fork accepted an absent `signal_level`
+but rejected an explicit JSON `null`. Direct `TpLinkDeco.update`
+callers could also raise `AttributeError` after overwriting other
+fields when `signal_level` was not a dictionary.
+
+1. **Inspect both update paths.** Read `TpLinkDeco.update`,
+   `TplinkDecoUpdateCoordinator._process_device_list`, their tests
+   and `home-assistant.md`. Follow the repository's policy and
+   retain existing polling, master/satellite links and MAC identities.
+2. **Validate accepted data deliberately.** Missing or explicit
+   `None` signal data means unavailable optional measurements;
+   dictionaries remain valid. Reject lists, strings, numbers,
+   booleans and other unsupported shapes. Do not add nested-value
+   restrictions without a verified consumer contract and tests.
+3. **Keep two independent validation boundaries.** Preflight
+   the *whole* device list before modifying any cached Deco or
+   advancing the successful-inventory timestamp. Independently
+   validate `signal_level` at the *start* of direct
+   `TpLinkDeco.update` calls, before changing names, firmware,
+   online state or measurements. Use a fixed privacy-safe
+   `ValueError`, not a raw exception or embedded firmware value.
+4. **Specify failure invariants.** For an invalid direct signal
+   update, preserve the existing name, hardware version, MAC and
+   signal readings. For an invalid later inventory item, preserve
+   the entire previous mesh cache, node identities, last-success
+   timestamp and retry eligibility, while recording the existing
+   sanitized health failure. These guarantees concern the
+   validated signal-field path; do not claim all unrelated firmware
+   parsing is transactional.
+5. **Test both success and failure.** Include missing, `None`,
+   empty and populated signal dictionaries, then malformed
+   containers. Test a valid master preceding an invalid satellite,
+   a later valid refresh, device-discovery signals, cached CPU/
+   memory, refresh cadence and direct model state preservation.
+   Test two supported Home Assistant versions; the inventory
+   and direct model tests must each exercise their actual code.
+6. **Guard privacy and error semantics.** Use synthetic sensitive
+   strings in bad data and assert neither errors nor captured logs
+   contain them. Keep router authentication errors, optional
+   performance timeouts and cancellation distinct. Never disguise
+   a failed poll as a valid empty list or log raw payloads.
+7. **Validate and document.** Run pre-commit, HACS, Hassfest, and
+   both Python 3.13/HA 2025.12 and Python 3.14/HA 2026.11
+   matrices on the *final* PR head. A prior passing head cannot
+   establish current CI. Report physical hardware verification
+   separately; keep issue #2 open for unrelated upstream tasks.
 
 ## Legacy numeric telemetry compatibility (upstream #589)
 

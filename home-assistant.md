@@ -118,8 +118,14 @@ hardening/test parity (PR #36) are merged.
   `null`, or a mapping. Missing/`null` values both yield unavailable
   signal measurements while allowing valid Deco discovery and cached
   identities to continue; other non-mapping types remain invalid and
-  must be rejected before changing coordinator state. The pre-PR
-  `main` baseline rejected explicit `null`.
+  must be rejected before changing coordinator state. The
+  coordinator validates the whole inventory before mutating cached
+  nodes, while `TpLinkDeco.update` checks the signal mapping at
+  the start of a direct model update. This prevents partial changes
+  to existing model fields for invalid `signal_level` values.
+  It does not imply all unrelated firmware fields are handled
+  transactionally. The pre-PR `main` baseline rejected explicit
+  `null`.
 - Discovery: new nodes dispatch `SIGNAL_DECO_ADDED` and new clients
   dispatch `SIGNAL_CLIENT_ADDED`. The complete new `TpLinkDecoData`
   snapshot is published to `coordinator.data` _before_ signaling, so
