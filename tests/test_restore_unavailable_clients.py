@@ -66,7 +66,8 @@ async def _restore(
 
     with (
         patch(
-            "custom_components.tplink_deco.entity_registry.async_entries_for_config_entry",
+            "custom_components.tplink_deco.entity_registry."
+            "async_entries_for_config_entry",
             return_value=entries,
         ) as registry_entries,
         patch("custom_components.tplink_deco.entity_registry.async_get"),
