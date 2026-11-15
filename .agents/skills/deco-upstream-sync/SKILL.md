@@ -35,6 +35,16 @@ When porting Home Assistant services that consume device registry IDs, follow
 It covers domain-specific identifier lookup, validating all selected devices
 before router calls, real service-handler tests and preservation of stable IDs.
 
+## Runtime Deco entity discovery (upstream #643)
+
+The Deco coordinator's `SIGNAL_DECO_ADDED` notifies current platforms
+synchronously. The refreshed MAC-keyed Deco inventory must therefore be
+assigned to `coordinator.data` **before** the signal, not only returned
+from `_async_update_data()`. Preserve existing nodes, the complete
+performance calculations, late-master network totals and MAC-based entity
+IDs. Mark the binary-sensor discovery handler with `@callback`.
+Follow [Deco runtime discovery validation](../deco-runtime-discovery-validation/SKILL.md).
+
 ## Master/satellite device-registry migrations (upstream #579, fork PR #18)
 
 For changes to entity `device_info` parent relationships, follow
