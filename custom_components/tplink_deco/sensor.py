@@ -367,10 +367,11 @@ async def async_setup_entry(
     )
 
 
-class TplinkCoordinatorHealthSensor(CoordinatorEntity, SensorEntity):
+class TplinkCoordinatorHealthSensor(SensorEntity):
     """Optional coordinator health diagnostic linked to the master Deco."""
 
     _attr_has_entity_name = True
+    _attr_should_poll = False
     entity_description: TplinkCoordinatorHealthSensorDescription
 
     def __init__(
@@ -383,11 +384,24 @@ class TplinkCoordinatorHealthSensor(CoordinatorEntity, SensorEntity):
         description: TplinkCoordinatorHealthSensorDescription,
     ) -> None:
         """Create a stable, per-master coordinator health sensor."""
-        super().__init__(coordinator)
+        super().__init__()
+        self._coordinator = coordinator
         self._coordinator_decos = coordinator_decos
         self._master_deco_mac = master_deco_mac
         self.entity_description = description
         self._attr_unique_id = f"{master_deco_mac}_{description.key}"
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to health-only updates without polling unrelated entities."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self._coordinator.health.async_add_listener(self._handle_health_update)
+        )
+
+    @callback
+    def _handle_health_update(self) -> None:
+        """Write a fresh state on every health change, including repeated errors."""
+        self.async_write_ha_state()
 
     @property
     def available(self) -> bool:
@@ -403,7 +417,7 @@ class TplinkCoordinatorHealthSensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self) -> Any:
         """Return recorded coordinator metadata, never raw API responses."""
-        return self.entity_description.value_fn(self.coordinator)
+        return self.entity_description.value_fn(self._coordinator)
 
 
 class TplinkTotalClientDataRateSensor(CoordinatorEntity, SensorEntity):
