@@ -193,7 +193,13 @@ feature.
 - `device_tracker` exposes both mesh nodes and clients using existing
   MAC-based identities. Network/mesh data such as BSSIDs, optional
   wireless backhaul values and connection metadata appear as read-only
-  attributes when supplied by firmware.
+  attributes when supplied by firmware. Client trackers keep their MAC
+  as the stable entity `unique_id` regardless of the opt-out setting
+  `link_client_devices`. Default `True` retains device matching by
+  scanner MAC; `False` suppresses automatic MAC matching while exposing
+  `mac` in the client's state attributes. Physical Deco MAC addresses
+  and master/satellite device identities are unaffected. Existing
+  cross-integration device matches are not automatically detached.
 - `binary_sensor` currently exposes per-node `Internet online` and
   `Deco online` diagnostic states. It does **not** yet expose upstream
   Main/Guest/IoT Wi-Fi network status sensors.
@@ -218,16 +224,23 @@ feature.
 
 ## 8. Config flow, setup, reload and unload
 
-- Config-flow version **6** supports first setup, reauthentication and
+- Config-flow version **7** supports first setup, reauthentication and
   options. The main scan interval is displayed with string selector
   options but persisted as a supported **integer**. Invalid intervals
   must be rejected before testing router credentials or updating
   the config entry.
 - Existing config-entry fields include host, username/password,
   connection timeout, bounded timeout retry count, TLS verification,
-  `consider_home` and optional Deco/client name prefixes/postfixes.
+  `consider_home`, optional Deco/client name prefixes/postfixes and
+  `link_client_devices` (defaults to `True`). Version 6 entries migrate
+  to version 7 with this default. The setting is independent per entry.
   Preserve existing field meanings and migration paths for older
   config-entry versions.
+- Legacy MAC-only client device registrations may be removed manually
+  when linking is disabled, but only when the device belongs exclusively
+  to the requesting config entry and has no other integration identifiers.
+  Do not permit physical Deco devices or shared/foreign devices to be
+  removed by this cleanup hook.
 - On setup, construct/refetch the Deco and client coordinators, restore
   known objects, then **await** forwarding all existing platforms before
   registering entry services and the configuration update listener.
