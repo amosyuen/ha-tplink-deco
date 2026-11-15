@@ -41,7 +41,15 @@ support, isolate the **numeric-value** change into a small backport:
    Apply exact Black/isort fixes from CI rather than relaxing hooks.
    Rerun both supported Home Assistant/Python pytest matrices plus
    pre-commit, HACS and Hassfest on the **final head SHA**.
-5. Report this as a **partial** upstream #589 backport. Leave the issue
+5. Review any P2 findings against the **latest** producer-to-consumer
+   path. PR #33's review suggested a downstream sensor change, but the
+   validated narrow fix was to guarantee numeric `0.0` in
+   `TpLinkDecoClient.update`, preserving the existing sum contract.
+   Compare the code, actual online-client sensor test and final-head
+   CI results before replying. State the chosen fix and hardware
+   limitations in the review response, resolve only after verification,
+   and recheck that no threads remain open.
+6. Report this as a **partial** upstream #589 backport. Leave the issue
    #2 S7 encrypted-session support unchecked. The HTTP outer session,
    login fallback and cryptographic request format require a separate
    security-reviewed PR.
