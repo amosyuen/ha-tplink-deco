@@ -12,13 +12,11 @@ in [`.agents/skills/`](.agents/skills/). The repository's governing policy
 remains `AI_POLICY.md`.
 
 **Baseline:** verified against fork `main` at
-`4ccb1dec6b2212e4e87fc45f563647f5b28b24b1` (15 November 2026).
-This is a description of this fork, **not** of the upstream project's current
-architecture. **Branch note:** the optional client MAC-linking setting and
-config-flow version 7 below are proposed by [PR #24](https://github.com/HiDiHo01/ha-tplink-deco/pull/24);
-they are **not present** in the baseline `main` commit. When a described
-behavior changes, update this guide alongside its implementation; do not
-promote planned upstream work to an existing feature.
+`93f1a09876daabc833da006ac5335cdf72d66b1a` (15 November 2026).
+This describes this fork, **not** the upstream project's current architecture.
+The improved runtime discovery notification below is **proposed on this PR
+branch**, not present in the baseline `main` commit. Update this guide
+alongside a behavior change and do not present proposed work as deployed.
 
 ## 1. Integration boundary and data ownership
 
@@ -100,12 +98,15 @@ promote planned upstream work to an existing feature.
   `AttributeError` and interrupts discovery. Handling this case
   requires a separate runtime fix and regression test.
 - Discovery: new nodes dispatch `SIGNAL_DECO_ADDED` and new clients
-  dispatch `SIGNAL_CLIENT_ADDED`. Tracker, binary-sensor and per-node
-  sensor platforms subscribe as needed and avoid adding the same known
-  MAC twice. New master-dependent **network-total** sensors instead use
-  the Deco coordinator's **post-update listener**, because a dispatcher
-  signal may occur before the new coordinator data has been committed.
-  Register those network totals at most once per entry.
+  dispatch `SIGNAL_CLIENT_ADDED`. **Runtime discovery change proposed
+  in this PR:** publish the complete new `TpLinkDecoData` snapshot
+  to `coordinator.data` *before* signaling, so synchronous
+  `@callback` handlers can see newly added MACs immediately.
+  Tracker, binary-sensor and per-node sensor platforms subscribe as
+  needed and avoid adding the same known MAC twice. Master-dependent
+  **network-total** sensors continue to use the coordinator's normal
+  **post-update listener**, which registers those totals at most
+  once per entry. Keep already-known offline nodes and their MAC IDs.
 
 ## 4. Client presence and measurement semantics
 
