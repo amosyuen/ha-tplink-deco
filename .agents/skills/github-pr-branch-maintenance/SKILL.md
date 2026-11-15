@@ -32,7 +32,7 @@ rewrite later made it `rebaseable=true` without changing its file tree.
 
 ## Safe branch update
 
-4. Record the *observed* head SHA as the lease and the base SHA to
+4. Record the _observed_ head SHA as the lease and the base SHA to
    build on. Re-read both immediately before writing; abort if either
    changed. Inspect relevant repository instructions and diffs.
 5. Prefer a normal rebase that retains individual commits. Squashing
@@ -56,7 +56,7 @@ rewrite later made it `rebaseable=true` without changing its file tree.
    successful branch update with a successful merge.
 8. Inspect **final-head** required checks: Python 3.13/HA 2025.12,
    Python 3.14/HA 2026.11, pre-commit, HACS and Hassfest. Separate
-   passed, failed, pending, skipped and unavailable checks. After *any*
+   passed, failed, pending, skipped and unavailable checks. After _any_
    new commit, prior green runs no longer establish final-head CI.
    Inspect the exact formatting/tool log before making a minimal fix
    and repeat the checks on the resulting SHA.

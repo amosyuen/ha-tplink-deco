@@ -139,7 +139,7 @@ policy for AI-assisted development.
 - **PR #36 follow-up:** changing commit history can reset reviews and
   invalidate earlier CI, even if the resulting file tree is identical.
   Check the final PR head, branch comparison, mergeability, review threads,
-  approvals and *all* required CI jobs again. A running or skipped check
+  approvals and _all_ required CI jobs again. A running or skipped check
   is not a passed check; `mergeable_state=unstable` while CI runs is not
   proof of a content conflict.
 - Automated reviewers may edit PR descriptions or append outdated
@@ -185,7 +185,7 @@ policy for AI-assisted development.
 - **Malformed restore-state hardening (PR #36):** the verified failure
   path dereferenced `stored_state.state.attributes` without checking the
   nested state or mapping shape. Validate those fields before reading
-  `device_type`. Skip only malformed *records* with a fixed warning that
+  `device_type`. Skip only malformed _records_ with a fixed warning that
   excludes entity IDs, names and saved values. A valid mapping without
   `device_type` is not malformed; an unknown discriminator still requires
   the exact Deco registry-identifier check. Do not hide exceptions from

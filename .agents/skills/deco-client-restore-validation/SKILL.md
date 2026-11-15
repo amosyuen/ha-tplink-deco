@@ -105,7 +105,7 @@ description: "Safely restore unavailable TP-Link Deco client trackers across Hom
     tests are **not** equivalent to executed tests. Do not claim
     live firmware validation without it. If a formatting hook fails,
     inspect the exact CI diff, commit only the required correction and
-    rerun all checks on the *new* head. Verify final PR and issue text
+    rerun all checks on the _new_ head. Verify final PR and issue text
     after any automated review edits; see the
     [PR branch-maintenance skill](../github-pr-branch-maintenance/SKILL.md).
 
