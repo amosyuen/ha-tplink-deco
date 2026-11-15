@@ -211,6 +211,15 @@ proposed in this issue #2 follow-up PR and is not yet on `main`.
   This backoff does not stop unrelated Deco/device polling.
 - Non-5xx HTTP or explicit auth-expiry responses do not silently enter the
   5xx backoff path. Backoff does not replace API-level retry limits.
+- **Proposed in the current issue #2 PR (upstream #556, partial):** use
+  at most two simultaneous client-list requests per configuration
+  entry. Each per-node call disables extra timeout retries without
+  changing defaults for other API methods. An exhausted node timeout
+  is an incomplete response: retain its last-known clients while
+  successful peers continue to update. Unexpected failures and
+  cancellations cancel outstanding requests and their semaphore waiters.
+  The query mode remains `per_node`; fallback to one global client
+  list is **not** implemented by this change.
 
 ## 6. Router session and protocol behavior
 
