@@ -193,7 +193,9 @@ async def test_partial_node_success_preserved_during_500_backoff() -> None:
     old = _old_client(MASTER_CLIENT, MASTER_MAC)
     coordinator, api = _coordinator(two_decos=True, old_clients={old.mac: old})
 
-    async def _per_node_clients(deco_mac: str) -> list[dict[str, object]]:
+    async def _per_node_clients(
+        deco_mac: str, *, timeout_error_retries: int
+    ) -> list[dict[str, object]]:
         """Simulate a master 500 and successful satellite client list."""
         if deco_mac == MASTER_MAC:
             raise _response_error()
