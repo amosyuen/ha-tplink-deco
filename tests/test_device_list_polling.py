@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-import pytest
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.exceptions import HomeAssistantError
+import pytest
 
 from custom_components.tplink_deco import _get_device_list_interval
 from custom_components.tplink_deco.button import DecoRefreshStatusButton
@@ -183,6 +183,7 @@ def test_button_without_master_has_no_device_link() -> None:
     """Avoid inventing a master identity before the first successful poll."""
     assert DecoRefreshStatusButton(_coordinator(0)).device_info is None
 
+
 @pytest.mark.asyncio
 async def test_manual_refresh_reports_a_failed_home_assistant_poll() -> None:
     """Report a failed coordinator refresh instead of false button success."""
@@ -304,4 +305,3 @@ async def test_unexpected_performance_payload_preserves_known_values() -> None:
     assert old_master.cpu_usage_raw == 20.0
     assert old_master.mem_usage_raw == 40.0
     assert coordinator.health.consecutive_failures == 0
-
