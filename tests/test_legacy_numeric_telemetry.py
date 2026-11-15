@@ -7,12 +7,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from custom_components.tplink_deco.coordinator import _coerce_finite_float
-from custom_components.tplink_deco.coordinator import bytes_to_bits
 from custom_components.tplink_deco.coordinator import TpLinkDeco
 from custom_components.tplink_deco.coordinator import TpLinkDecoClient
 from custom_components.tplink_deco.coordinator import TpLinkDecoData
 from custom_components.tplink_deco.coordinator import TplinkDecoUpdateCoordinator
+from custom_components.tplink_deco.coordinator import _coerce_finite_float
+from custom_components.tplink_deco.coordinator import bytes_to_bits
 
 MASTER_MAC = "02:00:00:00:00:11"
 CLIENT_MAC = "02:00:00:00:00:12"
@@ -57,9 +57,7 @@ def test_legacy_finite_float_parsing(value: object, expected: float | None) -> N
         (False, None),
     ],
 )
-def test_legacy_client_rate_conversion(
-    value: object, expected: float | None
-) -> None:
+def test_legacy_client_rate_conversion(value: object, expected: float | None) -> None:
     """Retain the existing rate units and support legacy string values."""
     assert bytes_to_bits(value) == expected
 
