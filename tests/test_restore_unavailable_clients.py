@@ -13,9 +13,11 @@ from custom_components.tplink_deco import async_create_config_data
 from custom_components.tplink_deco.const import ATTR_DEVICE_TYPE
 from custom_components.tplink_deco.const import DEVICE_TYPE_CLIENT
 from custom_components.tplink_deco.const import DEVICE_TYPE_DECO
+from custom_components.tplink_deco.const import DOMAIN
 from custom_components.tplink_deco.coordinator import TpLinkDeco
 from custom_components.tplink_deco.coordinator import TpLinkDecoClient
 from custom_components.tplink_deco.coordinator import TpLinkDecoData
+from custom_components.tplink_deco.coordinator import TplinkDecoUpdateCoordinator
 
 DECO_MAC = "AA:BB:CC:DD:EE:01"
 CLIENT_MAC = "AA:BB:CC:DD:EE:02"
@@ -27,11 +29,13 @@ def _entry(
     *,
     domain: str = "device_tracker",
     disabled_by: str | None = None,
+    device_id: str | None = None,
 ) -> SimpleNamespace:
     """Represent a registry entity without changing its MAC-based identity."""
     return SimpleNamespace(
         domain=domain,
         disabled_by=disabled_by,
+        device_id=device_id,
         unique_id=mac,
         entity_id=f"{domain}.{mac.lower().replace(':', '_')}",
         original_name=f"Device {mac[-2:]}",
@@ -202,6 +206,96 @@ def test_removes_only_confirmed_deco_macs_from_provisional_clients() -> None:
 
     assert clients == {CLIENT_MAC: genuine_client}
     assert clients[CLIENT_MAC] is genuine_client
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("modern_api", [False, True])
+async def test_unavailable_deco_remains_a_deco_when_initially_offline(
+    modern_api: bool,
+) -> None:
+    """Use the matching registry identifier before any router discovery."""
+    entry = _entry(DECO_MAC, device_id="recorded-deco-device")
+    device = SimpleNamespace(identifiers={(DOMAIN, DECO_MAC)})
+    devices = MagicMock()
+    devices.async_get.return_value = device
+
+    with patch(
+        "custom_components.tplink_deco.device_registry.async_get",
+        return_value=devices,
+    ) as registry:
+        deco_data, clients, _ = await _restore(
+            [entry],
+            {entry.entity_id: _stored_state()},
+            modern_api=modern_api,
+        )
+
+    registry.assert_called_once()
+    devices.async_get.assert_called_once_with(entry.device_id)
+    assert clients == {}
+    assert deco_data.decos[DECO_MAC].name == entry.original_name
+
+    # The router can omit a known offline Deco during the first refresh.
+    # It must remain a Deco and retain its identity when it appears later.
+    api = MagicMock()
+    api.async_list_devices = AsyncMock(
+        side_effect=[
+            [],
+            [
+                {
+                    "mac": DECO_MAC,
+                    "role": "master",
+                    "nickname": "living_room",
+                    "group_status": "connected",
+                    "inet_status": "online",
+                }
+            ],
+        ]
+    )
+    api.async_get_performance = AsyncMock(return_value={"result": {}})
+    coordinator = TplinkDecoUpdateCoordinator(
+        hass=MagicMock(),
+        api=api,
+        config_entry=MagicMock(),
+        data=deco_data,
+    )
+    saved_deco = deco_data.decos[DECO_MAC]
+
+    with patch("custom_components.tplink_deco.coordinator.async_dispatcher_send"):
+        missing = await coordinator._async_update_data()
+        assert missing.decos[DECO_MAC] is saved_deco
+        assert saved_deco.online is False
+        restored = await coordinator._async_update_data()
+
+    assert restored.decos[DECO_MAC] is saved_deco
+    assert restored.master_deco is saved_deco
+    assert saved_deco.online is True
+    assert clients == {}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("modern_api", [False, True])
+async def test_client_attached_to_deco_device_is_not_misclassified(
+    modern_api: bool,
+) -> None:
+    """Compare the registry Deco identifier to the entity's own MAC."""
+    client_entry = _entry(CLIENT_MAC, device_id="shared-deco-device")
+    device = SimpleNamespace(identifiers={(DOMAIN, DECO_MAC)})
+    devices = MagicMock()
+    devices.async_get.return_value = device
+
+    with patch(
+        "custom_components.tplink_deco.device_registry.async_get",
+        return_value=devices,
+    ):
+        decos, clients, _ = await _restore(
+            [client_entry],
+            {client_entry.entity_id: _stored_state()},
+            modern_api=modern_api,
+        )
+
+    assert decos.decos == {}
+    assert set(clients) == {CLIENT_MAC}
+    assert clients[CLIENT_MAC].mac == CLIENT_MAC
 
 
 @pytest.mark.asyncio
