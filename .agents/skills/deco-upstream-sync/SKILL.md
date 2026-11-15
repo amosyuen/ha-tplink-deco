@@ -49,6 +49,19 @@ preserve the original identity/name assertions, and run **both** supported
 Home Assistant versions after updating stale expectations. Keep the main
 tracking issue open until the PR has actually been merged.
 
+## Per-config-entry polling switch registry migration (upstream #655)
+
+When multiple Deco entries can exist, do not keep the single shared
+`tplink_deco_polling` switch unique ID. Use a scoped unique ID per
+`ConfigEntry.entry_id`, but migrate the legacy registry entry in place
+only for the actual owning config entry. This preserves existing
+`switch.deco_polling` entity IDs, user customizations and automations
+without linking the wrong mesh. Follow the
+[Deco polling-switch migration skill](../deco-polling-switch-registry-migration/SKILL.md).
+Review older cross-platform registry tests for a global unique ID
+assertion. Keep switch functionality, master-device identity and all
+other platforms unchanged.
+
 ## HTTP 5xx client polling backoff (upstream #624)
 
 For client-list HTTP 500/502/503, capped non-blocking 30–300-second
