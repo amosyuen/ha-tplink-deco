@@ -608,6 +608,38 @@ policy for AI-assisted development.
   generic API errors and unaffected HTTP errors. Do not assume that the
   fork already supports upstream legacy outer-session encryption.
 
+## Bounded multi-node client queries (upstream #556, partial backport)
+
+- **Verified fork contract:** retain per-Deco client queries and their
+  existing partial-success state recovery, 5xx backoff, user-configured
+  main polling interval, stable MAC-based identities and factual
+  `per_node` query-mode diagnostics. Upstream #556 also includes a
+  **global-client-list fallback**, which is **not** part of this
+  concurrency-only port. Never mark the global fallback complete solely
+  because concurrent requests are bounded.
+- **Concurrency and retries:** permit **at most two** concurrent
+  `client_list` requests *per coordinator*, using an async semaphore
+  (never `sleep()` or a global lock). Pass a request-local timeout retry
+  budget of **zero** to each per-node request to avoid multiplying
+  timeouts across a mesh. Other authenticated API calls keep the
+  configured retry budget. Validate the override as a non-negative
+  integer, rejecting booleans and strings without contacting the router.
+- **Failure isolation:** a timed-out node is **incomplete**, not a valid
+  empty client list and not an HTTP 5xx backoff event. Successful peers
+  still update; cached online state, last activity and node associations
+  of failed peers survive. Unexpected and authentication errors still
+  propagate. On an exception or cancellation, cancel and await all
+  scheduled sibling requests, including ones awaiting the semaphore;
+  never leave abandoned router requests or leak session messages.
+- **Tests:** assert a deterministic maximum of two in-flight requests
+  with more than two nodes, sibling cleanup after unexpected exceptions
+  and cancellation, true timeout-vs-5xx classification, partial recovery,
+  a zero-override request with the real API retry wrapper and unchanged
+  ordinary API retry defaults. Keep existing 5xx/backoff and truncated
+  response tests green on both supported HA versions, plus final-head
+  pre-commit/HACS/Hassfest. Do not claim hardware validation without
+  physical router checks.
+
 ## Capped HTTP 5xx backoff for Deco client polling (upstream PR #624)
 
 - After a client-list HTTP 5xx response, pause further client-list requests
