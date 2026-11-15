@@ -8,7 +8,14 @@ description: "Use when changing or testing Home Assistant configuration/options 
 1. Read `AGENTS.md` and any applicable `AI_POLICY.md`, then inspect `config_flow.py`, `select.py`, `const.py`, `requirements-test.txt`, `setup.cfg`, `.github/workflows/pytest.yaml`, and the existing tests before changing behavior.
 2. Keep Home Assistant form schemas **JSON-serializable**. For fixed interval choices, use a `SelectSelector` dropdown with **string** options, not a bare numeric `vol.In` selector. Exercise the actual Home Assistant form-to-JSON serialization path in tests; this can vary across supported HA versions.
 3. Preserve the existing supported scan intervals **10, 30, 60, 120 seconds** and the **30-second default**. Display persisted integer or numeric-string values as string selector defaults; store valid selections as integers to preserve coordinator/runtime-select behavior.
-4. Validate submitted values in **both setup and options flows** before credential checks, API traffic or data mutation. Reject unsupported values, malformed strings, `None`, floats and booleans; do not silently clamp or persist them. Return a field-specific error with matching `strings.json` and relevant translations.
+4. Import and use Home Assistant's `CONF_SCAN_INTERVAL` constant in
+   fixtures and assertions; in the supported releases its key is
+   `"interval_seconds"`, **not** the invented literal
+   `"scan_interval"`. PR #30's existing MAC-linking regressions failed
+   because the latter bypassed interval normalization, leaving the
+   submitted `"30"` as a string. Assert the persisted canonical key
+   holds integer `30` in both setup and options flows.
+5. Validate submitted values in **both setup and options flows** before credential checks, API traffic or data mutation. Reject unsupported values, malformed strings, `None`, floats and booleans; do not silently clamp or persist them. Return a field-specific error with matching `strings.json` and relevant translations.
 5. Do not conflate the main client polling interval with a future independently configurable device-list interval. Preserve config-entry values and entity unique IDs when adding another control.
 6. Parameterize regressions across supported values, legacy defaults and invalid inputs. Mock authentication/network operations and verify that invalid inputs do **not** invoke them or update config entries. Cover successful integer persistence in both flows, other config fields remaining unchanged, and JSON serialization.
 7. For any config-entry version migration, check the actual `ConfigEntry`
