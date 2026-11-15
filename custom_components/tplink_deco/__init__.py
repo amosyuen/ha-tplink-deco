@@ -24,6 +24,7 @@ from homeassistant.const import CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.core import ServiceCall
 from homeassistant.helpers import device_registry
+from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers import restore_state
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -36,6 +37,7 @@ from .const import CONF_CLIENT_POSTFIX
 from .const import CONF_CLIENT_PREFIX
 from .const import CONF_DECO_POSTFIX
 from .const import CONF_DECO_PREFIX
+from .const import CONF_LINK_CLIENT_DEVICES
 from .const import CONF_TIMEOUT_ERROR_RETRIES
 from .const import CONF_TIMEOUT_SECONDS
 from .const import CONF_VERIFY_SSL
@@ -43,6 +45,7 @@ from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
 from .const import DEFAULT_CONSIDER_HOME
 from .const import DEFAULT_DECO_POSTFIX
+from .const import DEFAULT_LINK_CLIENT_DEVICES
 from .const import DEFAULT_SCAN_INTERVAL
 from .const import DEFAULT_TIMEOUT_ERROR_RETRIES
 from .const import DEFAULT_TIMEOUT_SECONDS
@@ -313,6 +316,23 @@ async def update_listener(hass: HomeAssistant, config_entry: ConfigEntry) -> Non
     await hass.config_entries.async_reload(config_entry.entry_id)
 
 
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, config_entry: ConfigEntry, device_entry: DeviceEntry
+) -> bool:
+    """Allow cleanup only of this entry's legacy MAC-linked client devices."""
+    if config_entry.data.get(CONF_LINK_CLIENT_DEVICES, DEFAULT_LINK_CLIENT_DEVICES):
+        return False
+    if device_entry.config_entries != {config_entry.entry_id}:
+        return False
+    if device_entry.identifiers:
+        # Keep Deco devices and devices with identities from other integrations.
+        return False
+    return any(
+        connection_type == device_registry.CONNECTION_NETWORK_MAC
+        for connection_type, _ in device_entry.connections
+    )
+
+
 async def async_migrate_entry(hass, config_entry: ConfigEntry):
     """Migrate old entry."""
     _LOGGER.debug("Migrating from version %s", config_entry.version)
@@ -341,6 +361,10 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
     if config_entry.version == 5:
         config_entry.version = 6
         new[CONF_HOST] = f"http://{new[CONF_HOST]}"
+
+    if config_entry.version == 6:
+        config_entry.version = 7
+        new.setdefault(CONF_LINK_CLIENT_DEVICES, DEFAULT_LINK_CLIENT_DEVICES)
 
     hass.config_entries.async_update_entry(config_entry, data=new)
 
