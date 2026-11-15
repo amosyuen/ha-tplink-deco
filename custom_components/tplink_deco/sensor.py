@@ -146,6 +146,7 @@ async def async_setup_entry(
     ]
 
     tracked_macs: set[str] = set()
+    tracked_client_count_macs: set[str] = set()
 
     def _build_entities_for_deco(deco: TpLinkDeco | None) -> list[SensorEntity]:
         """Build the list of sensor entities for a single deco (or totals)."""
@@ -180,13 +181,6 @@ async def async_setup_entry(
         ]
 
         if deco is not None:
-            entities.append(
-                TplinkDecoClientCountSensor(
-                    coordinator_decos=coordinator_decos,
-                    coordinator_clients=coordinator_clients,
-                    deco_mac=deco.mac,
-                )
-            )
             entities.extend(
                 TplinkDecoDiagnosticSensor(
                     coordinator_decos=coordinator_decos,
@@ -241,6 +235,38 @@ async def async_setup_entry(
     # Per-deco sensors for decos discovered later
     coordinator_decos.on_close(
         async_dispatcher_connect(hass, SIGNAL_DECO_ADDED, _add_untracked_deco_sensors)
+    )
+
+    @callback
+    def _add_untracked_client_counts() -> None:
+        """Publish client counts only after a valid poll of the same Deco."""
+        if not coordinator_clients.has_successful_refresh:
+            return
+
+        new_entities: list[SensorEntity] = []
+        for mac in coordinator_decos.data.decos:
+            if (
+                mac in tracked_client_count_macs
+                or mac not in coordinator_clients.successfully_polled_deco_macs
+            ):
+                continue
+            new_entities.append(
+                TplinkDecoClientCountSensor(
+                    coordinator_decos=coordinator_decos,
+                    coordinator_clients=coordinator_clients,
+                    deco_mac=mac,
+                )
+            )
+            tracked_client_count_macs.add(mac)
+
+        if new_entities:
+            async_add_entities(new_entities)
+
+    # The first client refresh can complete before sensor-platform setup.
+    # Later client refreshes can confirm a newly discovered or recovering node.
+    _add_untracked_client_counts()
+    coordinator_clients.on_close(
+        coordinator_clients.async_add_listener(_add_untracked_client_counts)
     )
 
 
@@ -336,7 +362,7 @@ class TplinkDecoClientCountSensor(CoordinatorEntity, SensorEntity):
         self._attr_native_value = sum(
             1
             for client in self.coordinator.data.values()
-            if client.deco_mac == self._deco_mac
+            if client.deco_mac == self._deco_mac and client.online
         )
 
 
