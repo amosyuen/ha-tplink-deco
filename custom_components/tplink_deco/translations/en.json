@@ -8,6 +8,7 @@
           "username": "Username",
           "password": "Password",
           "scan_interval": "Seconds between updates",
+          "device_list_interval": "Seconds between Deco status updates (0 = startup only)",
           "consider_home": "Seconds to wait before marking a device tracker as not home after it is no longer seen.",
           "timeout_seconds": "Timeout seconds",
           "timeout_error_retries": "Timeout error retry count",
@@ -35,7 +36,8 @@
       "invalid_host": "Unable to connect to host.",
       "timeout_connect": "Timeout establishing connection",
       "unknown": "Unexpected error",
-      "invalid_scan_interval": "Select a polling interval of 10, 30, 60, or 120 seconds."
+      "invalid_scan_interval": "Select a polling interval of 10, 30, 60, or 120 seconds.",
+      "invalid_device_list_interval": "Enter 0 for startup-only, or at least 10 seconds for Deco status updates."
     }
   },
   "options": {
@@ -47,6 +49,7 @@
           "username": "Username",
           "password": "Password",
           "scan_interval": "Seconds between updates",
+          "device_list_interval": "Seconds between Deco status updates (0 = startup only)",
           "consider_home": "Seconds to wait before marking a device tracker as not home after it is no longer seen.",
           "timeout_seconds": "Timeout seconds",
           "timeout_error_retries": "Timeout error retry count",
@@ -67,7 +70,8 @@
       "invalid_host": "Unable to connect to host.",
       "timeout_connect": "Timeout establishing connection",
       "unknown": "Unexpected error",
-      "invalid_scan_interval": "Select a polling interval of 10, 30, 60, or 120 seconds."
+      "invalid_scan_interval": "Select a polling interval of 10, 30, 60, or 120 seconds.",
+      "invalid_device_list_interval": "Enter 0 for startup-only, or at least 10 seconds for Deco status updates."
     }
   }
 }
