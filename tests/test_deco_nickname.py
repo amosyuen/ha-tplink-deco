@@ -43,6 +43,23 @@ def test_deco_uses_available_name_or_mac(
     assert deco.name == expected
 
 
+@pytest.mark.parametrize("signal_level", [None, {}])
+def test_null_signal_level_matches_missing_telemetry(
+    signal_level: dict[str, int] | None,
+) -> None:
+    """Treat optional null signals as absent while keeping Deco identity."""
+    deco = TpLinkDeco(MAC)
+    deco.update({"signal_level": {"band2_4": 48, "band5": 62}})
+    assert deco.signal_band2_4 == 48
+    assert deco.signal_band5 == 62
+
+    deco.update({"signal_level": signal_level})
+
+    assert deco.mac == MAC
+    assert deco.signal_band2_4 is None
+    assert deco.signal_band5 is None
+
+
 def test_device_info_without_nickname() -> None:
     """Keep the device registry identifier unchanged when the name is missing."""
     deco = TpLinkDeco(MAC)
