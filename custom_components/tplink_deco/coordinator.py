@@ -438,6 +438,15 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
         self._force_device_list_refresh = True
         try:
             await self.async_refresh()
+        except ConfigEntryAuthFailed:
+            # Preserve the auth failure type so HA can identify reauth.
+            raise
+        except Exception:
+            # A refresh can also propagate a raw upstream exception.
+            # Do not expose its message, which may contain session tokens.
+            raise HomeAssistantError(
+                "Unable to refresh Deco status; check the router connection"
+            ) from None
         finally:
             # A failed manual press must not silently unpause later polling.
             # A second press may force another request.
