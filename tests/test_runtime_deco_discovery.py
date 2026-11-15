@@ -194,8 +194,7 @@ async def test_discovery_creates_trackers_binary_sensors_and_node_sensors() -> N
         await sensor.async_setup_entry(hass, entry, added_sensor)
 
         initial_ids = [
-            set(_unique_ids(add))
-            for add in (added_tracker, added_binary, added_sensor)
+            set(_unique_ids(add)) for add in (added_tracker, added_binary, added_sensor)
         ]
         assert len(handlers[SIGNAL_DECO_ADDED]) == 3
         assert all(SATELLITE_MAC not in " ".join(ids) for ids in initial_ids)
