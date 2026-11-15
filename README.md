@@ -113,6 +113,11 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Register newly discovered client trackers after the client coordinator
+  commits its refreshed state. This avoids missing a client when the early
+  discovery signal observes stale data; existing MAC-based IDs, per-entry
+  isolation, opt-out device linking and polling behavior are unchanged.
+
 - Restore previously known client trackers even when Home Assistant saved
   their state as unavailable without a `device_type` attribute. Support
   both legacy and registry-aware Home Assistant restore-state APIs,
