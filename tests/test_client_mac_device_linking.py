@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 from homeassistant.components.device_tracker.const import ATTR_MAC
+from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers.data_entry_flow import _BaseFlowManagerView
 import pytest
 import voluptuous as vol
@@ -163,17 +164,12 @@ async def test_migration_adds_opt_out_with_safe_default(
 @pytest.mark.parametrize("enabled", [False, True])
 def test_link_option_is_serializable_and_boolean(enabled: bool) -> None:
     """Expose a real Home Assistant boolean option in both flow schemas."""
-    schema = vol.Schema(
-        config_flow._get_schema({CONF_LINK_CLIENT_DEVICES: enabled})
-    )
-    key = next(
-        item for item in schema.schema if item.schema == CONF_LINK_CLIENT_DEVICES
-    )
+    schema = vol.Schema(config_flow._get_schema({CONF_LINK_CLIENT_DEVICES: enabled}))
+    key = next(item for item in schema.schema if item.schema == CONF_LINK_CLIENT_DEVICES)
     assert key.default() is enabled
     assert schema.schema[key] is bool
 
     view = _BaseFlowManagerView(MagicMock())
-    from homeassistant.data_entry_flow import FlowResultType
 
     result = view._prepare_result_json(
         {"type": FlowResultType.FORM, "data_schema": schema}
@@ -198,15 +194,16 @@ async def test_config_flow_persists_mac_link_setting(
         "scan_interval": "30",
         CONF_LINK_CLIENT_DEVICES: enabled,
     }
+    entry = SimpleNamespace(entry_id="mesh-one", data=dict(settings))
     if kind == "setup":
         flow = config_flow.TplinkDecoFlowHandler()
         flow.handler = DOMAIN
     else:
-        entry = SimpleNamespace(entry_id="mesh-one", data=dict(settings))
         flow = config_flow.TplinkDecoOptionsFlowHandler(entry)
         flow.handler = "mesh-one"
     flow.flow_id = "test-mac-link"
     flow.hass = MagicMock()
+    flow.hass.config_entries.async_get_known_entry.return_value = entry
     flow.async_create_entry = MagicMock(return_value={"type": "create_entry"})
     with patch.object(
         config_flow, "_async_test_credentials", AsyncMock(return_value={})
