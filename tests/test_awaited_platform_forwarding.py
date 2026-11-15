@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from custom_components.tplink_deco import async_setup_entry
+from custom_components.tplink_deco.const import COORDINATOR_CLIENTS_KEY
 from custom_components.tplink_deco.const import COORDINATOR_DECOS_KEY
 from custom_components.tplink_deco.const import DOMAIN
 from custom_components.tplink_deco.const import PLATFORMS
@@ -44,7 +45,10 @@ async def test_entry_setup_awaits_platforms_before_registering_services() -> Non
     with patch(
         "custom_components.tplink_deco.async_create_config_data",
         new_callable=AsyncMock,
-        return_value={COORDINATOR_DECOS_KEY: MagicMock()},
+        return_value={
+            COORDINATOR_DECOS_KEY: MagicMock(),
+            COORDINATOR_CLIENTS_KEY: MagicMock(async_refresh=AsyncMock()),
+        },
     ):
         setup_task = asyncio.create_task(async_setup_entry(hass, config_entry))
         try:
@@ -72,7 +76,10 @@ async def test_entry_setup_propagates_platform_forwarding_failure() -> None:
     with patch(
         "custom_components.tplink_deco.async_create_config_data",
         new_callable=AsyncMock,
-        return_value={COORDINATOR_DECOS_KEY: MagicMock()},
+        return_value={
+            COORDINATOR_DECOS_KEY: MagicMock(),
+            COORDINATOR_CLIENTS_KEY: MagicMock(async_refresh=AsyncMock()),
+        },
     ):
         with pytest.raises(RuntimeError, match="platform setup failed"):
             await async_setup_entry(hass, config_entry)
@@ -94,7 +101,10 @@ async def test_entry_setup_forwards_platforms_once_per_config_entry(
     with patch(
         "custom_components.tplink_deco.async_create_config_data",
         new_callable=AsyncMock,
-        return_value={COORDINATOR_DECOS_KEY: MagicMock()},
+        return_value={
+            COORDINATOR_DECOS_KEY: MagicMock(),
+            COORDINATOR_CLIENTS_KEY: MagicMock(async_refresh=AsyncMock()),
+        },
     ):
         assert await async_setup_entry(hass, config_entry) is True
 
