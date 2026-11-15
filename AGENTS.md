@@ -142,6 +142,13 @@ policy for AI-assisted development.
   loses a formerly known offline client even when its stable registry
   unique ID and original name are available. Restore it provisionally as
   a client, while preserving already classified Deco entries.
+- **Review lesson (PR #26):** a missing `device_type` can also belong to
+  an offline Deco absent from the first router response. Its entity
+  registry record can still link to a device with identifier
+  `(DOMAIN, entry.unique_id)`. Restore that entity as a **Deco** before
+  the provisional client fallback. Do not classify merely because its
+  linked device contains **another** Deco MAC: legitimate clients can
+  share their parent's device. Test both cases and a late Deco return.
 - **Version compatibility:** HA 2025.12 exposes `last_states`; HA 2026.11
   provides `async_get_stored_state(entity_id)` with registry-aware
   storage. Use capability detection and tests for both, rather than
