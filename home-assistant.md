@@ -12,15 +12,13 @@ in [`.agents/skills/`](.agents/skills/). The repository's governing policy
 remains `AI_POLICY.md`.
 
 **Baseline:** verified against fork `main` at
-`eaeb7dca124f58e63cdf53890c7229fff5469df5` (15 November 2026).
+`57efe8399ac339eb2baff4959e97e7c71a0f5eed` (15 November 2026).
 This describes the fork, **not** the current upstream architecture.
-Runtime Deco discovery ordering from [PR #25](https://github.com/HiDiHo01/ha-tplink-deco/pull/25)
-and unavailable-client restoration from [PR #26](https://github.com/HiDiHo01/ha-tplink-deco/pull/26)
-are merged on this baseline. The client tracker post-refresh listener
-below is proposed in [PR #27](https://github.com/HiDiHo01/ha-tplink-deco/pull/27),
-not yet on baseline `main`.
-Update this guide alongside behavior changes; distinguish proposed behavior
-from deployed code.
+Runtime Deco discovery ordering (PR #25), unavailable-client restoration
+(PR #26) and post-refresh client tracker discovery (PR #27) are merged.
+The client-count initialization changes below are proposed in the current
+issue #2 PR, not yet on baseline `main`. Update this guide alongside
+behavior changes and distinguish pending behavior from deployed code.
 
 ## 1. Integration boundary and data ownership
 
@@ -122,7 +120,7 @@ from deployed code.
   same known MAC twice. Master-dependent **network-total** sensors
   continue to use the coordinator's normal **post-update listener**,
   which registers totals once per entry. Keep known offline nodes.
-- **Client tracker discovery (proposed in this PR):** `SIGNAL_CLIENT_ADDED`
+- **Client tracker discovery (merged in PR #27):** `SIGNAL_CLIENT_ADDED`
   can fire before the client coordinator's refreshed `data` is committed.
   Retain that dispatcher for compatibility, but also register a normal
   client-coordinator listener to discover clients after the new snapshot
@@ -148,10 +146,16 @@ from deployed code.
   `deco_mac`; network-wide totals include online clients across nodes.
   Cached rates from offline or unknown-status clients must not contribute
   to live throughput totals.
-- The existing `Connected clients` diagnostic sensor counts clients
-  associated with the given node; this is distinct from the throughput
-  online filter. Do not change client-count, tracker-presence and
-  `consider_home` semantics as an incidental effect of rate aggregation.
+- **Connected clients (proposed in this PR):** count only associated clients
+  whose `online` value is truthy; previously restored disconnected clients
+  remain available as trackers but do not inflate the connected-client total.
+  Delay count-entity registration until the client coordinator has received
+  a valid (including empty) list from that particular Deco. All-failed polls,
+  paused polling and backoff do not establish a valid count. A valid peer
+  cannot establish an unpolled Deco's count. Preserve the existing
+  `<deco_mac>_client_count` unique ID, `consider_home` grace period and
+  throughput/diagnostic entities. A grace-period client is still counted
+  while `online` remains true.
 
 ## 5. Poll scheduling, retries and performance
 
