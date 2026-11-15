@@ -152,6 +152,38 @@ async def test_client_health_distinguishes_skips_and_failed_polls() -> None:
 
 
 @pytest.mark.asyncio
+async def test_health_tracks_real_partial_and_all_failed_node_polls() -> None:
+    """Count partial success and preserve last success on all-failed polls."""
+    deco_coordinator, client_coordinator = _coordinators()
+    second_deco = TpLinkDeco(SECOND_MAC)
+    deco_coordinator.data.decos[SECOND_MAC] = second_deco
+
+    client_coordinator._async_clients_for_deco = AsyncMock(
+        side_effect=[([], False), (None, False)]
+    )
+    assert await client_coordinator._async_update_data() == {}
+    assert client_coordinator.health.last_successful_update is not None
+    last_success = client_coordinator.health.last_successful_update
+    assert client_coordinator.health.consecutive_failures == 0
+
+    client_coordinator._async_clients_for_deco = AsyncMock(
+        side_effect=[(None, False), (None, False)]
+    )
+    assert await client_coordinator._async_update_data() == {}
+    assert client_coordinator.health.last_successful_update == last_success
+    assert client_coordinator.health.consecutive_failures == 1
+    assert client_coordinator.health.last_error == "NoSuccessfulClientList"
+
+    # Two valid empty replies recover without creating client tracker state.
+    client_coordinator._async_clients_for_deco = AsyncMock(
+        side_effect=[([], False), ([], False)]
+    )
+    assert await client_coordinator._async_update_data() == {}
+    assert client_coordinator.health.consecutive_failures == 0
+    assert client_coordinator.health.last_successful_update is not None
+
+
+@pytest.mark.asyncio
 async def test_health_sensors_register_once_and_keep_existing_ids() -> None:
     """Attach eight disabled diagnostics to the master without new API calls."""
     hass = MagicMock()
