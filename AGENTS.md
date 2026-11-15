@@ -486,11 +486,21 @@ policy for AI-assisted development.
   may create another entity. Document downgrades across this migration as
   unsupported in the user-facing README; preserve the in-place forward
   migration and advise making an entity-registry backup before upgrading.
+- **Stateful migration-regression lesson (PR #22 CodeRabbit finding):**
+  simply parametrizing both config-entry setup orders did not verify the
+  real registry transition: the original mock still found the legacy
+  `unique_id` even after `async_update_entity`. For registry or persisted
+  identifier migrations, use a real test registry or a stateful double
+  whose lookups reflect successful writes. Assert the legacy identity is
+  absent afterwards, the migrated identity still resolves to the same
+  `entity_id`, a separate entry keeps its own distinct identity, and
+  only the owner may migrate. Test both setup orders and idempotent
+  reloads; mock call counts alone cannot prove these invariants.
 - Always inspect earlier regression tests for assumptions about stable
   `unique_id` values, especially `test_via_device_registry_links.py`.
   Retain existing entity/device identifier checks while updating only
-  the intentional polling-switch unique ID expectation. Test both
-  supported HA versions and both mesh-setup orders. Follow the
+  the intentional polling-switch unique ID expectation. Run both
+  supported HA versions and follow the
   [switch migration skill](.agents/skills/deco-polling-switch-registry-migration/SKILL.md).
 
 ## PR validation and upstream tracking lessons
