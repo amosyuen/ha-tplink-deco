@@ -14,6 +14,32 @@ description: "Use when comparing, backporting, reviewing, or implementing change
 7. Add focused tests for the change and run the available checks. For test setup and HA form regressions, use the related `deco-config-flow-validation` skill. Report test limitations explicitly; do not say tests passed merely because they are present.
 8. Open or update a **small PR** linked as `Part of #2`, not `Fixes #2`. Address valid review findings and resolve threads only after the corresponding change is committed or an explanation is supplied. Update issue #2's checklist only after the relevant scope has been merged; leave unported items open.
 
+## Legacy numeric telemetry compatibility (upstream #589)
+
+The fork's Deco/client coordinators previously used firmware fields
+directly in arithmetic. Before porting the larger encrypted S7 session
+support, isolate the **numeric-value** change into a small backport:
+
+1. Inspect `TpLinkDecoClient.update`, `bytes_to_bits` and the master
+   CPU/memory processing in `TplinkDecoUpdateCoordinator`. Preserve the
+   existing units, polling, smoothing, stored client IDs and network totals.
+2. Parse numeric JSON integers, floats and strings to **finite** floats,
+   including real zero. Treat booleans, nulls, malformed strings, NaN,
+   infinities and overflow as absent measurements. Never log untrusted
+   input values; do not translate them into authentication failures.
+3. For malformed CPU/memory values, keep prior raw and smoothed values;
+   process the other valid field independently and continue Deco
+   discovery. For malformed client rates, avoid exceptions while keeping
+   client association, online state and timeout behavior unchanged.
+4. Add parameterized parsing tests, client-update tests, and real
+   coordinator-refresh tests for invalid-to-valid transitions and 70/30
+   smoothing. Run both supported Home Assistant/Python pytest matrices
+   plus pre-commit, HACS and Hassfest on the **final head SHA**.
+5. Report this as a **partial** upstream #589 backport. Leave the issue
+   #2 S7 encrypted-session support unchecked. The HTTP outer session,
+   login fallback and cryptographic request format require a separate
+   security-reviewed PR.
+
 ## Sensor and throughput backports (PR #6)
 
 - Read the fork's sensor/coordinator behavior before applying an upstream
