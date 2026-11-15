@@ -200,11 +200,27 @@ policy for AI-assisted development.
   default and keep historical error values available during failures.
   Report `per_node` query mode for the current fork; do not imply the
   global client-list fallback is implemented.
+- **Review finding (PR #30):** Home Assistant 2025.12 and 2026.11
+  `DataUpdateCoordinator._async_refresh` skip ordinary listener
+  notifications when both the previous and current refresh failed.
+  Updating `CoordinatorHealth` in memory and overriding sensor
+  `available` alone cannot publish subsequent timeout-count, latency,
+  or error-type changes. Provide a **health-specific notification path**
+  for repeated failures that updates only health consumers, without
+  falsely marking the data coordinator successful or forcing all
+  unrelated entities to refresh. Register and remove any health
+  listeners with their owner, avoiding orphaned callbacks.
 - **Regression:** test success/failure/timeout classification,
   partial-vs-all-failed polls, valid empty replies, skip conditions,
   timestamp timezones, sanitized errors, unchanged API request counts,
   late-master creation, once-per-entry registration, stable device/unique
-  IDs and multi-entry isolation. Follow the upstream-sync skill.
+  IDs and multi-entry isolation. Test *real* `async_refresh()` behavior
+  through two or more consecutive failures on **both** supported Home
+  Assistant versions: enabled health sensors must publish each changed
+  failure count/error/duration, while unrelated entities and
+  `last_update_success` remain correct. Calling only
+  `_async_update_data()` does not test listener delivery.
+  Follow the upstream-sync skill.
 
 ## Non-blocking initial client refresh (upstream #645)
 
