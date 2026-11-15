@@ -54,7 +54,7 @@ Use the config-flow validation skill for the setup/options portion.
 - Validate the **entire** inventory payload before modifying any existing
   Deco: non-list responses, missing/duplicate identifiers, malformed names
   and invalid signal mappings must raise a fixed, privacy-safe error.
-  A failed poll leaves cached nodes and the *last successful* inventory
+  A failed poll leaves cached nodes and the _last successful_ inventory
   timestamp untouched, **while recording the error type and failure
   counter**. Test failures occurring after a valid earlier refresh, not
   only on an empty initial cache.
