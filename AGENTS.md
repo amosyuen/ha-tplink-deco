@@ -456,7 +456,7 @@ policy for AI-assisted development.
   contents. For this invalid-signal path, preserve the old name,
   hardware version, MAC and signal readings. Test cache identity,
   timestamp, forced-refresh retry eligibility, health status and
-  log redaction when the *later* mesh entry is invalid.
+  log redaction when the _later_ mesh entry is invalid.
   This evidence does not establish atomic updates for every other
   unvalidated firmware field; avoid claiming broader guarantees.
 - **Manual failure feedback:** Home Assistant's coordinator `async_refresh`

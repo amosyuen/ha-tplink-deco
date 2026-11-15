@@ -95,9 +95,9 @@ fields when `signal_level` was not a dictionary.
    booleans and other unsupported shapes. Do not add nested-value
    restrictions without a verified consumer contract and tests.
 3. **Keep two independent validation boundaries.** Preflight
-   the *whole* device list before modifying any cached Deco or
+   the _whole_ device list before modifying any cached Deco or
    advancing the successful-inventory timestamp. Independently
-   validate `signal_level` at the *start* of direct
+   validate `signal_level` at the _start_ of direct
    `TpLinkDeco.update` calls, before changing names, firmware,
    online state or measurements. Use a fixed privacy-safe
    `ValueError`, not a raw exception or embedded firmware value.
@@ -123,7 +123,7 @@ fields when `signal_level` was not a dictionary.
    a failed poll as a valid empty list or log raw payloads.
 7. **Validate and document.** Run pre-commit, HACS, Hassfest, and
    both Python 3.13/HA 2025.12 and Python 3.14/HA 2026.11
-   matrices on the *final* PR head. A prior passing head cannot
+   matrices on the _final_ PR head. A prior passing head cannot
    establish current CI. Report physical hardware verification
    separately; keep issue #2 open for unrelated upstream tasks.
 
