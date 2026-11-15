@@ -113,6 +113,13 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Discover the full existing set of Deco device trackers, binary sensors
+  and per-node throughput/diagnostic sensors when an additional Deco
+  node appears while Home Assistant is running. Commit the refreshed
+  inventory before notifying entity platforms, avoiding missing entities
+  until a later refresh. Existing MAC identities, offline nodes, master
+  relationships, network totals and polling controls remain unchanged.
+
 - Add optional MAC-based device linking for client trackers (default on),
   preserving existing tracker unique IDs and physical Deco device identities.
   Disabling the option prevents future automatic matching while allowing
