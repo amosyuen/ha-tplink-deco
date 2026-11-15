@@ -74,13 +74,30 @@ with stable MAC-prefixed unique IDs. Register them once and support late
 master discovery, partial mesh failures and separate config entries.
 Do not change existing diagnostics or network throughput sensors.
 
+**Repeated-failure notification trap (PR #30 review):** Verify the
+`DataUpdateCoordinator._async_refresh` implementation on the supported
+Home Assistant releases. Both HA 2025.12 and 2026.11 return before
+`async_update_listeners()` when two consecutive refreshes fail. Recording
+`health.record_failure()` alone updates in-memory metrics but does **not**
+publish fresh health sensor state on later failures; `available=True`
+does not change that. Before accepting a health feature, implement a
+separate, lifecycle-safe health notification mechanism for each changed
+failure metric, without turning an unsuccessful refresh into a success
+or notifying unrelated entities. Ensure listener removal on unload.
+
 Add focused tests for actual and skipped refreshes, failures, valid
 empty/all-failed client polls, sanitized API errors, timestamp timezone,
-idempotent sensor registration and device identity. Execute the Python
-3.13/HA 2025.12 and Python 3.14/HA 2026.11 CI matrix plus formatting
-and HACS/Hassfest when available, or report exact limitations. Note that
-downloadable diagnostics export from upstream #575 is separate because
-the fork currently lacks a `diagnostics.py` module.
+idempotent sensor registration and device identity. Include integration
+regressions that invoke `async_refresh()` through **success → failure
+→ failure → recovery**, asserting that enabled health sensors receive
+both failure changes, their values update, and existing coordinator
+success/availability contracts are preserved. Directly calling
+`_async_update_data()` only tests the data path, not Home Assistant
+listener propagation. Execute the Python 3.13/HA 2025.12 and Python
+3.14/HA 2026.11 CI matrix plus formatting and HACS/Hassfest when
+available, or report exact limitations. Note that downloadable
+diagnostics export from upstream #575 is separate because the fork
+currently lacks a `diagnostics.py` module.
 
 ## Initial optional client refresh without startup blocking (upstream #645)
 
