@@ -216,7 +216,10 @@ proposed in this issue #2 follow-up PR and is not yet on `main`.
   entry. Each per-node call disables extra timeout retries without
   changing defaults for other API methods. An exhausted node timeout
   is an incomplete response: retain its last-known clients while
-  successful peers continue to update. Unexpected failures and
+  successful peers continue to update. The timeout health counter
+  advances once per poll cycle containing a node timeout, even when
+  peer nodes succeed; consecutive-failure status still distinguishes
+  partial success from all-node failure. Unexpected failures and
   cancellations cancel outstanding requests and their semaphore waiters.
   The query mode remains `per_node`; fallback to one global client
   list is **not** implemented by this change.
