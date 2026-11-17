@@ -29,6 +29,24 @@ description: "Use when comparing, backporting, reviewing, or implementing change
   call a foreground `async_request_refresh()`. A platform-forwarding
   error must prevent **all** background scheduling. Capture and close
   unscheduled mock coroutines to avoid false unawaited-coroutine warnings.
+- **HTTP 403 device-list retry parity (upstream
+  `tests/test_api_transport_errors.py`):** port the *behavioral test*,
+  not upstream's complete test file or unsupported S7 outer-session
+  fixtures. Exercise the fork's real bound `_async_post` and
+  `async_list_devices`: construct token-bearing `ClientResponseError`
+  objects for the old/new LuCI URLs and have mocked `post` return
+  403, then success or a second 403. Verify the exact
+  `form=device_list`, payload and per-request cookie on **each**
+  attempt, one session refresh, and no third retry.
+- **HTTP 403 privacy contract:** raw `aiohttp.ClientResponseError`
+  may format a private `request_info.real_url`. Use fixed
+  authentication failure diagnostics and raise the sanitized
+  `ForbiddenException` outside its `except` block. Assert the
+  exception's `__cause__` and `__context__` are `None`,
+  and inspect DEBUG logs plus `traceback.format_exception` for
+  synthetic token/cookie and context secrets. Preserve existing
+  HTTP 401 error type and non-auth transport retry behavior.
+  See the [AGENTS HTTP 403 rules](../../../AGENTS.md).
 - Keep tests for unimplemented features (S7 outer sessions and syslog
   forwarding) explicitly **pending**, not failed or silently claimed as
   ported. This is one focused increment toward test parity; do not check
