@@ -4,13 +4,17 @@ import asyncio
 import json
 import logging
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import UpdateFailed
 import pytest
 
-from custom_components.tplink_deco import async_setup_entry, async_unload_entry
+from custom_components.tplink_deco import async_setup_entry
+from custom_components.tplink_deco import async_unload_entry
 from custom_components.tplink_deco.api import TplinkDecoApi
 from custom_components.tplink_deco.const import COORDINATOR_CLIENTS_KEY
 from custom_components.tplink_deco.const import COORDINATOR_DECOS_KEY
@@ -21,12 +25,12 @@ from custom_components.tplink_deco.coordinator import TpLinkDeco
 from custom_components.tplink_deco.coordinator import TpLinkDecoData
 from custom_components.tplink_deco.exceptions import LoginInvalidException
 from custom_components.tplink_deco.exceptions import UnexpectedApiException
-from custom_components.tplink_deco.mobile import (
-    TplinkDecoMobileDataUpdateCoordinator,
-    supports_mobile_data,
+from custom_components.tplink_deco.mobile import TplinkDecoMobileDataUpdateCoordinator
+from custom_components.tplink_deco.mobile import supports_mobile_data
+from custom_components.tplink_deco.sensor import (
+    async_setup_entry as async_setup_sensors,
 )
 from custom_components.tplink_deco.sensor import TplinkMobileDataUsageSensor
-from custom_components.tplink_deco.sensor import async_setup_entry as async_setup_sensors
 
 MASTER_A = "02:00:00:00:63:01"
 MASTER_B = "02:00:00:00:63:02"
@@ -63,9 +67,7 @@ def _coordinator(
     coordinator._deco_coordinator = MagicMock()
     coordinator._deco_coordinator.paused = False
     master = _master(model=model)
-    coordinator._deco_coordinator.data = TpLinkDecoData(
-        master, {master.mac: master}
-    )
+    coordinator._deco_coordinator.data = TpLinkDecoData(master, {master.mac: master})
     coordinator.data = None
     coordinator.last_update_success = True
     coordinator._observed_master_mac = MASTER_A
@@ -80,9 +82,7 @@ def _change_master(
 ) -> None:
     """Deliver the actual master-update callback for a synthetic mesh change."""
     master = _master(master_mac)
-    coordinator._deco_coordinator.data = TpLinkDecoData(
-        master, {master.mac: master}
-    )
+    coordinator._deco_coordinator.data = TpLinkDecoData(master, {master.mac: master})
     coordinator._handle_deco_update()
 
 
@@ -199,7 +199,9 @@ async def test_mobile_coordinator_skips_nonmobile_missing_and_paused_models() ->
 
 
 @pytest.mark.asyncio
-async def test_mobile_usage_coordinator_accepts_zero_and_clears_unsupported_data() -> None:
+async def test_mobile_usage_coordinator_accepts_zero_and_clears_unsupported_data() -> (
+    None
+):
     """An explicit zero is a valid counter; missing data clears it."""
     coordinator = _coordinator(0, None)
     coordinator.data = await coordinator._async_update_data()
@@ -358,8 +360,11 @@ async def test_mobile_diagnostics_never_export_usage_or_credentials() -> None:
     deco_coord.data = TpLinkDecoData(deco, {deco.mac: deco})
     deco_coord.device_list_interval_seconds = 0
     deco_coord.health = MagicMock(
-        last_error="0", last_successful_update=None, response_time_ms=None,
-        timeout_count=0, consecutive_failures=0,
+        last_error="0",
+        last_successful_update=None,
+        response_time_ms=None,
+        timeout_count=0,
+        consecutive_failures=0,
     )
     deco_coord.update_interval = None
     clients = MagicMock()
@@ -391,6 +396,7 @@ async def test_mobile_diagnostics_never_export_usage_or_credentials() -> None:
     assert snapshot["mobile_data_coordinator"]["update_interval_seconds"] is None
     assert str(DATA_USAGE) not in json.dumps(snapshot)
     assert PRIVATE_VALUE not in json.dumps(snapshot)
+
 
 @pytest.mark.asyncio
 async def test_mobile_initial_refresh_is_nonblocking_and_entry_owned() -> None:
