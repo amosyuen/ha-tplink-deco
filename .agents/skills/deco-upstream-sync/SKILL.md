@@ -562,28 +562,12 @@ adds new sensor entities, or fails the repository's full regression suite:
 
 ## Optional WLAN status (upstream #627)
 
-Use this procedure when implementing optional Main, Guest and IoT WiFi
-binary sensors. After checking `AI_POLICY.md`, `AGENTS.md` and the
-integration guide, compare upstream #627 with the fork's current
-`api.py`, coordinators, binary sensor setup and lifecycle. Do not port
-upstream-wide sensor refactors. Isolate a fixed read of
-`admin/wireless?form=wlan` from required coordinator operations.
-Recognize only valid `enable` flags on known firmware paths, without
-copying SSIDs or passwords into stored coordinator state. Create entities
-only for verified networks, associate them with the master MAC and retain
-the existing entity/device identities. Validate empty/malformed responses,
-privacy redaction, failure/retry, paused polling, authentication,
-cancellation and unload using mock responses. Run Python/HA test matrices,
-pre-commit, HACS and Hassfest on the final PR head; verify hardware
-separately. SSID exposure (#637) is a separate opt-in scope and should
-not be silently enabled.
-
-For wireless **error-path reviews**, mock the outer HTTP JSON envelope,
-missing `data`, rejected API error codes, corrupted encrypted data, and
-invalid decrypted `result`. Verify that HTTP 403/5xx and session expiry
-preserve existing exception/relogin contracts without printing request URLs
-or router content. Assert via `caplog` that sensitive synthetic tokens and
-passwords do not appear even in DEBUG logs. Verify that cancellation and
-config-entry auth failure bypass optional backoff, while transient,
-malformed and unknown API exceptions are sanitized and obey bounded retry.
-Re-run both full HA/Python matrices and linting after any subsequent commit.
+The read-only WLAN backport in fork PR #41 includes optional error
+containment, API-response validation, redaction, master-aware availability,
+and distinct coordinator cleanup interfaces. For the **actual procedure**
+and focused regressions use
+[Deco wireless-status validation](../deco-wireless-status-validation/SKILL.md).
+Keep upstream #637 SSID exposure separate and opt-in; do not treat the
+combined issue #2 checklist as complete while the PR is unmerged or its
+remaining scope is absent. All required CI checks must pass on the final
+head after any code **or documentation** commit.
