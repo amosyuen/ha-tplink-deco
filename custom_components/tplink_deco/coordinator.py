@@ -528,11 +528,12 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         self.health = CoordinatorHealth()
         self._poll_had_valid_response = False
         self._poll_had_timeout = False
+        self._client_query_mode = "per_node"
 
     @property
     def client_query_mode(self) -> str:
-        """Describe the currently implemented per-Deco client query strategy."""
-        return "per_node"
+        """Return the active per-node or global client query strategy."""
+        return self._client_query_mode
 
     @property
     def remaining_backoff_seconds(self) -> int:
@@ -584,6 +585,32 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             return None, True
         return clients, False
 
+    async def _async_list_clients_globally(self) -> list[dict[str, Any]] | None:
+        """Try one global query without masking authentication or invalid data."""
+        try:
+            response = await async_call_and_propagate_config_error(
+                self.api.async_list_clients,
+                "default",
+                timeout_error_retries=0,
+            )
+        except TimeoutException:
+            self._poll_had_timeout = True
+            _LOGGER.debug("Global Deco client poll timed out")
+            return None
+        except TransientConnectionException:
+            _LOGGER.debug("Global Deco client poll incomplete")
+            return None
+        except aiohttp.ClientResponseError as err:
+            if not 500 <= err.status < 600:
+                raise
+            _LOGGER.debug("Global Deco client poll returned HTTP %d", err.status)
+            return None
+        if not isinstance(response, list) or any(
+            not isinstance(item, dict) for item in response
+        ):
+            raise ValueError("Invalid global Deco client list response")
+        return response
+
     async def _async_list_clients_per_deco(
         self, deco_macs: list[str]
     ) -> list[tuple[list[dict[str, Any]] | None, bool]]:
@@ -614,9 +641,9 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         if not self._deco_update_coordinator.data.decos:
             return self.data
 
-        if self.remaining_backoff_seconds:
+        if self.remaining_backoff_seconds and self._client_query_mode != "global":
             _LOGGER.debug(
-                "Skipping Deco client polling during HTTP 5xx backoff (%ds remaining)",
+                "Skipping per-node Deco polling during HTTP 5xx backoff (%ds remaining)",
                 self.remaining_backoff_seconds,
             )
             return self.data
@@ -637,15 +664,48 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         return data
 
     async def _async_update_data_internal(self):
-        """Fetch per-node clients while preserving existing failure recovery."""
+        """Fetch per-node or global clients while retaining last-known state."""
         old_clients = self.data
         clients = {}
         client_added = False
         deco_macs = list(self._deco_update_coordinator.data.decos)
         utc_point_in_time = dt_util.utcnow()
 
-        # Retain successful per-node responses even when a peer fails.
-        deco_client_responses = await self._async_list_clients_per_deco(deco_macs)
+        # While per-node 5xx backoff is active, use the known-good global
+        # strategy without reissuing broken per-node requests.
+        global_only = (
+            self._client_query_mode == "global" and self.remaining_backoff_seconds > 0
+        )
+        deco_client_responses = (
+            [] if global_only else await self._async_list_clients_per_deco(deco_macs)
+        )
+        server_error = any(error for _, error in deco_client_responses)
+        if server_error:
+            self._apply_client_backoff()
+
+        if global_only or server_error:
+            master = self._deco_update_coordinator.data.master_deco
+            if master is not None:
+                global_clients = await self._async_list_clients_globally()
+                if global_clients is not None:
+                    # Global data lacks a reliable node identity. Use the
+                    # real master MAC, never the API sentinel "default".
+                    deco_macs = [master.mac]
+                    deco_client_responses = [(global_clients, False)]
+                    self._client_query_mode = "global"
+                elif global_only:
+                    return old_clients
+            elif global_only:
+                return old_clients
+
+        if (
+            not global_only
+            and not server_error
+            and all(response is not None for response, _ in deco_client_responses)
+        ):
+            self._reset_client_backoff()
+            self._client_query_mode = "per_node"
+
         failed_deco_macs = {
             deco_mac
             for deco_mac, (response, _) in zip(deco_macs, deco_client_responses)
@@ -654,8 +714,6 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         if len(failed_deco_macs) == len(deco_macs):
             # Unknown client-to-node assignments must also survive a poll
             # where no Deco returned a valid client list.
-            if any(server_error for _, server_error in deco_client_responses):
-                self._apply_client_backoff()
             return old_clients
 
         # An empty but successful response still confirms this Deco's count.
@@ -697,11 +755,6 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
                     client.online = (
                         utc_point_in_time - client.last_activity
                     ).total_seconds() < self._consider_home_seconds
-
-        if any(server_error for _, server_error in deco_client_responses):
-            self._apply_client_backoff()
-        elif all(response is not None for response, _ in deco_client_responses):
-            self._reset_client_backoff()
 
         if client_added:
             async_dispatcher_send(self.hass, SIGNAL_CLIENT_ADDED)
