@@ -44,7 +44,16 @@ description: "Use when changing authenticated manual Deco system-log downloads, 
    `O_NOFOLLOW` alone does not protect a linked parent). If write or
    buffered close fails after exclusive creation, close the descriptor
    and unlink **only the newly created file**; a same-name retry must
-   succeed. Test both failure points and preserve pre-existing files.
+   succeed. Test both failure points, a non-`OSError` encoding failure
+   and preservation of pre-existing files. The Home Assistant action is
+   a distinct privacy boundary: upstream login and HTTP exceptions may
+   contain router tokens even when log-payload parsing is sanitized.
+   Classify authentication, timeout and interrupted transport failures
+   with fixed messages; reject non-string API results before disk access;
+   raise service errors **outside** `except` blocks to clear
+   `__cause__` and `__context__`. Preserve `CancelledError`.
+   Exercise synthetic secret-bearing exceptions in service tests and
+   assert no raw text appears in rendered tracebacks or DEBUG logs.
    Avoid logging paths or raw system-log content.
 8. Return path and line count only to the explicit caller; document
    the privacy sensitivity and retention responsibility of saved logs.

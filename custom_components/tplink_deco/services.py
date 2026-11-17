@@ -19,6 +19,12 @@ import voluptuous as vol
 from .const import COORDINATOR_DECOS_KEY
 from .const import DOMAIN
 from .const import SERVICE_DOWNLOAD_SYSTEM_LOG
+from .exceptions import EmptyDataException
+from .exceptions import ForbiddenException
+from .exceptions import LoginForbiddenException
+from .exceptions import LoginInvalidException
+from .exceptions import TimeoutException
+from .exceptions import TransientConnectionException
 from .system_log import SystemLogLevel
 
 ATTR_FILENAME = "filename"
@@ -115,15 +121,41 @@ def async_setup_services(hass: HomeAssistant) -> None:
         deco_coordinator = entry_data.get(COORDINATOR_DECOS_KEY)
         if deco_coordinator is None:
             raise ServiceValidationError("Selected TP-Link Deco entry is unavailable")
-        log_text = await deco_coordinator.api.async_get_system_log(
-            call.data[ATTR_LOG_LEVEL]
-        )
+        # Upstream login and transport exceptions may contain request URLs,
+        # cookies or router response data. Never expose them through HA's
+        # service error formatting or retain them as exception context.
+        download_error: str | None = None
+        log_text: str | None = None
+        try:
+            log_text = await deco_coordinator.api.async_get_system_log(
+                call.data[ATTR_LOG_LEVEL]
+            )
+        except (
+            EmptyDataException,
+            ForbiddenException,
+            LoginForbiddenException,
+            LoginInvalidException,
+        ):
+            download_error = "System log authentication failed"
+        except TimeoutException:
+            download_error = "System log request timed out"
+        except TransientConnectionException:
+            download_error = "System log connection was interrupted"
+        except Exception:
+            download_error = "System log download failed"
+        if download_error is not None:
+            # Raise outside the except blocks to clear __context__/__cause__.
+            raise ServiceValidationError(download_error)
+        if not isinstance(log_text, str):
+            raise ServiceValidationError("System log response is malformed")
+
         path = hass.config.path(SYSTEM_LOG_DIR, filename)
         write_failed = False
         try:
             await hass.async_add_executor_job(_write_log_file, path, log_text)
-        except OSError:
-            # Raise outside the handler to prevent private paths in exception context.
+        except Exception:
+            # This also catches UnicodeError during the executor's file write,
+            # which is not an OSError and may quote sensitive router text.
             write_failed = True
         if write_failed:
             raise ServiceValidationError(

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import os
+import traceback
 from pathlib import Path
 from types import SimpleNamespace
 from types import TracebackType
@@ -21,6 +24,12 @@ from custom_components.tplink_deco import services as log_services
 from custom_components.tplink_deco.const import COORDINATOR_DECOS_KEY
 from custom_components.tplink_deco.const import DOMAIN
 from custom_components.tplink_deco.const import SERVICE_DOWNLOAD_SYSTEM_LOG
+from custom_components.tplink_deco.exceptions import EmptyDataException
+from custom_components.tplink_deco.exceptions import ForbiddenException
+from custom_components.tplink_deco.exceptions import LoginForbiddenException
+from custom_components.tplink_deco.exceptions import LoginInvalidException
+from custom_components.tplink_deco.exceptions import TimeoutException
+from custom_components.tplink_deco.exceptions import TransientConnectionException
 from custom_components.tplink_deco.services import _log_filename
 from custom_components.tplink_deco.system_log import SystemLogLevel
 
@@ -244,6 +253,10 @@ class _FailingLogWriter:
         self._stream.write(data[:7])
         if self._failure_point == "write":
             raise OSError("synthetic private write error")
+        if self._failure_point == "encoding":
+            raise UnicodeEncodeError(
+                "utf-8", "PRIVATE_ROUTER_VALUE", 0, 1, "PRIVATE_ROUTER_REASON"
+            )
 
     def __exit__(
         self,
@@ -279,7 +292,7 @@ async def test_rejects_symbolic_link_export_directory(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("failure_point", ["write", "close"])
+@pytest.mark.parametrize("failure_point", ["write", "close", "encoding"])
 async def test_write_failure_removes_partial_file_and_allows_retry(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -306,8 +319,79 @@ async def test_write_failure_removes_partial_file_and_allows_retry(
             await _download(hass, config_entry_id="first", filename="retry.log")
         assert failure.value.__cause__ is None
         assert failure.value.__context__ is None
+        assert "PRIVATE_ROUTER_" not in "".join(
+            traceback.format_exception(failure.value)
+        )
 
     assert not export.exists()
     response = await _download(hass, config_entry_id="first", filename="retry.log")
     assert response["path"] == str(export)
     assert export.read_text(encoding="utf-8") == "first\n"
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("api_exception", "message"),
+    [
+        (EmptyDataException("PRIVATE_ROUTER_TOKEN"), "authentication failed"),
+        (ForbiddenException("PRIVATE_ROUTER_TOKEN"), "authentication failed"),
+        (LoginForbiddenException("PRIVATE_ROUTER_TOKEN"), "authentication failed"),
+        (LoginInvalidException("PRIVATE_ROUTER_TOKEN"), "authentication failed"),
+        (TimeoutException("PRIVATE_ROUTER_TOKEN"), "timed out"),
+        (TransientConnectionException("PRIVATE_ROUTER_TOKEN"), "interrupted"),
+        (RuntimeError("PRIVATE_ROUTER_TOKEN"), "download failed"),
+    ],
+)
+async def test_api_errors_are_classified_without_leaking_router_data(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    api_exception: Exception,
+    message: str,
+) -> None:
+    """Expose only fixed service errors with no private exception context."""
+    hass = _hass(tmp_path)
+    await async_setup(hass, {})
+    api = hass.data[DOMAIN]["first"][COORDINATOR_DECOS_KEY].api
+    api.async_get_system_log.side_effect = api_exception
+
+    with caplog.at_level(logging.DEBUG):
+        with pytest.raises(ServiceValidationError, match=message) as failure:
+            await _download(hass, config_entry_id="first", filename="secret.log")
+
+    assert failure.value.__context__ is None
+    assert failure.value.__cause__ is None
+    assert "PRIVATE_ROUTER_TOKEN" not in "".join(
+        traceback.format_exception(failure.value)
+    )
+    assert "PRIVATE_ROUTER_TOKEN" not in caplog.text
+    assert not (tmp_path / "tplink_deco_logs" / "secret.log").exists()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("invalid_result", [None, 42, {"content": "PRIVATE_ROUTER_TOKEN"}])
+async def test_malformed_api_result_rejected_before_writing(
+    tmp_path: Path, invalid_result: Any
+) -> None:
+    """Reject unexpected API result types with a fixed safe error."""
+    hass = _hass(tmp_path)
+    await async_setup(hass, {})
+    api = hass.data[DOMAIN]["first"][COORDINATOR_DECOS_KEY].api
+    api.async_get_system_log.return_value = invalid_result
+
+    with pytest.raises(ServiceValidationError, match="response is malformed"):
+        await _download(hass, config_entry_id="first", filename="secret.log")
+
+    assert not (tmp_path / "tplink_deco_logs" / "secret.log").exists()
+
+
+@pytest.mark.asyncio
+async def test_api_cancellation_is_never_masked(tmp_path: Path) -> None:
+    """Propagate cancellation without saving any system log."""
+    hass = _hass(tmp_path)
+    await async_setup(hass, {})
+    api = hass.data[DOMAIN]["first"][COORDINATOR_DECOS_KEY].api
+    api.async_get_system_log.side_effect = asyncio.CancelledError()
+
+    with pytest.raises(asyncio.CancelledError):
+        await _download(hass, config_entry_id="first", filename="secret.log")
+
+    assert not (tmp_path / "tplink_deco_logs" / "secret.log").exists()

@@ -1176,7 +1176,16 @@ policy for AI-assisted development.
   A write or buffered-close exception after file creation must remove
   the new partial file without touching a pre-existing collision.
   Regression-test symlink rejection and same-name retry after both
-  failures. Never log exported content or destination paths.
+  failures. **Additional PR #44 error-boundary lesson:** the Home Assistant
+  service action must not expose upstream login/HTTP/transport exceptions
+  (which may include LuCI tokens), and must also safely handle
+  non-`OSError` failures such as `UnicodeEncodeError` while writing
+  downloaded log text. Raise fixed `ServiceValidationError` messages
+  *after leaving* exception handlers so no private `__context__`
+  survives; classify auth, timeout and disconnects without exposing
+  raw text, validate the returned API type and propagate cancellation.
+  Test rendered tracebacks and a same-name retry after an encoding error.
+  Never log exported content or destination paths.
   Document user responsibility for securely storing and removing logs.
 - **Scoped upstream work:** the manual plain-text export (#650)
   does not implement gzip/tar decoding (#673), syslog forwarding

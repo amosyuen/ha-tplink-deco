@@ -563,8 +563,14 @@ The action first builds a snapshot through authenticated encrypted
 snapshot through the unencrypted `form=save_log` request. It accepts
 only valid UTF-8 plain-text payloads of up to 8 MiB; unsupported,
 invalid and oversized responses never create an output file. Session
-expiry permits one shared re-login. Raw token URLs, cookies and log
-contents must never reach integration logs or formatted exceptions.
+expiry permits one shared re-login. The Home Assistant action converts
+router authentication failures, timeouts, interrupted connections and
+other API failures into fixed user-facing service errors without retaining
+the original exception context; unexpected non-text results are rejected
+before writing. File-system and encoding failures receive another fixed
+error, and partial files are removed on write/close errors. Cancellation
+is propagated. Raw token URLs, cookies and log contents must never reach
+integration logs or formatted exceptions.
 
 The result is stored in a newly created file under
 `<config>/tplink_deco_logs/` via the executor. The file name is an
