@@ -456,16 +456,21 @@ The coordinator's `data` stores only boolean states. With the new, explicit
 `expose_wifi_ssids` opt-in option (default `false`), it also stores a
 **separate**, per-entry `ssids` map containing only recognized network and
 band names. A snapshot is valid only for the owner master MAC **and**
-observed master generation. The optional coordinator listens for Deco
-master transitions, invalidates names immediately and rejects stale
-SSID snapshots returned by an in-flight request, including A -> B -> A
-transitions before a successful new poll. Boolean WiFi states retain their
+observed master generation, captured before awaiting the WLAN request
+and verified again before committing names after a successful parse.
+The optional coordinator listens for Deco master transitions, invalidates
+names immediately and rejects stale SSID snapshots returned by an
+in-flight request, including A -> B -> A transitions before a successful
+new poll. Boolean WiFi states retain their
 original behavior; a master switch cannot reattribute previously stored
 SSID names. The optional endpoint's consecutive-failure counter and
 five-minute cooldown are scoped to the current master generation: changing
 masters resets the old retry budget, while a failure from an in-flight
-request started under the former master is not counted against the new
-one. Repeated refreshes for an unchanged master do not bypass backoff.
+request started under the former master still yields a sanitized
+`UpdateFailed`, but is not counted against the new master. Repeated
+notifications for an unchanged master do not bypass backoff. Successful
+polls reset the current retry budget; a failure preserves previously
+published coordinator status and valid same-master SSID data.
 Without consent, names are neither parsed into nor retained in
 coordinator state. The existing Main, Guest and IoT WiFi binary sensors expose
 a common `ssid` attribute for matching bands or individual `ssid_<band>`
