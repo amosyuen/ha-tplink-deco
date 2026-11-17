@@ -15,6 +15,7 @@ description: "Validate TP-Link Deco setup, options and reauthentication flows, i
    because the latter bypassed interval normalization, leaving the
    submitted `"30"` as a string. Assert the persisted canonical key
    holds integer `30` in both setup and options flows.
+
 - **Localized form-key audit (issue #2):** when changing configuration
   labels, compare the actual keys from `_get_schema` with `strings.json`,
   `translations/en.json` and `translations/nl.json`. In particular,
@@ -26,6 +27,7 @@ description: "Validate TP-Link Deco setup, options and reauthentication flows, i
   nested key coverage and the real runtime selector key. Preserve
   existing Dutch titles, legacy metadata and validation errors;
   do **not** add unimplemented upstream syslog fields to obtain parity.
+
 5. Validate submitted values in **both setup and options flows** before
    credential checks, API traffic or data mutation. For **numeric**
    interval fields, reject unsupported values, malformed strings,
