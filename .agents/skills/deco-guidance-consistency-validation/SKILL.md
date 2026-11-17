@@ -41,6 +41,18 @@ Keep `AI_POLICY.md` unchanged unless governing policy itself changes.
 
 ## Failures observed and deterministic validation
 
+- **PR #51 review-bot coverage (2026-11-17):** CodeRabbit posted a
+  review-limit warning for the actual branch head instead of findings;
+  a Codex status comment independently showed a completed code review
+  with no findings on `5a4afec`, while its security-review status
+  was absent. Determine review evidence from each bot's explicit
+  status **and reviewed SHA**, not from the existence of a bot
+  comment or an empty unresolved-thread list. Mark quota-limited
+  reviews `not performed`, not `passed`; do not confuse a
+  code-review completion with a security-review completion. Check
+  the current PR head and newly arrived threads before reporting,
+  continue using available code inspection and required CI, and
+  document unverified review coverage without inventing outcomes.
 - **PR #51 repeated Markdown anchors (2026-11-17):** updating the
   upstream-sync skill and integration guide initially encountered two
   adjacent copies of the same `Keep tests for unimplemented features`
