@@ -7,6 +7,7 @@ from homeassistant.core import HomeAssistant
 
 from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
+from .const import COORDINATOR_MOBILE_KEY
 from .const import COORDINATOR_WIRELESS_KEY
 from .const import DOMAIN
 from .coordinator import CoordinatorHealth
@@ -94,5 +95,19 @@ async def async_get_config_entry_diagnostics(
             "last_update_success": wireless_coordinator.last_update_success,
             "retry_remaining_seconds": wireless_coordinator.retry_remaining_seconds,
             "available_networks": sorted(wireless_coordinator.data or {}),
+        }
+    mobile_coordinator = data.get(COORDINATOR_MOBILE_KEY)
+    if mobile_coordinator is not None:
+        master = getattr(deco_data, "master_deco", None)
+        interval = mobile_coordinator.update_interval
+        result["mobile_data_coordinator"] = {
+            "last_update_success": mobile_coordinator.last_update_success,
+            "supported": bool(
+                master is not None
+                and mobile_coordinator.has_current_usage(master.mac)
+            ),
+            "update_interval_seconds": (
+                interval.total_seconds() if interval is not None else None
+            ),
         }
     return result
