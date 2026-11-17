@@ -2,7 +2,6 @@
   "config": {
     "step": {
       "user": {
-        "title": "TP-Link Deco",
         "description": "Gebruik wachtwoord van de admin web portal. Voor meer informatie, zie https://github.com/amosyuen/ha-tplink-deco#configuration-important-please-read",
         "data": {
           "host": "Host",
@@ -11,31 +10,43 @@
           "interval_seconds": "Aantal seconden tussen updates",
           "device_list_interval": "Seconden tussen Deco-statusupdates (0 = alleen bij opstarten)",
           "consider_home": "Aantal seconden sinds laatste keer dat het gezien is totdat een device als niet-thuis wordt gemarkeerd",
+          "timeout_seconds": "Time-out in seconden",
+          "timeout_error_retries": "Aantal nieuwe pogingen bij een time-out",
+          "verify_ssl": "Geldigheid van het SSL-certificaat controleren",
+          "client_prefix": "Voorvoegsel voor clientnamen",
+          "client_postfix": "Achtervoegsel voor clientnamen",
+          "deco_prefix": "Voorvoegsel voor Deconamen",
+          "deco_postfix": "Achtervoegsel voor Deconamen",
           "link_client_devices": "Koppel clienttrackers aan apparaten via MAC-adres",
           "expose_wifi_ssids": "Toon wifi-netwerknamen op de wifi-statussensoren"
-        }
+        },
+        "title": "TP-Link Deco"
       },
       "reauth_confirm": {
-        "title": "TP-Link Deco",
+        "description": "Er is een probleem met de aanmeldgegevens. Dit kan gebeuren wanneer je op een ander apparaat bent ingelogd. Raadpleeg de documentatie voor de aanmeldvereisten.",
         "data": {
           "username": "Gebruikersnaam",
           "password": "Wachtwoord"
-        }
+        },
+        "title": "TP-Link Deco"
       }
     },
     "error": {
       "invalid_auth": "Incorrecte authenticatie",
+      "invalid_host": "Kan geen verbinding maken met de host.",
       "timeout_connect": "Timeout tijdens maken van verbinding",
       "unknown": "Onbekende fout",
       "invalid_scan_interval": "Kies een pollinginterval van 10, 30, 60 of 120 seconden.",
       "invalid_device_list_interval": "Kies 0 voor alleen bij opstarten of minstens 10 seconden voor Deco-statusupdates.",
       "invalid_expose_wifi_ssids": "Kies aan of uit om wifi-netwerknamen weer te geven."
+    },
+    "abort": {
+      "reauth_successful": "Opnieuw aanmelden geslaagd"
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "TP-Link Deco",
         "description": "Gebruik wachtwoord van de admin web portal. Voor meer informatie, zie https://github.com/amosyuen/ha-tplink-deco#configuration-important-please-read",
         "data": {
           "host": "Host",
@@ -44,13 +55,25 @@
           "interval_seconds": "Aantal seconden tussen updates",
           "device_list_interval": "Seconden tussen Deco-statusupdates (0 = alleen bij opstarten)",
           "consider_home": "Aantal seconden sinds laatste keer dat het gezien is totdat een device als niet-thuis wordt gemarkeerd",
+          "timeout_seconds": "Time-out in seconden",
+          "timeout_error_retries": "Aantal nieuwe pogingen bij een time-out",
+          "verify_ssl": "Geldigheid van het SSL-certificaat controleren",
+          "client_prefix": "Voorvoegsel voor clientnamen",
+          "client_postfix": "Achtervoegsel voor clientnamen",
+          "deco_prefix": "Voorvoegsel voor Deconamen",
+          "deco_postfix": "Achtervoegsel voor Deconamen",
           "link_client_devices": "Koppel clienttrackers aan apparaten via MAC-adres",
           "expose_wifi_ssids": "Toon wifi-netwerknamen op de wifi-statussensoren"
-        }
+        },
+        "title": "TP-Link Deco"
       }
+    },
+    "abort": {
+      "reauth_successful": "Opnieuw aanmelden geslaagd"
     },
     "error": {
       "invalid_auth": "Incorrecte authenticatie",
+      "invalid_host": "Kan geen verbinding maken met de host.",
       "timeout_connect": "Timeout tijdens maken van verbinding",
       "unknown": "Onbekende fout",
       "invalid_scan_interval": "Kies een pollinginterval van 10, 30, 60 of 120 seconden.",
