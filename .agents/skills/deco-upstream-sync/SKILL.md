@@ -577,3 +577,13 @@ cancellation and unload using mock responses. Run Python/HA test matrices,
 pre-commit, HACS and Hassfest on the final PR head; verify hardware
 separately. SSID exposure (#637) is a separate opt-in scope and should
 not be silently enabled.
+
+For wireless **error-path reviews**, mock the outer HTTP JSON envelope,
+missing `data`, rejected API error codes, corrupted encrypted data, and
+invalid decrypted `result`. Verify that HTTP 403/5xx and session expiry
+preserve existing exception/relogin contracts without printing request URLs
+or router content. Assert via `caplog` that sensitive synthetic tokens and
+passwords do not appear even in DEBUG logs. Verify that cancellation and
+config-entry auth failure bypass optional backoff, while transient,
+malformed and unknown API exceptions are sanitized and obey bounded retry.
+Re-run both full HA/Python matrices and linting after any subsequent commit.
