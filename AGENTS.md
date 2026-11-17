@@ -1152,6 +1152,17 @@ policy for AI-assisted development.
   functions and methods; keep asynchronous operations and errors explicit.
 - Make the smallest change that meets the issue's acceptance criteria,
   document user-visible behavior, and explain regression coverage in the PR.
+- **Authenticated request-mock evidence (PR #46):** when a change affects
+  HTTP requests, sessions or retry handling, assert the **ordered arguments of
+  every mocked attempt**, not just the final result or call count. Check the
+  endpoint and token-bearing URL, request parameters, encoded/form body,
+  cookies and SSL context as applicable. After reauthentication, require the
+  next attempt to use the **refreshed** URL and cookie rather than accepting
+  stale credentials; for generic retry wrappers, pass a distinct sentinel
+  and prove each invocation receives it unchanged. Keep result, attempt-count,
+  resource-release, cancellation and privacy assertions alongside these
+  contract checks. Use synthetic credentials only; never expose raw secrets
+  in test failures, captured logs or review reports.
 
 ## Manual system-log export (merged PRs #44/#45; issue #2)
 
