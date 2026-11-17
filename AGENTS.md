@@ -66,6 +66,8 @@ reading these instructions:
   validate optional WLAN error boundaries, privacy, master changes and teardown.
 - [Deco mobile WAN usage validation](.agents/skills/deco-mobile-usage-validation/SKILL.md):
   validate optional 4G/5G data usage, parser privacy, master ownership, sensor discovery and entry lifecycle.
+- [Deco system-log export validation](.agents/skills/deco-system-log-validation/SKILL.md):
+  validate explicit log downloads, entry selection, secure disk writes and privacy-safe failures.
 
 These skills are task-specific procedures. This file remains the source of
 repository-wide implementation rules; `AI_POLICY.md` remains the governing
@@ -1150,6 +1152,33 @@ policy for AI-assisted development.
   functions and methods; keep asynchronous operations and errors explicit.
 - Make the smallest change that meets the issue's acceptance criteria,
   document user-visible behavior, and explain regression coverage in the PR.
+
+## Manual system-log export (upstream #650, issue #2)
+
+- **Explicit action only:** never poll or forward router system logs
+  automatically. Register the action once at integration setup and
+  select a loaded entry on invocation. An ambiguous, unloaded or
+  foreign entry must fail before router access. Do not disturb the
+  existing three per-entry services or their unload behavior.
+- **Sensitive API boundary:** encrypted `feedback_log` build and
+  unencrypted `save_log` requests may contain credentials in LuCI
+  URLs/cookies and sensitive system-log text. Sanitize exceptions
+  at both boundaries and test rendered tracebacks and DEBUG logs
+  against synthetic secrets. Preserve one bounded authentication
+  retry and propagate cancellation.
+- **Storage safeguards:** cap plain-text downloads at 8 MiB; reject
+  malformed or unsupported responses. Validate ASCII `.log`
+  basenames, traversal, Windows reserved names and file collisions.
+  Use an executor and exclusive creation with private permissions
+  where supported. Never log exported content or destination paths.
+  Document user responsibility for securely storing and removing logs.
+- **Scoped upstream work:** the manual plain-text export (#650)
+  does not implement gzip/tar decoding (#673), syslog forwarding
+  (#666), or legacy S7 sessions. Keep the combined #650/#673
+  checklist item unchecked while compressed snapshot support is
+  outstanding. Follow the
+  [system-log validation skill](.agents/skills/deco-system-log-validation/SKILL.md)
+  and require all five CI checks on the final PR head.
 
 ## Optional mobile WAN usage (upstream #631, issue #2)
 

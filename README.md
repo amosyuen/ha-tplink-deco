@@ -311,6 +311,7 @@ Configurable:
 - `tplink_deco.pause_polling`
 - `tplink_deco.resume_polling`
 - `tplink_deco.reboot_deco`
+- `tplink_deco.download_system_log` (manual, proposed in PR #44)
 
 ---
 
@@ -405,6 +406,42 @@ target:
     - ef41562be18e5e3057e232ffb26de9bb
     - d7f96b1f312d83f195b35ecdfbb3b02b
 ```
+
+#### Download system log (upstream #650; PR #44)
+
+The optional `tplink_deco.download_system_log` action downloads a snapshot
+only when explicitly called. It writes a **new**, plain-text UTF-8 file
+to `<config>/tplink_deco_logs/` and returns its path and line count.
+An existing file is never overwritten. Snapshots are limited to **8 MiB**.
+
+```yaml
+action: tplink_deco.download_system_log
+data:
+  config_entry_id: YOUR_DECO_CONFIG_ENTRY_ID
+  filename: deco-example.log
+  log_level: WARNING
+response_variable: log_export
+```
+
+The entry ID is optional only when exactly one Deco entry is loaded.
+The filename may be omitted for a timestamped default; custom names
+must be simple ASCII `.log` basenames. The allowed severity values
+are `ALERT`, `CRITICAL`, `ERROR`, `WARNING`, `NOTICE`, `INFO`,
+`DEBUG` and `ALL` (default).
+
+**Privacy:** Deco system logs can contain device names, addresses,
+other network details and secrets. The action does not include raw
+logs in Home Assistant diagnostics or integration logs, but the saved
+file retains the sensitive original text. Restrict access to the
+output directory, do not share or sync its contents, and delete
+exports when they are no longer needed. File access permissions
+depend on the underlying operating system and filesystem.
+
+This PR supports plain-text UTF-8 logs only. Gzip/tar snapshots
+(upstream #673), legacy S7 sessions and syslog forwarding (#666)
+are separate, unfinished features. Unsupported snapshot formats
+are rejected without writing an export. Physical router behavior
+is not yet verified.
 
 {% if not installed %}
 

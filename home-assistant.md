@@ -342,22 +342,25 @@ deployed until that PR is merged.
   firmware payloads. Malformed error values are replaced with
   `UnknownError`. Missing coordinator data produces null/zero health
   readings. Each export is isolated to one configuration entry; device
-  diagnostics and system-log export remain unimplemented.
+  diagnostics remain unimplemented. Manual system-log export is a separate
+  proposed action on PR #44, not part of Home Assistant diagnostics.
 - `switch` controls polling. `select` chooses the main polling interval
   and persists the selected integer in the config entry before reload.
-- Registered services are `tplink_deco.reboot_deco`,
-  `tplink_deco.pause_polling` and `tplink_deco.resume_polling`. For
+- The three existing per-entry services are `tplink_deco.reboot_deco`,
+  `tplink_deco.pause_polling` and `tplink_deco.resume_polling`. PR #44
+  proposes a fourth, once-registered `tplink_deco.download_system_log`
+  action resolved at invocation. For
   `reboot_deco`, resolve each selected Home Assistant device registry
   entry to a nonempty `(DOMAIN, MAC)` identifier; reject an invalid
   selection **before** sending any reboot command. Device-registry
   records may carry additional unrelated identifiers.
-- Do not silently add upstream syslog forwarding, log-download actions or
-  **unscoped wireless features** while maintaining existing entities.
+- Do not silently enable upstream syslog forwarding or **unscoped
+  wireless features** while maintaining existing entities. Manual
+  system-log export is independently scoped to open PR #44.
   Read-only WLAN status was scoped to merged PR #41; optional SSID
   attributes were scoped to merged PR #42 and remain disabled unless
   per-entry boolean consent is explicitly `true`. Read-only mobile
-  usage sensors are scoped to **open PR #43** and must not be claimed
-  as deployed on `main` before merge verification. Remaining unrelated
+  usage sensors were merged in PR #43 and verified on `main`. Remaining unrelated
   work is tracked in
   [issue #2](https://github.com/HiDiHo01/ha-tplink-deco/issues/2).
 
@@ -422,8 +425,9 @@ invariants for the _modified subsystem_:
    are preserved as applicable.
 4. **Surface:** the six existing platforms listed in `PLATFORMS` in
    `const.py`, fork-specific network totals, connected-client and
-   diagnostic entities, and three registered services continue to
-   behave as described.
+   diagnostic entities, and the three existing per-entry services
+   continue to behave as described. The proposed manual log action
+   must not alter those service contracts.
 5. **Lifecycle:** awaited platform forwarding and failure-safe unload
    preserve live state until cleanup can complete.
 6. **Firmware:** optional fields and legacy naming formats remain optional
@@ -442,8 +446,8 @@ not duplicate their general standards.
 
 The third, entry-owned coordinator reads the local `admin/wireless?form=wlan`
 endpoint independently from the mandatory Deco and client coordinators.
-The optional mobile coordinator proposed in PR #43 is a **separate fourth**
-coordinator on that PR branch; it does not replace or modify WLAN polling.
+The optional mobile coordinator merged in PR #43 is the **separate fourth**
+coordinator on `main`; it does not replace or modify WLAN polling.
 Its first refresh runs only after platform forwarding finishes and therefore
 does not delay entity setup. Supported Main, Guest and IoT networks are
 discovered only when valid firmware `enable` values are returned; the Main
@@ -515,7 +519,7 @@ crypto material are not logged during transport/login. Unexpected wireless
 API exceptions are contained as optional update failures, while Home
 Assistant authentication errors and task cancellation remain distinct.
 
-## Optional mobile WAN usage and error contract (PR #43, not yet merged)
+## Optional mobile WAN usage and error contract (merged PR #43)
 
 The optional, per-entry mobile coordinator polls the encrypted, read-only
 `admin/network?form=internet` endpoint every five minutes, only while
@@ -543,5 +547,35 @@ previous cached same-master reading, which remains unavailable to the
 Home Assistant sensor while the coordinator reports a failed update.
 The actual counter and raw payload must not appear in diagnostics.
 Physical firmware and Recorder/history behavior remain unverified.
-This describes PR #43's branch, not a feature deployed on `main` before
-merge verification.
+PR #43 is merged; this behavior is present on `main` but physical
+firmware behavior remains unverified.
+
+
+## Manual system-log export (upstream #650; PR #44, not merged)
+
+The proposed `tplink_deco.download_system_log` action is registered
+once and chooses a currently loaded config entry at invocation.
+When multiple Deco entries are loaded, a valid `config_entry_id` is
+mandatory; unknown or unloaded entries fail before router access.
+The three existing entry services and their lifecycle remain unchanged.
+
+The action first builds a snapshot through authenticated encrypted
+`admin/log_export?form=feedback_log`, then retrieves the plain-text
+snapshot through the unencrypted `form=save_log` request. It accepts
+only valid UTF-8 plain-text payloads of up to 8 MiB; unsupported,
+invalid and oversized responses never create an output file. Session
+expiry permits one shared re-login. Raw token URLs, cookies and log
+contents must never reach integration logs or formatted exceptions.
+
+The result is stored in a newly created file under
+`<config>/tplink_deco_logs/` via the executor. The file name is an
+ASCII `.log` basename, cannot overwrite an existing file and
+receives private permissions where the platform supports them.
+Only the explicit service response contains its path and line count.
+Router logs may contain sensitive network data and must be stored,
+shared and removed with care. The action does not populate any
+diagnostic or Recorder entity, forward logs or add polling.
+
+Compressed gzip/tar snapshots (upstream #673), legacy encrypted S7
+sessions and syslog forwarding (upstream #666) remain outside PR #44.
+No real firmware or Windows ACL tests have yet been performed.
