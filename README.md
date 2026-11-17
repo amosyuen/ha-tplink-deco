@@ -31,7 +31,9 @@ This integration provides local polling control and diagnostics for TP-Link Deco
 
 For firmware exposing the local `wlan` endpoint, the integration provides
 read-only Main, Guest and IoT WiFi binary sensors. Only networks confirmed by
-the firmware are created; Main WiFi is disabled by default. The sensors use
+the firmware are created; Main WiFi is disabled by default. If the master
+Deco changes, the former master's WiFi sensors become unavailable
+without losing their Home Assistant entity identities. The sensors use
 the regular polling interval, link to the master Deco, and start without
 delaying existing Deco and client discovery.
 
