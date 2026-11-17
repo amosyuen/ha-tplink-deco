@@ -1103,6 +1103,24 @@ policy for AI-assisted development.
   corruption after a valid cached client, check identity and timestamps
   did not change, and assert that newly discovered client MACs are
   never interpolated into DEBUG messages.
+- **Contract-first invalid-input tests (PR #53 review/CI, 2026-11-17):**
+  the first Python 3.14 run failed because the test assumed an invalid
+  client IP mapping raises `ValueError`. In the current model,
+  `filter_invalid_ip` deliberately catches an address parser's
+  `ValueError` and returns `None`; this is a successful degraded
+  client update, not a malformed-response failure. Do not tighten
+  production validation solely to satisfy a failing test that
+  contradicts a compatibility fallback. Trace the exact input through
+  parsing, normalization and model update before choosing a negative
+  test fixture. For a rejected per-node payload, use an actually
+  unsupported shape such as a non-string/non-null client name or a
+  missing/duplicate MAC; test invalid-IP normalization as a distinct
+  successful path. Preserve previous client state when a full-list
+  preflight **really** fails, and never expose private fixture data
+  through logs or exception chains. Investigate each CI failure and
+  automated review finding against the current head, apply only the
+  verified fix, and rerun both Python/HA matrices and all three
+  quality jobs on the final head.
 - **Regression fixture contract (PR #40):** introducing a new fallback
   API request requires reviewing every existing test that mocks the
   per-node client-list method. Route mock responses explicitly by
