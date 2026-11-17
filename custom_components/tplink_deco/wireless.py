@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 from datetime import timedelta
 import logging
-import re
 from math import ceil
+import re
 from time import monotonic
 from typing import Any
 
