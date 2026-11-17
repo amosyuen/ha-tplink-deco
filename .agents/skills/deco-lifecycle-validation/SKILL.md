@@ -28,8 +28,14 @@ description: "Use when changing Home Assistant entry setup/unload, coordinator s
 5. After every platform unload succeeds, await
    `DataUpdateCoordinator.async_shutdown()` for each existing coordinator
    to cancel scheduled refreshes. Then await its fork-specific
-   `async_close()` to unsubscribe listeners and dispatch callbacks.
-   These are different cleanup steps; do not substitute one for the other.
+   `async_close()` **only for coordinator classes that implement the
+   fork-specific hook** (currently Deco/client coordinators). A plain
+   Home Assistant `DataUpdateCoordinator`, including the optional WLAN
+   coordinator introduced in PR #41, provides `async_shutdown()` but not
+   that custom `async_close()` method. Calling it prevents logout and
+   removal of entry data. These are different cleanup steps; do not
+   substitute one for the other. Include a test fixture with a wireless
+   coordinator that deliberately has no `async_close` attribute.
 6. Only after coordinator cleanup, attempt the router's best-effort logout.
    Skip the request if there is no complete session, and always clear
    local token/cookie/sequence data on completion or failure.
