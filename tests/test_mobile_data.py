@@ -289,6 +289,18 @@ async def test_mobile_sensor_uses_existing_master_registry_and_stable_id() -> No
         coordinator._deco_coordinator, coordinator, MASTER_A
     )
     assert sensor.unique_id == f"{MASTER_A}_mobile_data_usage"
+    # Exercise Home Assistant's actual entity naming path on the Dutch locale.
+    sensor.platform_data = SimpleNamespace(
+        platform_name="tplink_deco",
+        domain="sensor",
+        platform_translations={
+            "component.tplink_deco.entity.sensor.mobile_data_usage.name": (
+                "Mobiel dataverbruik"
+            )
+        },
+        component_translations={},
+    )
+    assert sensor.name == "Mobiel dataverbruik"
     assert sensor.native_value == DATA_USAGE
     assert sensor.available
     assert sensor.device_info["identifiers"] == {(DOMAIN, MASTER_A)}
