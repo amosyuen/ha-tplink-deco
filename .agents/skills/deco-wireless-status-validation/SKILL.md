@@ -91,7 +91,10 @@ existing tests. Do not adopt upstream code or review suggestions blindly.
   after backoff has been reset. Preserve previously cached names and states
   without partially overwriting them on failed updates. Propagate auth and
   cancellation as before. Test with an exception embedding a synthetic secret
-  and assert no secret appears in DEBUG logs or rendered exception text.
+  and assert no secret appears in DEBUG logs or exception data. Raise the
+  fixed `UpdateFailed` **after** leaving the `except` block: `from None`
+  hides a traceback context but still retains the original private exception
+  in `__context__`. Assert both `__cause__` and `__context__` are `None`.
 - **Constrain firmware-derived attribute keys:** only compact numeric
   `band...` identifiers (e.g. `band2_4`, `band5_1`, `band6`) and
   the explicit `iot` segment can become SSID attribute suffixes. Reject
