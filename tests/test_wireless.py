@@ -249,6 +249,7 @@ async def test_two_wireless_coordinators_keep_independent_state() -> None:
     first._next_retry = 500.0
     assert second._next_retry == 0.0
 
+
 def _test_api() -> TplinkDecoApi:
     """Provide a mocked wireless API without making any HTTP requests."""
     api = TplinkDecoApi(MagicMock(), "http://192.0.2.1", "test", "test", True)
@@ -287,9 +288,7 @@ async def test_wireless_api_reauths_once_after_legacy_errorcode() -> None:
         ]
     )
 
-    assert await api.async_get_wireless() == {
-        "band2_4": {"guest": {"enable": True}}
-    }
+    assert await api.async_get_wireless() == {"band2_4": {"guest": {"enable": True}}}
     assert api._async_post.await_count == 2
 
 
@@ -325,6 +324,7 @@ async def test_wireless_http_api_error_never_logs_private_json(
 ) -> None:
     """A rejected WLAN API request must not log its password-bearing response."""
     api = _test_api()
+    api._async_post = TplinkDecoApi._async_post.__get__(api, TplinkDecoApi)
     response = MagicMock()
     response.history = []
     response.raise_for_status = MagicMock()
@@ -355,6 +355,7 @@ async def test_wireless_http_failures_redact_token_and_preserve_status(
 ) -> None:
     """HTTP failures must preserve error classes without logging token URLs."""
     api = _test_api()
+    api._async_post = TplinkDecoApi._async_post.__get__(api, TplinkDecoApi)
     response = MagicMock()
     response.history = []
     request_info = MagicMock()
