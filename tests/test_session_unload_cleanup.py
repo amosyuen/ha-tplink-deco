@@ -13,6 +13,7 @@ from custom_components.tplink_deco import async_unload_entry
 from custom_components.tplink_deco.api import TplinkDecoApi
 from custom_components.tplink_deco.const import COORDINATOR_CLIENTS_KEY
 from custom_components.tplink_deco.const import COORDINATOR_DECOS_KEY
+from custom_components.tplink_deco.const import COORDINATOR_WIRELESS_KEY
 from custom_components.tplink_deco.const import DOMAIN
 from custom_components.tplink_deco.const import PLATFORMS
 from custom_components.tplink_deco.const import SERVICE_PAUSE_POLLING
@@ -104,6 +105,36 @@ async def test_successful_unload_stops_polling_before_callbacks_and_logout() -> 
     deco.api.async_logout.assert_awaited_once()
     hass.services.async_remove.assert_any_call(DOMAIN, SERVICE_PAUSE_POLLING)
     hass.services.async_remove.assert_any_call(DOMAIN, SERVICE_RESUME_POLLING)
+
+
+@pytest.mark.asyncio
+async def test_wireless_unload_requires_shutdown_but_not_custom_close() -> None:
+    """Shutdown all coordinators while closing only fork-specific ones."""
+    events: list[str] = []
+    hass, entry, deco, client = _unload_context(events)
+    wireless = SimpleNamespace(
+        async_shutdown=AsyncMock(
+            side_effect=lambda: events.append("wireless_shutdown")
+        )
+    )
+    hass.data[DOMAIN][entry.entry_id][COORDINATOR_WIRELESS_KEY] = wireless
+
+    assert await async_unload_entry(hass, entry) is True
+
+    assert events == [
+        *(["platform_unload"] * len(PLATFORMS)),
+        "deco_shutdown",
+        "clients_shutdown",
+        "wireless_shutdown",
+        "deco_close",
+        "clients_close",
+        "logout",
+    ]
+    wireless.async_shutdown.assert_awaited_once()
+    deco.async_close.assert_awaited_once()
+    client.async_close.assert_awaited_once()
+    deco.api.async_logout.assert_awaited_once()
+    assert entry.entry_id not in hass.data[DOMAIN]
 
 
 @pytest.mark.asyncio
