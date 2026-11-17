@@ -566,7 +566,9 @@ async def test_manual_system_log_incomplete_response_does_not_retry() -> None:
     ("stream_error", "expected_error", "message"),
     [
         (
-            asyncio.IncompleteReadError(partial=b"PRIVATE_ROUTER_TOKEN_123", expected=200),
+            asyncio.IncompleteReadError(
+                partial=b"PRIVATE_ROUTER_TOKEN_123", expected=200
+            ),
             TransientConnectionException,
             "response incomplete",
         ),
@@ -644,9 +646,7 @@ async def test_deep_firmware_json_parser_failures_are_sanitized(
         b'{"errorcode":"timeout"}', content_type=content_type
     )
     if content_type == "application/json":
-        parser_patch = patch.object(
-            json, "loads", side_effect=RecursionError(SECRET)
-        )
+        parser_patch = patch.object(json, "loads", side_effect=RecursionError(SECRET))
     else:
         parser_patch = patch.object(
             json.JSONDecoder, "raw_decode", side_effect=RecursionError(SECRET)
