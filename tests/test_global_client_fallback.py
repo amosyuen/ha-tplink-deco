@@ -50,9 +50,7 @@ def _coordinator(
         decos[SATELLITE] = TpLinkDeco(SATELLITE)
     deco_coordinator = MagicMock()
     deco_coordinator.paused = False
-    deco_coordinator.data = TpLinkDecoData(
-        master if master_present else None, decos
-    )
+    deco_coordinator.data = TpLinkDecoData(master if master_present else None, decos)
     api = MagicMock(spec=TplinkDecoApi)
     coordinator = TplinkDecoClientUpdateCoordinator(
         hass=MagicMock(),
@@ -87,7 +85,9 @@ async def test_502_global_fallback_reports_master_and_preserves_client_identity(
         return []
 
     api.async_list_clients = AsyncMock(side_effect=_client_list)
-    with patch("custom_components.tplink_deco.coordinator.monotonic", return_value=1000):
+    with patch(
+        "custom_components.tplink_deco.coordinator.monotonic", return_value=1000
+    ):
         with caplog.at_level(logging.DEBUG):
             result = await coordinator._async_update_data()
 
@@ -100,7 +100,9 @@ async def test_502_global_fallback_reports_master_and_preserves_client_identity(
     assert coordinator.health.last_successful_update is not None
     assert coordinator._client_backoff_seconds == 30
     assert [call.args[0] for call in api.async_list_clients.await_args_list] == [
-        MASTER, SATELLITE, "default"
+        MASTER,
+        SATELLITE,
+        "default",
     ]
     assert SECRET not in caplog.text
 
@@ -123,14 +125,18 @@ async def test_global_success_continues_during_backoff_then_restores_per_node() 
         return [{"mac": CLIENT, "online": True}] if deco_mac == "default" else []
 
     api.async_list_clients = AsyncMock(side_effect=_client_list)
-    with patch("custom_components.tplink_deco.coordinator.monotonic", return_value=1000):
+    with patch(
+        "custom_components.tplink_deco.coordinator.monotonic", return_value=1000
+    ):
         coordinator.data = await coordinator._async_update_data()
     assert coordinator.client_query_mode == "global"
     assert coordinator._client_backoff_seconds == 30
     assert called == [MASTER, SATELLITE, "default"]
 
     called.clear()
-    with patch("custom_components.tplink_deco.coordinator.monotonic", return_value=1005):
+    with patch(
+        "custom_components.tplink_deco.coordinator.monotonic", return_value=1005
+    ):
         coordinator.data = await coordinator._async_update_data()
     assert called == ["default"]
     assert coordinator._client_backoff_seconds == 30
@@ -138,7 +144,9 @@ async def test_global_success_continues_during_backoff_then_restores_per_node() 
 
     phase = "recovered"
     called.clear()
-    with patch("custom_components.tplink_deco.coordinator.monotonic", return_value=1031):
+    with patch(
+        "custom_components.tplink_deco.coordinator.monotonic", return_value=1031
+    ):
         coordinator.data = await coordinator._async_update_data()
     assert called == [MASTER, SATELLITE]
     assert coordinator.client_query_mode == "per_node"
