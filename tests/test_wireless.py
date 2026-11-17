@@ -19,7 +19,6 @@ from custom_components.tplink_deco.const import COORDINATOR_WIRELESS_KEY
 from custom_components.tplink_deco.const import DOMAIN
 from custom_components.tplink_deco.coordinator import TpLinkDeco
 from custom_components.tplink_deco.coordinator import TpLinkDecoData
-from custom_components.tplink_deco.exceptions import EmptyDataException
 from custom_components.tplink_deco.exceptions import ForbiddenException
 from custom_components.tplink_deco.exceptions import LoginInvalidException
 from custom_components.tplink_deco.exceptions import TimeoutException
@@ -250,9 +249,7 @@ async def test_two_wireless_coordinators_keep_independent_state() -> None:
 
 def _test_api() -> TplinkDecoApi:
     """Provide a mocked wireless API without making any HTTP requests."""
-    api = TplinkDecoApi(
-        MagicMock(), "http://192.0.2.1", "test", "test", True
-    )
+    api = TplinkDecoApi(MagicMock(), "http://192.0.2.1", "test", "test", True)
     api.async_login_if_needed = AsyncMock()
     api._stok = "test-stok"
     api._encode_payload = MagicMock(return_value="encoded")
@@ -305,8 +302,7 @@ async def test_wireless_api_timeout_error_does_not_retry() -> None:
     api._async_post.assert_awaited_once()
 
 
-@pytest.mark.asyncio
-async def test_wireless_decryption_errors_never_log_raw_payload(
+def test_wireless_decryption_errors_never_log_raw_payload(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Prevent the shared decrypt helper from dumping private WLAN bytes."""
@@ -329,9 +325,7 @@ async def test_wireless_http_api_error_never_logs_private_json(
     response.history = []
     response.raise_for_status = MagicMock()
     response.headers.getall.return_value = []
-    response.json = AsyncMock(
-        return_value={"error_code": 123, "message": SECRET}
-    )
+    response.json = AsyncMock(return_value={"error_code": 123, "message": SECRET})
     api._session.post = AsyncMock(return_value=response)
     caplog.set_level(logging.DEBUG)
 
