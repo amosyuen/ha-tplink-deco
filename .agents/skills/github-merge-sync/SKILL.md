@@ -35,6 +35,7 @@ description: "Use when reviewing, changing, validating or troubleshooting automa
    default-branch merges, skipping only those with a completed bot-owned
    summary. Apply strict pagination and linked-item limits; fail
    explicitly when reconciliation cannot verify the full window.
+   Do not infer unlimited durability from the bounded queue and scan.
 7. Treat the merge event, PR text, issue bodies and GraphQL results as
    untrusted **data**. Validate the repository, PR number, merge SHA and
    default branch; sanitize logging; use parameterized API requests and
@@ -92,12 +93,13 @@ PR's successful Python/HA and linting checks.
 - **Repository-wide action policy:** inspect all six workflows, not
   just merge synchronization. Verify the action refs using official
   GitHub tag objects, dereferencing annotated tags to their commits.
-  `labeler.yml` uses `actions/checkout@v6` and
-  `crazy-max/ghaction-github-labeler@v5.3.0`;
-  `dependabot-auto-merge.yml` uses `dependabot/fetch-metadata@v2.5.0`;
-  `release-drafter.yml` uses
+  Prior to this PR, `labeler.yml` used `actions/checkout@v6` and
+  `crazy-max/ghaction-github-labeler@v5.3.0`,
+  `dependabot-auto-merge.yml` used `dependabot/fetch-metadata@v2.5.0`,
+  and `release-drafter.yml` used
   `release-drafter/release-drafter@v7.2.1`.
-  Protect all workflow `uses` entries with a shared regression test.
+  All are pinned on this PR branch. Protect every workflow `uses`
+  entry with the shared regression test.
 - **Structural security tests:** parse workflow YAML with a safe,
   non-coercing loader so the `on` key stays literal. Assert the exact
   trigger, permission mapping, merge/default-branch condition, trusted
@@ -107,33 +109,50 @@ PR's successful Python/HA and linting checks.
   Tests cannot establish actual deployment; verify a new real
   scheduled and merge-triggered run after merging.
 
-## Robust failure handling during scheduled reconciliation
+## Failure classification and recovery verification
 
-- Validate _all_ recent eligible merged PR records before the first
-  issue mutation: expected base repository, positive integer PR number,
-  full merge commit SHA, timezone-aware timestamps and optional text
-  fields. A corrupt _later_ record must prevent partial updates from
-  earlier records in the same reconciliation scan.
-- Reject malformed merge-event timestamps instead of interpreting naive
-  datetimes using the runner's local timezone. Do not expose untrusted
-  timestamp content through chained exceptions.
-- Deduplicate repeated PR list entries before processing. Preserve
-  bot-owned completion markers so a failed run is safely retried by
-  the next scheduled reconciliation; do not retry mutating requests
-  automatically when a transport timeout leaves their outcome unknown.
-- Convert HTTP, transport and non-JSON GitHub API failures to static,
-  privacy-safe errors without raw response bodies, endpoint data or
-  token-bearing exception messages. Test with synthetic sensitive
-  payloads and verify both unsupported-data and recovery paths.
-- Preflight protects against corrupt _merge metadata_. Process each
-  candidate independently after preflight: one PR-specific exception
-  must not starve later valid merges. Leave failed candidates without
-  completion markers, log only their public PR numbers, continue
-  processing other merges, then return a nonzero job status with an
-  aggregate count of failures. Test an invalid first PR followed by a
-  valid second one, and verify that the next run retries only the
-  failed candidate. GitHub issue updates are not an atomic transaction
-  across multiple objects.
+1. **Whole-scan failure before mutation.** Enumerate the bounded
+   48-hour window and validate every eligible merge's same-repository
+   default-branch target, positive PR number, full merge SHA,
+   timezone-aware timestamps and optional text-field types. Reject
+   invalid responses, missing pagination coverage and malformed
+   later records before issuing any issue or PR writes. Duplicate
+   list entries are processed at most once.
+2. **Per-candidate failure after preflight.** Process confirmed merges
+   in merge-time order. Catch an individual PR's processing failure
+   only after preflight, log its public number without upstream error
+   details, and continue to subsequent candidates. Leave the failed
+   candidate without a completion marker; finish with a nonzero
+   aggregate failure status. No individual failure should starve a
+   later valid merge.
+3. **Partial-write and retry contract.** GitHub updates are not
+   transactional across issues, comments and related PRs. A timeout
+   may occur after a write succeeds; never blindly replay POST/PATCH.
+   On the next serialized scheduled run, use bot-owned markers and
+   current issue state to complete missing updates without duplicating
+   successful ones. Do not claim the entire batch succeeded if one
+   candidate remains incomplete.
+4. **Privacy and diagnostics.** HTTP errors, connection failures,
+   timeouts and invalid JSON must yield fixed sanitized messages,
+   without response bodies, request URLs, secrets or exception-chain
+   text. Logs may identify only public PR numbers and aggregate
+   counts. Test with synthetic sensitive values; do not write raw
+   GitHub API data into issues or review comments.
+5. **Deterministic regression matrix.** Test corrupt *later* metadata
+   blocking all writes; a PR-specific failure followed by a valid PR;
+   a second scheduled pass that retries only incomplete work; a
+   duplicate PR result; invalid or naive timestamps; and redacted
+   HTTP/network/JSON failures. Keep the workflow YAML-structure
+   assertions (trusted default-branch checkout, minimum permissions,
+   exact triggers, concurrency and SHA-pinned actions).
+6. **Final-head and deployment checks.** Verify both Python/HA
+   matrices, pre-commit, HACS and Hassfest on the same final commit.
+   A skipped review check is not a successful review. After an
+   approved merge, inspect a real merged-PR run and a real hourly
+   scheduled run, verify bot-owned completion markers, and record
+   any failed candidates. Queue capacity (100), pagination and
+   the 48-hour recovery window are finite; anything older requires
+   explicit operator review rather than automatic unbounded replay.
 
 ## Deployment and limitations
 

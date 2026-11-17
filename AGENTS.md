@@ -109,11 +109,12 @@ policy for AI-assisted development.
   did not update issue #2's progress automatically. Verify the issue body
   contains a current PR status entry and preserves the unchecked item before
   reporting the PR handoff.
-- The merge workflow `.github/workflows/sync-merged-references.yml` runs
-  only for pull requests actually merged to the default branch. It uses
-  trusted default-branch code with narrowly scoped write permissions, not
-  the untrusted PR head. Follow the GitHub merge-reference synchronization
-  skill when modifying its implementation or testing GitHub API behavior.
+- The merge workflow `.github/workflows/sync-merged-references.yml` has
+  two trusted entry points: confirmed `pull_request_target: closed` merges
+  into the default branch and an hourly `schedule` that reconciles recent
+  confirmed default-branch merges. Both run only trusted default-branch code
+  with minimal write permissions, never the untrusted PR head. Follow the
+  GitHub merge-reference synchronization skill for changes and tests.
 - **Merge-sync action-policy regression (PR #37 post-merge):** a
   `pull_request_target` workflow failed before running its script because
   `actions/checkout@v6` and `actions/setup-python@v6.2.0` were not
@@ -125,9 +126,10 @@ policy for AI-assisted development.
   persisted checkout credentials. Do not change the trusted checkout
   target or the issue-scoping script to fix an action-policy failure.
   CI on the PR verifies the files, **not** an actual merge-triggered
-  execution: inspect the next real post-merge run before claiming the
-  synchronization automation works. Never replay old merge events or
-  automatically check broad issue #2 acceptance criteria.
+  execution: inspect real post-merge and scheduled runs before claiming
+  the synchronization automation works. The bounded 48-hour recovery
+  may reprocess recent confirmed merges idempotently; never automatically
+  backfill older history or check broad issue #2 acceptance criteria.
 - **Merge-sync reliability (PR #38 review):** a shared concurrency group
   with only one pending run silently replaces earlier pending merges.
   Use `queue: max` with `cancel-in-progress: false` for serialized
@@ -138,27 +140,36 @@ policy for AI-assisted development.
   identify completion by the bot-owned summary marker, and make retries
   idempotent. A successful PR check does not prove the scheduled or
   merge-triggered write-capable workflow has executed.
-- **Reconciliation failure containment (PR #38 hardening):** validate
-  every eligible recent merge's base repository, PR number, merge SHA,
-  timestamps and textual fields **before** writing to any issue or
-  related PR. Fail with sanitized errors for malformed GitHub
-  responses, ambiguous identities and bad network/JSON responses.
-  Do not retry POST or PATCH blindly after a transport timeout;
-  rely on the serialized scheduled reconciliation and bot-owned
-  idempotency markers. Test that invalid metadata on a later merge
-  cannot leave an earlier issue partially updated, that duplicate
-  list entries do not repeat writes, and that naive or malformed
-  event timestamps are rejected.
-- **Per-candidate recovery fault isolation (PR #38 review):** after
-  validating the entire merge metadata set, isolate failures from
-  processing one specific merged PR (such as excessive issue references
-  or GitHub write errors). Continue with other eligible PRs, leave the
-  failing PR without a completion marker and report the total number
-  of failed candidates using a nonzero final job status. Log only the
-  PR number, never the exception body or API response. The next
-  scheduled run must retry failed PRs without duplicating successful
-  issue or PR updates. Test the first candidate failing followed by
-  a successful second candidate, including a repeated run.
+- **Whole-scan preflight (PR #38):** validate all eligible recent merges'
+  repository, base branch, positive PR numbers, merge SHAs, aware
+  timestamps and text-field types before issuing **any** GitHub write.
+  A malformed later candidate or incomplete pagination invalidates
+  the entire scan. Fail with sanitized errors; do not treat incomplete
+  enumeration as a successful empty result. Test late corruption,
+  duplicate records and naive or malformed event timestamps.
+- **Per-candidate processing (PR #38):** only after the full preflight,
+  catch PR-specific processing failures (including excessive issue
+  references or GitHub write errors), log only the public PR number,
+  continue with the remaining candidates and return a **nonzero** job
+  status with a sanitized aggregate failure count. A failed candidate
+  must not receive its completion marker. A subsequent scheduled run
+  retries failures without repeating completed updates. A write may
+  have partially succeeded before failing: GitHub changes across issues
+  are **not transactional**. Test a failing first candidate, a valid
+  later candidate, partial outcomes and an idempotent rerun.
+- **Network/API error contract (PR #38):** convert HTTP status,
+  transport timeouts and invalid JSON into fixed, privacy-safe errors
+  without exposing upstream messages, paths, credentials or payloads.
+  Do not retry POST/PATCH immediately after an ambiguous timeout;
+  recover through serialized reconciliation and bot-owned markers.
+  An error after partial GitHub writes must not be reported as success.
+- **Post-merge validation (PR #38):** compare the deployed workflow with
+  the reviewed PR head, inspect an actual merged-PR-triggered run and an
+  actual scheduled reconciliation, then verify the expected bot-owned
+  markers on linked issues and PRs. If either fails, record the run
+  result and affected PR numbers without raw data. Recovery is bounded
+  by 48 hours, 100 queued runs and pagination caps; older gaps require
+  explicit human review rather than silent replay or a false green status.
 - **Workflow-policy scope (PR #38 review):** audit **all**
   `.github/workflows/*.yml` and `*.yaml` action references rather
   than treating action pinning as specific to merge-sync. Resolve
