@@ -57,5 +57,12 @@
       "invalid_device_list_interval": "Kies 0 voor alleen bij opstarten of minstens 10 seconden voor Deco-statusupdates.",
       "invalid_expose_wifi_ssids": "Kies aan of uit om wifi-netwerknamen weer te geven."
     }
+  },
+  "entity": {
+    "sensor": {
+      "mobile_data_usage": {
+        "name": "Mobiel dataverbruik"
+      }
+    }
   }
 }
