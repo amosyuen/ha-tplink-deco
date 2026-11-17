@@ -37,9 +37,11 @@ delaying existing Deco and client discovery.
 
 If WiFi status cannot be read, existing Deco and client entities continue
 normally. After repeated wireless failures, retries are deferred by up to
-five minutes. The integration does not change wireless settings or expose
-SSIDs, WiFi passwords, PSKs or raw wireless data. SSID exposure from upstream
-#637 remains a separate, opt-in feature to review.
+five minutes. Authentication expiration preserves a single re-login retry,
+while malformed response data and HTTP errors are reported without revealing
+session information or private WiFi settings. The integration does not change
+wireless settings or expose SSIDs, WiFi passwords, PSKs or raw wireless data.
+SSID exposure from upstream #637 remains a separate, opt-in feature to review.
 
 ### Optional client device linking
 
