@@ -324,7 +324,10 @@ class TplinkDecoApi:
     ) -> str:
         """Return a bounded plain-text log snapshot after the usual auth retry."""
         return await self._async_call_with_retry(
-            self._async_get_system_log, level, timeout_error_retries=0
+            self._async_get_system_log,
+            level,
+            timeout_error_retries=0,
+            transient_error_retries=0,
         )
 
     async def _async_get_system_log(self, level: SystemLogLevel) -> str:
@@ -361,6 +364,33 @@ class TplinkDecoApi:
         """Return the authenticated URL without logging its LuCI token."""
         return f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/log_export"
 
+    @staticmethod
+    def _parse_system_log_error(
+        body: bytes, content_type: str
+    ) -> dict[str, Any] | None:
+        """Recognize firmware error JSON without trusting its MIME type."""
+        declared_json = content_type == "application/json"
+        if not declared_json:
+            if content_type not in ("text/plain", "application/octet-stream"):
+                return None
+            if not body.lstrip().startswith(b"{") or (
+                b'"errorcode"' not in body and b'"error_code"' not in body
+            ):
+                return None
+        try:
+            parsed = json.loads(body)
+        except (ValueError, TypeError):
+            raise UnexpectedApiException(
+                "System log response is malformed"
+            ) from None
+        if not isinstance(parsed, dict):
+            if declared_json:
+                raise UnexpectedApiException("System log response is malformed")
+            return None
+        if declared_json or "errorcode" in parsed or "error_code" in parsed:
+            return parsed
+        return None
+
     async def _async_save_system_log(self) -> str:
         """Fetch the unencrypted Save Log response without logging its content."""
         form = aiohttp.FormData()
@@ -395,19 +425,10 @@ class TplinkDecoApi:
                                 "System log snapshot exceeds size limit"
                             )
                     body = bytes(buffer)
-                    # Keep firmware JSON error/auth-expiry responses separate
-                    # from archive decoding and its strict size limits.
-                    if response.content_type == "application/json":
-                        try:
-                            error = json.loads(body)
-                        except (ValueError, TypeError):
-                            raise UnexpectedApiException(
-                                "System log response is malformed"
-                            ) from None
-                        if not isinstance(error, dict):
-                            raise UnexpectedApiException(
-                                "System log response is malformed"
-                            )
+                    # Firmware may mislabel auth-error JSON as plain text;
+                    # never write those responses into a sensitive log file.
+                    error = self._parse_system_log_error(body, response.content_type)
+                    if error is not None:
                         error_code = error.get("errorcode") or error.get("error_code")
                         if error_code in ("timeout", -5002, "-5002"):
                             self.clear_auth()
@@ -978,13 +999,22 @@ class TplinkDecoApi:
             raise err
 
     async def _async_call_with_retry(
-        self, func, *args, timeout_error_retries: int | None = None
+        self,
+        func,
+        *args,
+        timeout_error_retries: int | None = None,
+        transient_error_retries: int | None = None,
     ):
         """Bound timeout, incomplete-response and authentication retries."""
         max_timeout_retries = (
             self._timeout_error_retries
             if timeout_error_retries is None
             else timeout_error_retries
+        )
+        max_transient_retries = (
+            self._timeout_error_retries
+            if transient_error_retries is None
+            else transient_error_retries
         )
         relogin_retried = False
         timeout_retries = 0
@@ -1012,11 +1042,11 @@ class TplinkDecoApi:
                     max_timeout_retries,
                 )
             except TransientConnectionException:
-                if transient_retries >= self._timeout_error_retries:
+                if transient_retries >= max_transient_retries:
                     raise
                 transient_retries += 1
                 _LOGGER.debug(
                     "Retry (%d of %d) incomplete Deco API response",
                     transient_retries,
-                    self._timeout_error_retries,
+                    max_transient_retries,
                 )

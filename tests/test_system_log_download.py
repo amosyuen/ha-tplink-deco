@@ -19,6 +19,7 @@ from custom_components.tplink_deco import api as api_module
 from custom_components.tplink_deco.api import SYSTEM_LOG_CONTEXT
 from custom_components.tplink_deco.api import TplinkDecoApi
 from custom_components.tplink_deco.exceptions import ForbiddenException
+from custom_components.tplink_deco.exceptions import TransientConnectionException
 from custom_components.tplink_deco.exceptions import UnexpectedApiException
 from custom_components.tplink_deco.system_log import MAX_SYSTEM_LOG_ARCHIVE_MEMBERS
 from custom_components.tplink_deco.system_log import MAX_SYSTEM_LOG_BYTES
@@ -413,3 +414,115 @@ async def test_bad_binary_mime_is_not_treated_as_plain_text() -> None:
     )
     with pytest.raises(UnexpectedApiException, match="content type is unsupported"):
         await api.async_get_system_log()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("content_type", "error_response"),
+    [
+        ("text/plain", b'{"errorcode":"timeout"}'),
+        ("application/octet-stream", b'{"error_code":-5002}'),
+    ],
+)
+async def test_mislabeled_firmware_auth_error_reauthenticates_once(
+    content_type: str,
+    error_response: bytes,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Do not export firmware auth-error JSON as ordinary log content."""
+    api, session = _api_and_session()
+    session.post.side_effect = [
+        _response(error_response, content_type=content_type),
+        _response(b"recovered\n"),
+    ]
+
+    async def _login() -> None:
+        """Restore a synthetic session for exactly one retry."""
+        api._stok = "fresh-session"
+        api._cookie = "sysauth=fresh-cookie"
+        api._seq = 3
+
+    api.async_login = AsyncMock(side_effect=_login)
+    with caplog.at_level(logging.DEBUG):
+        assert await api.async_get_system_log() == "recovered\n"
+
+    assert session.post.await_count == 2
+    assert api._async_post.await_count == 2
+    api.async_login.assert_awaited_once()
+    assert SECRET not in caplog.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "content_type", ["text/plain", "application/octet-stream"]
+)
+async def test_mislabeled_firmware_non_auth_error_is_rejected(
+    content_type: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Reject firmware error JSON without exposing raw router information."""
+    api, session = _api_and_session()
+    session.post.return_value = _response(
+        b'{"errorcode":123,"detail":"PRIVATE_ROUTER_TOKEN_123"}',
+        content_type=content_type,
+    )
+    with caplog.at_level(logging.DEBUG):
+        with pytest.raises(UnexpectedApiException, match="download was rejected") as caught:
+            await api.async_get_system_log()
+
+    assert api._async_post.await_count == 1
+    assert session.post.await_count == 1
+    assert SECRET not in "".join(traceback.format_exception(caught.value))
+    assert SECRET not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_malformed_mislabeled_firmware_error_is_not_written() -> None:
+    """A truncated firmware error object is malformed, not valid log text."""
+    api, session = _api_and_session()
+    session.post.return_value = _response(
+        b'{"errorcode":"timeout",',
+        content_type="text/plain",
+    )
+    with pytest.raises(UnexpectedApiException, match="response is malformed"):
+        await api.async_get_system_log()
+    assert session.post.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_valid_json_log_line_without_errorcode_is_preserved() -> None:
+    """Normal JSON-formatted log text remains available as a system log."""
+    api, session = _api_and_session()
+    source = b'{"event":"router-restarted"}\n'
+    session.post.return_value = _response(source, content_type="text/plain")
+    assert await api.async_get_system_log() == source.decode("utf-8")
+
+
+@pytest.mark.asyncio
+async def test_manual_system_log_incomplete_response_does_not_retry() -> None:
+    """Avoid rebuilding the expensive manual snapshot after truncated transport."""
+    api, session = _api_and_session()
+    api._timeout_error_retries = 3
+    response = _response()
+    response.content.read.side_effect = aiohttp.ClientPayloadError(
+        "PRIVATE_ROUTER_TOKEN_123"
+    )
+    session.post.return_value = response
+    with pytest.raises(TransientConnectionException, match="incomplete"):
+        await api.async_get_system_log()
+
+    assert api._async_post.await_count == 1
+    assert session.post.await_count == 1
+    response.release.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_normal_api_transient_retries_remain_backward_compatible() -> None:
+    """Keep the default transient retry policy for non-log API operations."""
+    api, _session = _api_and_session()
+    api._timeout_error_retries = 1
+    request = AsyncMock(
+        side_effect=[TransientConnectionException("temporary"), "restored"]
+    )
+
+    assert await api._async_call_with_retry(request) == "restored"
+    assert request.await_count == 2
