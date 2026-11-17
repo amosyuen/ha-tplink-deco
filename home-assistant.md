@@ -293,7 +293,12 @@ Their physical-firmware validation remains a separate limitation.
   string codes and decrypted login response dictionaries are
   not exposed. This does not change successful data retrieval,
   ordinary authentication retries or registered entities.
-- A same-host HTTP **307 → HTTPS** redirect may update the **runtime**
+- Concurrent callers share a single router login attempt. Cancelling
+  a waiter does not cancel that in-flight attempt; cancelling its
+  owner notifies waiting callers, clears partial local authentication
+  and permits a later fresh login. Owner failures are propagated
+  without leaving pending shared futures; cancellation is not
+  retried as ordinary authentication failure.
 - A same-host HTTP **307 → HTTPS** redirect may update the **runtime**
   API origin, including its port, to preserve subsequent authenticated
   requests. A cross-host redirect must not rewrite the configured router
