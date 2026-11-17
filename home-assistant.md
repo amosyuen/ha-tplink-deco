@@ -379,6 +379,15 @@ Their physical-firmware validation remains a separate limitation.
   `ConfigEntry.version` directly. The setting is independent per entry.
   Preserve existing field meanings and migration paths for older
   config-entry versions.
+- Config-flow credential checks return existing translated `invalid_auth`,
+  `invalid_host`, `timeout_connect` or `unknown` form errors for expected
+  and unexpected ordinary failures. Router exception messages and secret-bearing
+  URLs are not logged; a cancellation still propagates. Temporary coordinators
+  must finish their shutdown before a successful credential check is accepted.
+  Options changes are staged in a copy and only committed after validation,
+  so a failed check does not change the handler's in-memory settings or the
+  saved configuration entry. Reauthentication still merges credentials into
+  the existing settings without blanking optional names.
 - Legacy MAC-only client device registrations may be removed manually
   when linking is disabled, but only when the device belongs exclusively
   to the requesting config entry and has no other integration identifiers.
