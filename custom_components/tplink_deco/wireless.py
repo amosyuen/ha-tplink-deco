@@ -222,6 +222,8 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator[dict[str, bool]]
             self.ssids = {}
             self._ssid_master_mac = None
             self._ssid_master_generation = None
+            # The new master must not inherit its predecessor's cooldown.
+            self.reset_retry()
         return master_mac, self._master_generation
 
     @callback
@@ -286,12 +288,17 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator[dict[str, bool]]
             # optional endpoint retry/backoff.
             raise
         except Exception as error:
-            # Optional endpoint errors can include private router data in
-            # their text. Contain even unexpected API exceptions, but never
-            # cancellation or the config-entry auth failure above.
-            self._consecutive_failures += 1
-            if self._consecutive_failures >= WIRELESS_FAILURES_BEFORE_RETRY_DELAY:
-                self._next_retry = now + WIRELESS_RETRY_INTERVAL_SECONDS
+            # Failures from a previous master must never consume the new
+            # master's retry budget, even for A -> B -> A during a request.
+            current_master, current_generation = self._observe_master()
+            if (current_master, current_generation) == (
+                request_master,
+                request_generation,
+            ):
+                self._consecutive_failures += 1
+                if self._consecutive_failures >= WIRELESS_FAILURES_BEFORE_RETRY_DELAY:
+                    self._next_retry = now + WIRELESS_RETRY_INTERVAL_SECONDS
+            # Never format upstream error text or retain it in UpdateFailed.
             _LOGGER.debug("Optional wireless request failed (%s)", type(error).__name__)
         else:
             # A -> B -> A during the await must not revalidate A's response.
