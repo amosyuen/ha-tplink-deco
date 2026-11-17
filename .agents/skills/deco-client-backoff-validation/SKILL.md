@@ -95,6 +95,7 @@ description: "Use when porting, reviewing, or debugging capped HTTP 5xx Deco cli
    bounded per-node queries (#556, partial) through fork PR #35.
    Verify their implementation on `main` before marking any specific
    tracking item complete; leave broader combined acceptance gates
-   unchecked until **all** their requirements are met. Coordinator-
-   health sensors already exist in fork PR #30. Report real hardware
-   tests separately and record verified lessons in `AGENTS.md` and here.
+   unchecked until **all** their requirements are met. Existing
+   coordinator-health sensors were merged in fork PR #30. Report real
+   hardware tests separately and record verified lessons in `AGENTS.md`
+   and here.
