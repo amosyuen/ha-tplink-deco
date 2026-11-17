@@ -103,8 +103,7 @@ async def async_get_config_entry_diagnostics(
         result["mobile_data_coordinator"] = {
             "last_update_success": mobile_coordinator.last_update_success,
             "supported": bool(
-                master is not None
-                and mobile_coordinator.has_current_usage(master.mac)
+                master is not None and mobile_coordinator.has_current_usage(master.mac)
             ),
             "update_interval_seconds": (
                 interval.total_seconds() if interval is not None else None
