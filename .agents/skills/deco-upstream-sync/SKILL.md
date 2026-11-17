@@ -19,10 +19,11 @@ description: "Use when comparing, backporting, reviewing, or implementing change
 Port this feature as one compatible, independently tested backport.
 Use the config-flow validation skill for the setup/options portion.
 
-1. Compare the fork's existing scan-interval selector, two-coordinator
-   startup, pause switch, client-list backoff and discovery dispatch with
-   upstream #616, #669 and #670 before editing. An old config entry
-   without `device_list_interval` must keep its original cadence.
+1. Compare the fork's existing scan-interval selector, **two mandatory
+   Deco/client coordinators plus the optional WLAN coordinator**, pause
+   switch, client-list backoff and discovery dispatch with upstream
+   #616, #669 and #670 before editing. An old config entry without
+   `device_list_interval` must keep its original cadence.
 2. Separate `device_list` polling from performance and client polling
    **inside the existing Deco coordinator**. Use `monotonic()` and a
    last-successful-device-list timestamp; `0` means startup-only.
@@ -567,7 +568,9 @@ containment, API-response validation, redaction, master-aware availability,
 and distinct coordinator cleanup interfaces. For the **actual procedure**
 and focused regressions use
 [Deco wireless-status validation](../deco-wireless-status-validation/SKILL.md).
-Keep upstream #637 SSID exposure separate and opt-in; do not treat the
-combined issue #2 checklist as complete while the PR is unmerged or its
-remaining scope is absent. All required CI checks must pass on the final
-head after any code **or documentation** commit.
+Keep upstream #637 SSID exposure explicitly opt-in and separately scoped
+from read-only WiFi status (#627). Issue #2 tracks them in **separate**
+checklist items: #627 was completed in merged fork PR #41; #637 remains
+open during PR #42 until a verified merge. Never check an unrelated
+item merely because one PR has green CI. All required CI checks must
+pass on the final head after any code **or documentation** commit.
