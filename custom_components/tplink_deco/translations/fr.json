@@ -37,5 +37,12 @@
     "error": {
       "invalid_expose_wifi_ssids": "Choisissez activé ou désactivé pour afficher les noms des réseaux Wi-Fi."
     }
+  },
+  "entity": {
+    "sensor": {
+      "mobile_data_usage": {
+        "name": "Consommation de données mobiles"
+      }
+    }
   }
 }
