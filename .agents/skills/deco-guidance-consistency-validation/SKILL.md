@@ -41,6 +41,21 @@ Keep `AI_POLICY.md` unchanged unless governing policy itself changes.
 
 ## Failures observed and deterministic validation
 
+- **PR #51 repeated Markdown anchors (2026-11-17):** updating the
+  upstream-sync skill and integration guide initially encountered two
+  adjacent copies of the same `Keep tests for unimplemented features`
+  and `307 → HTTPS` bullets. A naive replacement of the first
+  matching marker can preserve or multiply duplicate instructions.
+  For repository-guidance edits, inspect the actual target branch,
+  locate a context-rich insertion anchor and assert its match count
+  **before** writing. If the anchor is ambiguous, stop and read the
+  surrounding lines; replace the verified duplicated sequence with
+  one correctly scoped item. After writing, re-fetch the edited files,
+  inspect the neighboring sections and count the intended live rule
+  occurrences. Do not delete distinct historical statements merely
+  because similar wording appears elsewhere. Prettier passing alone
+  does not prove semantic consistency. Rerun all required CI jobs on
+  the final documentation commit and synchronize the open PR and issue.
 - **PR #46 late review finding:** a new inline review comment can
   arrive after an earlier zero-thread check, even after final-head
   CI passes. Re-fetch review threads **immediately before** a
