@@ -1,19 +1,19 @@
 """Optional read-only mobile WAN usage polling for supported TP-Link Deco models."""
 
-import logging
 from datetime import timedelta
+import logging
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
+from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from .api import TplinkDecoApi
 from .const import DOMAIN
-from .coordinator import (
-    TplinkDecoUpdateCoordinator,
-    async_call_and_propagate_config_error,
-)
+from .coordinator import TplinkDecoUpdateCoordinator
+from .coordinator import async_call_and_propagate_config_error
 
 _LOGGER = logging.getLogger(__name__)
 MOBILE_DATA_UPDATE_INTERVAL = timedelta(minutes=5)
@@ -112,15 +112,15 @@ class TplinkDecoMobileDataUpdateCoordinator(DataUpdateCoordinator[int | None]):
                 self.api.async_get_mobile_data_usage
             )
             if usage is not None and (
-                isinstance(usage, bool)
-                or not isinstance(usage, int)
-                or usage < 0
+                isinstance(usage, bool) or not isinstance(usage, int) or usage < 0
             ):
                 raise ValueError("Invalid mobile usage value")
         except ConfigEntryAuthFailed:
             raise
         except Exception as error:
-            _LOGGER.debug("Optional mobile usage read failed (%s)", type(error).__name__)
+            _LOGGER.debug(
+                "Optional mobile usage read failed (%s)", type(error).__name__
+            )
         else:
             # An A -> B -> A transition must not revalidate a stale response.
             current_mac, current_generation = self._observe_master()
