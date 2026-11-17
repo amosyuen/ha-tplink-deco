@@ -50,6 +50,8 @@ reading these instructions:
   validate capped delays, partial mesh recovery, session privacy and compatibility.
 - [Deco runtime lifecycle validation](.agents/skills/deco-lifecycle-validation/SKILL.md):
   validate entry setup/unload, coordinator shutdown, callbacks and safe logout.
+- [Deco wireless-status validation](.agents/skills/deco-wireless-status-validation/SKILL.md):
+  validate optional WLAN error boundaries, privacy, master changes and teardown.
 
 These skills are task-specific procedures. This file remains the source of
 repository-wide implementation rules; `AI_POLICY.md` remains the governing
@@ -1125,35 +1127,33 @@ policy for AI-assisted development.
 - Make the smallest change that meets the issue's acceptance criteria,
   document user-visible behavior, and explain regression coverage in the PR.
 
-## Read-only WLAN status backport lessons (upstream #627)
+## Optional WLAN reliability and review lessons (PR #41)
 
-- Keep optional WLAN requests in an independent coordinator per config
-  entry; a failed or unsupported WLAN endpoint must not fail Deco inventory,
-  client polling, Home Assistant startup or device migration.
-- Interpret only known enable flags from known network paths; absent or
-  invalid flags are not OFF. Discover only confirmed networks and make
-  repeated entity discovery idempotent, retaining MAC-based master identity.
-- Keep raw settings and private wireless details transient. Persist only
-  boolean network states and export only network keys/counters. Never log
-  SSIDs, PSKs, passwords, URL session tokens or upstream exception text.
-- Validate background startup ordering, authentication and cancellation,
-  bounded retry, paused polling, master detection, multi-entry isolation,
-  teardown, diagnostics redaction and source compatibility on both supported
-  Home Assistant versions. Hardware tests must be reported separately.
-- **PR #41 wireless-error finding:** the existing API transport/decryption
-  helpers included raw exception or router response text in debug/error logs;
-  optional WLAN reads also assumed the encrypted data and result fields
-  existed. Validate both response envelopes before use, sanitize HTTP/JSON
-  and decryption errors at the originating transport/helper boundary, and
-  test redaction with synthetic URLs, cookies and secret-bearing payloads.
-  Preserve single-relogin handling for `-5002`, distinguish firmware timeout,
-  protect task cancellation and config-entry auth propagation, and contain
-  all other optional upstream exceptions without exposing their messages.
-- **PR #41 lifecycle review findings:** a plain `DataUpdateCoordinator`
-  supports `async_shutdown()` but may have no fork-specific `async_close()`.
-  Do not call custom teardown methods on a new coordinator without
-  verifying its interface. If an entity is bound to a particular master
-  MAC, make it unavailable when the current master changes and subscribe
-  to master-coordinator updates so the change is published immediately.
-  Keep old registry IDs intact; regressions must cover shutdown ordering,
-  missing custom close hooks and master replacement.
+- **Optional does not mean unchecked:** keep WLAN polling isolated per config
+  entry and fail only its own coordinator on unsupported firmware, malformed
+  responses or network errors. Do not invent OFF states from missing flags,
+  hide authentication failures, swallow cancellation or expand retry budgets.
+- **Privacy must hold at the actual source of an exception:** the PR #41
+  HTTP/decode review identified paths that could format raw error text,
+  private responses, LuCI URLs and credentials before the optional coordinator
+  handled them. Validate both API response envelopes and sanitize HTTP,
+  transport and decoder failures at their originating boundary. Test with
+  synthetic private values and inspect DEBUG logs and exception surfaces.
+- **Verify lifecycle interfaces rather than assuming uniform coordinators:**
+  Home Assistant's wireless `DataUpdateCoordinator` needs
+  `async_shutdown()`, but does not implement the fork's custom
+  `async_close()`. The PR #41 review also found that master changes can
+  leave old wireless entities falsely available; compare current and
+  captured master MACs, notify on Deco updates, retain registry identities
+  and unsubscribe listeners when entities are removed.
+- **Test the code path, not merely a mocked return:** restore a real bound
+  transport method when testing HTTP behavior if the fixture normally mocks
+  that method. Cover malformed input, redaction, retries, unload and master
+  transitions. Verify both Python/HA matrices, pre-commit, HACS and
+  Hassfest on the same final commit; do not treat skipped reviewers or
+  untested physical hardware as passes.
+- **Use the dedicated procedure:** follow
+  [Deco wireless-status validation](.agents/skills/deco-wireless-status-validation/SKILL.md)
+  for API contracts, deterministic mocks, exact failure cases, entity
+  lifecycle and PR/issue tracking. SSID exposure (upstream #637) remains
+  a separate opt-in/privacy-reviewed scope.
