@@ -384,10 +384,12 @@ Their physical-firmware validation remains a separate limitation.
   and unexpected ordinary failures. Router exception messages and secret-bearing
   URLs are not logged; a cancellation still propagates. Temporary coordinators
   must finish their shutdown before a successful credential check is accepted.
-  Options changes are staged in a copy and only committed after validation,
-  so a failed check does not change the handler's in-memory settings or the
-  saved configuration entry. Reauthentication still merges credentials into
-  the existing settings without blanking optional names.
+  Options changes are staged in a copy, saved only after verification,
+  and adopted by the handler only after Home Assistant accepts the write.
+  Failed verification or persistence cannot change the handler's in-memory
+  settings; failed verification does not change the stored entry.
+  Reauthentication still merges credentials into the existing settings
+  without blanking optional names.
 - Legacy MAC-only client device registrations may be removed manually
   when linking is disabled, but only when the device belongs exclusively
   to the requesting config entry and has no other integration identifiers.
