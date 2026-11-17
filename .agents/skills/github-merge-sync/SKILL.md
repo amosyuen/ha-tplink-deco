@@ -9,10 +9,12 @@ description: "Use when reviewing, changing, validating or troubleshooting automa
    skill. Inspect `.github/workflows/sync-merged-references.yml`,
    `.github/scripts/sync_merge_links.py`, the GitHub merge event schema and
    `tests/test_merge_reference_sync.py` before changing automation.
-2. Trigger only on `pull_request_target: closed` with `merged == true` and
-   target branch equal to the default branch. Run only the **trusted default
-   branch** version of the script; do not check out a PR head or run commands
-   derived from PR bodies in a workflow that has a write-capable token.
+2. Permit exactly two trusted triggers: `pull_request_target: closed`
+   **only when** the PR was merged into the default branch, and an hourly
+   `schedule` for bounded reconciliation of confirmed default-branch
+   merges from the previous 48 hours. Both run only the **trusted default
+   branch** version of the script. Never check out a PR head or execute
+   commands derived from untrusted PR bodies with a write-capable token.
    Explicitly scope `GITHUB_TOKEN` to contents read, issues write and pull
    requests write; do not expose the token in logs.
 3. Resolve references only within the current repository. Recognize explicit
@@ -74,10 +76,14 @@ PR's successful Python/HA and linting checks.
    must not change the linked-issue semantics or mark issue #2 complete.
 5. Run the existing Python 3.13 / HA 2025.12 and Python 3.14 /
    HA 2026.11 regression matrices, pre-commit, HACS and Hassfest on
-   the final head. Successful PR CI establishes static correctness,
-   **not** the functioning of a merge-triggered event. After a reviewed
-   merge to `main`, inspect a new real merge-triggered run; failed
-   past events are not automatically replayed.
+   the final head. Apply any Black/Prettier changes before recording
+   CI as passing, then verify the checks **again on the resulting head**;
+   a previous green SHA does not validate a new documentation commit.
+   Successful PR CI establishes source-level correctness, **not**
+   deployed merge or schedule execution. After review and merge to
+   `main`, inspect both actual event-triggered and scheduled runs.
+   The scheduled recovery may revisit confirmed merges from the last
+   48 hours idempotently; older history is never replayed automatically.
 
 ## Review hardening: lost events, action scope and structural tests
 
