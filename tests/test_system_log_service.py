@@ -5,8 +5,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import traceback
 from pathlib import Path
+import traceback
 from types import SimpleNamespace
 from types import TracebackType
 from typing import Any
@@ -328,6 +328,7 @@ async def test_write_failure_removes_partial_file_and_allows_retry(
     assert response["path"] == str(export)
     assert export.read_text(encoding="utf-8") == "first\n"
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("api_exception", "message"),
@@ -367,7 +368,9 @@ async def test_api_errors_are_classified_without_leaking_router_data(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("invalid_result", [None, 42, {"content": "PRIVATE_ROUTER_TOKEN"}])
+@pytest.mark.parametrize(
+    "invalid_result", [None, 42, {"content": "PRIVATE_ROUTER_TOKEN"}]
+)
 async def test_malformed_api_result_rejected_before_writing(
     tmp_path: Path, invalid_result: Any
 ) -> None:

@@ -1181,7 +1181,7 @@ policy for AI-assisted development.
   (which may include LuCI tokens), and must also safely handle
   non-`OSError` failures such as `UnicodeEncodeError` while writing
   downloaded log text. Raise fixed `ServiceValidationError` messages
-  *after leaving* exception handlers so no private `__context__`
+  _after leaving_ exception handlers so no private `__context__`
   survives; classify auth, timeout and disconnects without exposing
   raw text, validate the returned API type and propagate cancellation.
   Test rendered tracebacks and a same-name retry after an encoding error.
