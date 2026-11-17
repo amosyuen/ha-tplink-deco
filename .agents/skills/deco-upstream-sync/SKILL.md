@@ -41,7 +41,7 @@ Port this feature as one compatible, independently tested backport.
 Use the config-flow validation skill for the setup/options portion.
 
 1. Compare the fork's existing scan-interval selector, **two mandatory
-   Deco/client coordinators plus the optional WLAN coordinator**, pause
+   Deco/client coordinators plus optional WLAN/mobile coordinators**, pause
    switch, client-list backoff and discovery dispatch with upstream
    #616, #669 and #670 before editing. An old config entry without
    `device_list_interval` must keep its original cadence.
@@ -343,9 +343,11 @@ restoration tests that previously expected an awaited client first refresh.
 Verify the existing Deco first-refresh failure still prevents unsafe client
 construction, and confirm later count-sensor discovery uses its own first
 successful client poll. Test both supported Home Assistant versions and
-lifecycle/unload behavior when available. This is a client-only subset of
-upstream #645; wireless and mobile initial refreshes remain out of scope
-until those optional coordinator platforms exist in the fork.
+lifecycle/unload behavior when available. The original PR #29 was the
+client-only subset of upstream #645. Optional wireless (PR #41) and mobile
+(PR #43) coordinators now exist; their initial `async_refresh()` calls are
+also scheduled as entry-owned background tasks after platform forwarding.
+Preserve the client-specific first-poll and lifecycle tests above.
 
 ## Startup client counts (upstream #567/#597)
 
@@ -489,8 +491,9 @@ successful empty lists and preserve known clients after retry exhaustion.
 
 For setup/unload, scheduled-refresh cleanup and router logout, follow
 [Deco lifecycle validation](../deco-lifecycle-validation/SKILL.md).
-The fork currently has Deco and client coordinators; review available
-components before copying a newer upstream teardown implementation.
+The fork has mandatory Deco/client and optional wireless/mobile
+coordinators; review their distinct shutdown interfaces before copying a
+newer upstream teardown implementation.
 
 ## Regression repair after startup and diagnostic changes (PR #30)
 
@@ -594,8 +597,8 @@ from read-only WiFi status (#627). Issue #2 tracks them in **separate**
 checklist items: #627 was completed in merged fork PR #41, and #637
 was completed in merged fork PR #42 (merge commit `1c40ed954a61e9d78bb2a8766be45a9e655a17b3`,
 verified 2026-11-17). PR #43 mobile usage (#631) and its initial mobile
-refresh (#645) remain **open** until that PR merges. Never check an
-unrelated item merely because another PR has green CI. All required CI
+refresh (#645) also merged on 2026-11-17. Never check an unrelated item
+merely because another PR has green CI. All required CI
 checks must pass on the final head after any code **or documentation** commit.
 Use the [guidance consistency skill](../deco-guidance-consistency-validation/SKILL.md)
 when revising status claims across documentation and skills.
