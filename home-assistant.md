@@ -432,3 +432,14 @@ The coordinator stores only boolean states. SSIDs, passwords, PSKs and raw
 responses must not enter state attributes, diagnostics or logs. Optional
 SSID exposure (upstream #637) is not included. Real hardware compatibility
 remains unverified until independently tested.
+
+The wireless API validates the outer encrypted-response envelope and inner
+`result` mapping before reading network status. An authenticated `-5002`
+response retains the existing single reauthentication retry; firmware
+`timeout` is classified without additional timeout retries. HTTP errors,
+malformed response data and decode failures are exposed to the optional
+coordinator as sanitized failures. Raw error objects and payloads are never
+included in wireless logs; configured session tokens, cookies and request
+crypto material are not logged during transport/login. Unexpected wireless
+API exceptions are contained as optional update failures, while Home
+Assistant authentication errors and task cancellation remain distinct.
