@@ -852,6 +852,18 @@ policy for AI-assisted development.
   activity, node association and last-success health on failure.
   Test corruption after a valid earlier entry and a malformed retry
   after a previously successful global response.
+- **Regression fixture contract (PR #40):** introducing a new fallback
+  API request requires reviewing every existing test that mocks the
+  per-node client-list method. Route mock responses explicitly by
+  `device_mac`, including the `default` global request, or provide a
+  deliberately failing global response. Never allow an unconfigured
+  `MagicMock` to stand in for a valid API list, and do not weaken
+  existing client-count, backoff or partial-success assertions just to
+  make tests pass. Assert the number and order of per-node/global calls
+  and their zero extra timeout-retry budget. A global response verifies
+  the real master's client source, not each satellite's initial
+  per-node count; preserve deferred count-entity readiness until a
+  satellite actually returns a valid per-node list.
 - Coordinator-health sensors are already merged in fork PR #30;
   do not describe them as unimplemented.
 

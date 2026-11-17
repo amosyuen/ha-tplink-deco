@@ -71,6 +71,17 @@ description: "Use when porting, reviewing, or debugging capped HTTP 5xx Deco cli
    remain unchanged when validation fails. Cover absent master, 401/403,
    cancellation, one timeout count per poll and independent entries.
    Mock the monotonic clock for deterministic tests.
+   **Existing test-fixture migration (PR #40):** adding a global
+   `device_mac=default` call also changes the interaction with older
+   per-node-only mocks. Review client-count, partial-mesh and capped
+   backoff fixtures; configure explicit `AsyncMock` responses for the
+   new request (including a deliberate 5xx or timeout in failure
+   scenarios), not an unconstrained `MagicMock`. Assert exact call
+   ordering, zero extra timeout retries and retained client-count
+   readiness. A successful global request confirms the master only;
+   satellites need their own valid per-node replies before their
+   connected-client count is considered verified. Preserve previously
+   tested error and cancellation expectations.
 8. Run both supported Home Assistant/Python matrix entries, pre-commit,
    HACS and Hassfest on the **final** PR head. If Black, isort or
    Prettier reformats files, commit its changes and verify again.
