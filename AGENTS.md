@@ -701,7 +701,7 @@ policy for AI-assisted development.
   `flow.hass.config_entries.async_get_known_entry.return_value = entry`.
   The inherited `OptionsFlow.config_entry` property uses this lookup:
   passing a `SimpleNamespace` into the constructor alone is insufficient
-  (verified review failure in PR #49). Assert the *exact* config-entry
+  (verified review failure in PR #49). Assert the _exact_ config-entry
   update payload, failure rollback, and no writes/reloads on invalid
   credentials or reauthentication errors.
 - **CI and review:** run adversarial secret-bearing error, cleanup,
