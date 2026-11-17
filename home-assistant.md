@@ -411,7 +411,6 @@ For how to implement, test, review or approve those changes, use
 `CLAUDE.md` **if/when that file is added**. This guide deliberately does
 not duplicate their general standards.
 
-
 ## Optional read-only WiFi status (upstream #627)
 
 A third, entry-owned coordinator reads the local `admin/wireless?form=wlan`
