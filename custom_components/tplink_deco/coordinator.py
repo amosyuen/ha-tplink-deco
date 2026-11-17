@@ -667,6 +667,9 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
                 if not isinstance(mac, str) or not mac.strip() or mac in seen_macs:
                     raise ValueError("Invalid Deco client list response")
                 seen_macs.add(mac)
+                name = item.get("name")
+                if name is not None and not isinstance(name, str):
+                    raise ValueError("Invalid Deco client list response")
                 try:
                     TpLinkDecoClient(mac).update(item, "", preview_time)
                 except Exception:
