@@ -70,11 +70,11 @@ description: "Use when changing authenticated manual Deco system-log downloads, 
    bombs before returning log text. Test link-only, empty, nested
    regular-file, traversal-name, exact-basename and first-member cases.
 10. Accept only a plain ASCII `.log` basename (no separators,
-   traversal, Windows reserved names or excessive length).
-   Resolve storage under `<config>/tplink_deco_logs/`; reject
-   **existing symlinked export directories** and use exclusive-open
-   and private permissions where the OS supports them. Save through
-   Home Assistant's executor, never in the event loop.
+    traversal, Windows reserved names or excessive length).
+    Resolve storage under `<config>/tplink_deco_logs/`; reject
+    **existing symlinked export directories** and use exclusive-open
+    and private permissions where the OS supports them. Save through
+    Home Assistant's executor, never in the event loop.
 11. If exclusive creation succeeds but write, encoding, buffered
     close or file-descriptor wrapping fails, attempt descriptor
     cleanup and removal of the partial export. Do not delete an

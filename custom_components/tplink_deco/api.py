@@ -426,8 +426,7 @@ class TplinkDecoApi:
                             "System log snapshot content type is unsupported"
                         )
                     if response.content_type != "text/plain" and not (
-                        body.startswith(b"\x1f\x8b")
-                        or body[257:262] == b"ustar"
+                        body.startswith(b"\x1f\x8b") or body[257:262] == b"ustar"
                     ):
                         raise UnexpectedApiException(
                             "System log snapshot content type is unsupported"

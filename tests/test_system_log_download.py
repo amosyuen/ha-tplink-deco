@@ -4,13 +4,13 @@ import asyncio
 import gzip
 import io
 import logging
+from pathlib import Path
 import tarfile
 import traceback
-from pathlib import Path
-from unittest.mock import patch
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
+from unittest.mock import patch
 
 import aiohttp
 import pytest
@@ -246,7 +246,6 @@ async def test_log_build_decrypt_failure_does_not_log_payload(
     assert "PRIVATE_CIPHERTEXT" not in caplog.text
 
 
-
 def _tar_snapshot(
     *members: tuple[str, bytes],
     symlink_name: str | None = None,
@@ -336,7 +335,9 @@ async def test_decoding_does_not_block_event_loop() -> None:
             asyncio.get_running_loop()
         return decode_system_log(body)
 
-    with patch.object(api_module, "decode_system_log", side_effect=_check_thread) as decoder:
+    with patch.object(
+        api_module, "decode_system_log", side_effect=_check_thread
+    ) as decoder:
         assert await api.async_get_system_log() == "thread\n"
     decoder.assert_called_once()
 
@@ -351,7 +352,12 @@ async def test_decoding_does_not_block_event_loop() -> None:
         (gzip.compress(b"bad\xff"), "encoding is unsupported"),
         (_tar_snapshot(("syslog.log", b"\xff")), "encoding is unsupported"),
         (_tar_snapshot(("syslog.log", b"binary\x00value")), "binary data"),
-        (_tar_snapshot(("other.log", b"ok"), ("syslog.log", b"A" * (MAX_SYSTEM_LOG_BYTES + 1))), "size limit"),
+        (
+            _tar_snapshot(
+                ("other.log", b"ok"), ("syslog.log", b"A" * (MAX_SYSTEM_LOG_BYTES + 1))
+            ),
+            "size limit",
+        ),
     ],
 )
 async def test_rejects_corrupt_or_expanding_snapshots_without_auth_retry(
@@ -372,7 +378,9 @@ async def test_rejects_corrupt_or_expanding_snapshots_without_auth_retry(
 
 def test_rejects_archives_with_excessive_members() -> None:
     """Cap tar metadata scanning independently of compressed transfer size."""
-    members = tuple((f"log-{index}", b"") for index in range(MAX_SYSTEM_LOG_ARCHIVE_MEMBERS + 1))
+    members = tuple(
+        (f"log-{index}", b"") for index in range(MAX_SYSTEM_LOG_ARCHIVE_MEMBERS + 1)
+    )
     snapshot = _tar_snapshot(*members)
     with pytest.raises(UnexpectedApiException, match="too many members"):
         decode_system_log(snapshot)
@@ -381,12 +389,14 @@ def test_rejects_archives_with_excessive_members() -> None:
 def test_truncated_member_is_rejected_without_partial_log() -> None:
     """Reject tar headers claiming a larger file than available bytes."""
     snapshot = _tar_snapshot(("syslog.log", b"record\n"))
-    incomplete = snapshot[:512 + 3]
+    incomplete = snapshot[: 512 + 3]
     with pytest.raises(UnexpectedApiException, match="incomplete|malformed"):
         decode_system_log(incomplete)
 
 
-def test_tar_does_not_extract_files_to_disk(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_tar_does_not_extract_files_to_disk(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Avoid disk writes even when archive member names contain traversal."""
     monkeypatch.chdir(tmp_path)
     snapshot = _tar_snapshot(("../private/syslog.log", b"safe\n"))

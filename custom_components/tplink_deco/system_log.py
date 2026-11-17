@@ -47,7 +47,9 @@ def _read_tar_log(body: bytes) -> bytes | None:
         archive = tarfile.open(fileobj=io.BytesIO(body), mode="r:")
     except tarfile.ReadError:
         if body[257:262] == b"ustar":
-            raise UnexpectedApiException("System log tar snapshot is malformed") from None
+            raise UnexpectedApiException(
+                "System log tar snapshot is malformed"
+            ) from None
         return None
     except (tarfile.TarError, OSError, EOFError, ValueError):
         raise UnexpectedApiException("System log tar snapshot is malformed") from None
@@ -96,8 +98,6 @@ def decode_system_log(body: bytes) -> str:
         body = _decompress_gzip_log(body)
     tar_log = _read_tar_log(body)
     return _decode_utf8_log(body if tar_log is None else tar_log)
-
-
 
 
 class SystemLogLevel(IntEnum):
