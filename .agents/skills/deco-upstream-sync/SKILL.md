@@ -559,3 +559,22 @@ adds new sensor entities, or fails the repository's full regression suite:
 - Evaluate verified lessons from the change/review; update `AGENTS.md` or the relevant skill on this branch when reusable, otherwise state that no guidance update was needed.
 
 `AGENTS.md` remains the source of repository-wide policy and quality requirements.
+
+
+## Optional WLAN status (upstream #627)
+
+Use this procedure when implementing optional Main, Guest and IoT WiFi
+binary sensors. After checking `AI_POLICY.md`, `AGENTS.md` and the
+integration guide, compare upstream #627 with the fork's current
+`api.py`, coordinators, binary sensor setup and lifecycle. Do not port
+upstream-wide sensor refactors. Isolate a fixed read of
+`admin/wireless?form=wlan` from required coordinator operations.
+Recognize only valid `enable` flags on known firmware paths, without
+copying SSIDs or passwords into stored coordinator state. Create entities
+only for verified networks, associate them with the master MAC and retain
+the existing entity/device identities. Validate empty/malformed responses,
+privacy redaction, failure/retry, paused polling, authentication,
+cancellation and unload using mock responses. Run Python/HA test matrices,
+pre-commit, HACS and Hassfest on the final PR head; verify hardware
+separately. SSID exposure (#637) is a separate opt-in scope and should
+not be silently enabled.
