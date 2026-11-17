@@ -686,6 +686,16 @@ policy for AI-assisted development.
 - Keep field errors in `strings.json` and relevant translations (at least
   English and Dutch). Confirm that invalid form submissions display an error
   rather than initiating an unnecessary network request.
+- **Translation key parity (issue #2):** verify the actual field names in
+  `config_flow.py` against canonical `strings.json`, `en.json` and
+  `nl.json` keys. Home Assistant's `CONF_SCAN_INTERVAL` serializes as
+  `interval_seconds`, **not** `scan_interval`; a label attached to the
+  obsolete key does not cover the real setup/options selector. The initial
+  Dutch catalog omitted 19 other canonical fields/errors, even though
+  English had them. Check nested leaf-key coverage in both setup and options
+  plus reauth and abort paths. Retain existing valid locale-specific keys
+  and errors rather than bulk-replacing translation files; defer unrelated
+  upstream syslog options until that feature actually exists in the fork.
 - Regression coverage should include form serialization, supported and
   invalid values, defaults from older config entries, string-to-int
   conversion, initial setup, options updates and preservation of other
