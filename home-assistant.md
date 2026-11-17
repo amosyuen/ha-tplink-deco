@@ -509,3 +509,19 @@ included in wireless logs; configured session tokens, cookies and request
 crypto material are not logged during transport/login. Unexpected wireless
 API exceptions are contained as optional update failures, while Home
 Assistant authentication errors and task cancellation remain distinct.
+
+## Optional mobile WAN error contract (PR #43, not yet merged)
+
+The optional mobile coordinator uses the existing authenticated encrypted
+read-only endpoint independently from mandatory polling. For mobile requests,
+HTTP 401/403 invalidates the stale session and permits the existing single
+authenticated retry; other HTTP failures, transport errors, malformed JSON
+and timeouts are sanitized at the API boundary to avoid exposing LuCI
+tokens or raw router responses. Ordinary mobile refresh errors produce a
+fixed `UpdateFailed`. Login failures remain `ConfigEntryAuthFailed` but
+carry a fresh privacy-safe message with no prior cause/context.
+Cancellation propagates normally. Failed optional polling retains the
+previous cached same-master reading, which remains unavailable to the
+Home Assistant sensor while the coordinator reports a failed update.
+This describes PR #43's branch, not a feature deployed on `main` before
+merge verification.

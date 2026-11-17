@@ -1169,6 +1169,18 @@ policy for AI-assisted development.
   semantics. Test real bound transport/decrypt methods with mocked aiohttp
   objects containing synthetic authenticated URLs and payload secrets;
   assert they never reach captured logs.
+- **PR #43 error-handling follow-up:** the mobile HTTP 401 path originally
+  propagated a raw token-bearing aiohttp exception instead of entering
+  the shared bounded reauthentication path; HTTP 5xx, connector failures,
+  malformed JSON and timeouts exposed unredacted exception contexts to
+  direct API consumers. For the mobile read only, map 401/403 to the
+  existing one-relogin signal and use fixed, privacy-safe exceptions for
+  HTTP, transport, timeout and malformed JSON failures. Preserve
+  non-mobile contracts and cancellation. Propagate mobile
+  `ConfigEntryAuthFailed` as a new sanitized error **outside** the
+  handler so upstream cause/context is not retained. Test error types,
+  one-relogin limit, rendered tracebacks, coordinator cached state
+  and DEBUG logs with synthetic tokens.
 - Mobile diagnostics may report support status, update success and interval,
   but must not export the numeric usage, router model, API payload, token
   or credentials. Test parsing, unsupported models, late master discovery,

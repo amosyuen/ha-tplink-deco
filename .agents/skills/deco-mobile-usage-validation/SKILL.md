@@ -40,7 +40,15 @@ description: "Use when adding, reviewing or maintaining read-only 4G/5G Deco mob
    not a fixture that replaces both with `AsyncMock`, using synthetic
    authenticated `request_info.real_url`, secret-containing error
    messages, nonzero API JSON, connection failures and decrypt errors.
-   Preserve the existing HTTP 401/403 and one-relogin semantics.
+   Mobile HTTP 401/403 must invalidate the stale session and use the
+   established **single** re-login retry. For this endpoint, sanitize other
+   HTTP failures, client/connector errors, malformed JSON and timeouts
+   without changing non-mobile error contracts. Direct API tests must
+   verify exception types, rendered tracebacks and DEBUG logs with
+   synthetic LuCI secrets, not just sanitized coordinator exceptions.
+   A mobile `ConfigEntryAuthFailed` must be re-raised with a fixed
+   message **outside** the catch block, with neither `__context__`
+   nor `__cause__`; preserve prior data and propagate cancellation.
 
 ## Coordinator ownership and sensor lifecycle
 
