@@ -698,8 +698,14 @@ policy for AI-assisted development.
   options reauthentication-success abort message. Require full canonical
   leaf-key parity for `en`, `nl`, `sk` and `sv`, including real
   `interval_seconds` form labels, setup/options, reauth and abort paths.
-  Other shipped locales still have incomplete catalogs: do **not** claim
-  full-language coverage until their missing paths are localized and tested.
+  The subsequent French audit found 39 missing canonical leaf keys
+  across setup/options, reauthentication and error/abort paths. Include
+  `fr` in the complete canonical-key parity matrix, preserve all
+  previously shipped French strings (including legacy titles, consent
+  labels and mobile usage sensor name), and verify new translations are
+  nonempty. Norwegian and Portuguese catalogs still have missing keys:
+  do **not** claim full-language coverage until each is localized and
+  independently regression-tested.
   Retain existing valid locale-specific keys and errors rather than
   bulk-replacing translation files; defer unrelated upstream syslog
   options until that feature actually exists in the fork.
