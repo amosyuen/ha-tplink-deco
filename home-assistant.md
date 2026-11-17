@@ -398,6 +398,13 @@ Their physical-firmware validation remains a separate limitation.
   options but persisted as a supported **integer**. Invalid intervals
   must be rejected before testing router credentials or updating
   the config entry.
+- The English and Dutch setup/options labels use the actual Home
+  Assistant scan-interval form field `interval_seconds`; the previously
+  stale canonical `scan_interval` label has been corrected. Dutch
+  translations also cover existing timeout, SSL, name-prefix/postfix,
+  reauthentication and host-error labels while retaining legacy
+  translated titles and validation messages. This affects only displayed
+  form text, not persisted config-entry keys or migration behavior.
 - Existing config-entry fields include host, username/password,
   connection timeout, bounded timeout retry count, TLS verification,
   `consider_home`, optional Deco/client name prefixes/postfixes and
