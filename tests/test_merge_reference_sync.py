@@ -367,7 +367,9 @@ class MergeReferenceSyncTests(unittest.TestCase):
                     )
                 self.assertEqual(client.patches, 0)
                 self.assertEqual(client.posted, [])
-                self.assertIn("- [ ] Retry incomplete responses", client.issues[2]["body"])
+                self.assertIn(
+                    "- [ ] Retry incomplete responses", client.issues[2]["body"]
+                )
 
     def test_reconciliation_deduplicates_pull_request_pages(self) -> None:
         """Process duplicate GitHub list entries only once."""
@@ -402,7 +404,12 @@ class MergeReferenceSyncTests(unittest.TestCase):
         """Map transport, HTTP and invalid JSON errors to sanitized exceptions."""
         client = sync.GitHubClient("synthetic-secret-token")
         failures = (
-            (HTTPError("https://api.github.com/private", 503, "secret-data", None, None), "HTTP 503"),
+            (
+                HTTPError(
+                    "https://api.github.com/private", 503, "secret-data", None, None
+                ),
+                "HTTP 503",
+            ),
             (URLError("secret-network-address"), "transport failure"),
             (TimeoutError("secret-transport-data"), "transport failure"),
         )
@@ -414,7 +421,9 @@ class MergeReferenceSyncTests(unittest.TestCase):
                 message = str(raised.exception)
                 self.assertNotIn("secret", message)
                 self.assertNotIn("private", message)
-        with patch.object(sync, "urlopen", return_value=BytesIO(b"secret-invalid-json")):
+        with patch.object(
+            sync, "urlopen", return_value=BytesIO(b"secret-invalid-json")
+        ):
             with self.assertRaisesRegex(RuntimeError, "invalid JSON") as raised:
                 client.request("GET", "/repos/HiDiHo01/ha-tplink-deco")
         self.assertNotIn("secret", str(raised.exception))
