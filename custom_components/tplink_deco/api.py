@@ -129,7 +129,7 @@ def check_data_error_code(context, data):
     error_code = data.get("error_code") or data.get("errorcode")
     if error_code:
         if error_code == "timeout":
-            raise TimeoutException(f'{context} response error_code="timeout"')
+            raise TimeoutException('Deco API response error_code="timeout"')
 
         # Codes and firmware payloads can contain attacker-controlled strings.
         _LOGGER.debug("Deco API returned an error code")
