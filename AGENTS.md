@@ -1088,6 +1088,21 @@ policy for AI-assisted development.
   activity, node association and last-success health on failure.
   Test corruption after a valid earlier entry and a malformed retry
   after a previously successful global response.
+- **Per-node client-list preflight (issue #2):** the global-list
+  validation alone does not protect the regular per-Deco polling path.
+  A later malformed, missing, duplicate or non-string MAC, or a client
+  whose fields fail the existing model update contract, can otherwise
+  partially change cached clients from earlier entries in the same poll.
+  Preflight **every** nonempty node response with temporary client
+  models before backoff, count readiness, discovery or existing-client
+  mutations; reject malformed input with one fixed, privacy-safe
+  `ValueError` and suppress decoder exception context. Permit legitimate
+  empty replies and distinct per-node views of the same roaming MAC.
+  Preserve failed-node client state, the current authentication/retry
+  budgets and previously valid health data. Regression tests must put
+  corruption after a valid cached client, check identity and timestamps
+  did not change, and assert that newly discovered client MACs are
+  never interpolated into DEBUG messages.
 - **Regression fixture contract (PR #40):** introducing a new fallback
   API request requires reviewing every existing test that mocks the
   per-node client-list method. Route mock responses explicitly by
