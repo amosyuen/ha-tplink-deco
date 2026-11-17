@@ -84,6 +84,20 @@ existing tests. Do not adopt upstream code or review suggestions blindly.
   merging stale names; omit unsupported networks and avoid exposing names
   on unavailable former-master entities. Never include names in diagnostics,
   DEBUG logs or raw responses.
+- **Validate before committing coordinator data:** SSID parsing and boolean
+  state parsing must run inside the **same** guarded update. A decoder error
+  must become a sanitized `UpdateFailed`, increment the normal wireless
+  failure count and honor the two-failure/five-minute limit, not escape
+  after backoff has been reset. Preserve previously cached names and states
+  without partially overwriting them on failed updates. Propagate auth and
+  cancellation as before. Test with an exception embedding a synthetic secret
+  and assert no secret appears in DEBUG logs or rendered exception text.
+- **Constrain firmware-derived attribute keys:** only compact numeric
+  `band...` identifiers (e.g. `band2_4`, `band5_1`, `band6`) and
+  the explicit `iot` segment can become SSID attribute suffixes. Reject
+  malformed/oversized top-level keys rather than publishing arbitrary or
+  unbounded Home Assistant attribute identifiers. An empty name mapping
+  produces no attributes.
 - Test default-off and explicit-on for both flows, form JSON serialization,
   rejected non-boolean submissions, setup/option persistence, multi-entry
   isolation, decoding, per-band grouping, missing/invalid names and
