@@ -27,6 +27,25 @@ This integration provides local polling control and diagnostics for TP-Link Deco
 - Memory usage (raw + smoothed)
 - Backhaul and network diagnostics
 
+### Optional mobile WAN data usage (upstream #631)
+
+On supported Deco 4G/5G router models, a **Mobile data usage** sensor
+reports the router's read-only `mobile_cpe.data_usage` counter in KiB,
+with a five-minute refresh. The integration creates this sensor only
+after the firmware returns a valid counter (including zero). Firmware
+without the capability keeps all existing entities without an empty
+mobile sensor. The first check runs in the background after platforms load.
+
+The mobile sensor is associated with the master Deco and has a stable
+MAC-based identity. If the master changes, previous usage becomes
+unavailable until the new master's successful refresh, including during
+in-flight requests. Normal Deco and client polling is independent of
+mobile endpoint failures. The value can be sensitive usage information
+in Home Assistant Recorder/history and external exports; integration
+diagnostics expose only anonymous support and health status, not the
+counter, tokens or router response. Live 4G/5G hardware compatibility
+is not yet verified.
+
 ### Optional read-only WiFi status (upstream #627)
 
 For firmware exposing the local `wlan` endpoint, the integration provides
