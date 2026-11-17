@@ -405,7 +405,6 @@ class TplinkMobileDataUsageSensor(CoordinatorEntity, SensorEntity):
 
     _attr_has_entity_name = True
     _attr_translation_key = "mobile_data_usage"
-    _attr_name = "Mobile data usage"
     _attr_device_class = SensorDeviceClass.DATA_SIZE
     _attr_native_unit_of_measurement = UnitOfInformation.KIBIBYTES
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
