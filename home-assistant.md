@@ -171,10 +171,11 @@ Their physical-firmware validation remains a separate limitation.
   association.
 - **Proposed in open fork PR #53 (not yet on `main`):** regular
   per-Deco client-list replies receive a full preflight before cached
-  clients are updated. Missing/duplicate/invalid MAC identifiers and
-  non-string/non-null client names are rejected with a fixed error.
-  An invalid client IP is **not** such an error:
-  `filter_invalid_ip` deliberately normalizes it to `None`.
+  clients are updated. Missing, blank, non-string or duplicate client
+  MAC identifiers and non-string/non-null client names are rejected
+  with a fixed error. An invalid IP value handled by the existing
+  `filter_invalid_ip` `ValueError` path is instead normalized to
+  `None`, not rejected.
   Previously known clients and successful-poll readiness survive an
   invalid list; valid empty lists and partial timeout recovery retain
   their established behavior. PR #53 also removes client MACs from
