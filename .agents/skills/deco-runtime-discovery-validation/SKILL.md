@@ -38,10 +38,10 @@ description: "Validate TP-Link Deco runtime node discovery, synchronous dispatch
    entity IDs, master/satellite registry links or configuration.
    Network-wide total sensors continue to use the coordinator update
    listener, since those are master-dependent and must be created once.
-   For optional wireless sensors linked to the master MAC, verify that
-   changing the master makes the old sensors unavailable immediately via
-   a Deco coordinator listener. Do not delete their registry identities;
-   newly discovered master sensors must use the new stable MAC.
+   For optional WLAN entities, follow
+   [wireless-status validation](../deco-wireless-status-validation/SKILL.md):
+   master changes must update availability via a Deco coordinator listener
+   without deleting previous registry identities.
 
 ## Repeatable regression and verification procedure
 
