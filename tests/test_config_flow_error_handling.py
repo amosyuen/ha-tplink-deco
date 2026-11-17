@@ -136,7 +136,9 @@ async def test_failed_options_verification_does_not_commit_tentative_settings() 
     saved_data = deepcopy(CONFIG_DATA)
     entry = SimpleNamespace(entry_id="mesh-one", data=saved_data)
     flow = config_flow.TplinkDecoOptionsFlowHandler(entry)
+    flow.handler = entry.entry_id
     flow.hass = MagicMock()
+    flow.hass.config_entries.async_get_known_entry.return_value = entry
     flow.async_show_form = MagicMock(return_value={"type": "form"})
     submitted = {
         CONF_USERNAME: "different-user",
@@ -169,7 +171,9 @@ async def test_successful_options_verification_commits_staged_settings() -> None
     """Save the updated options only after credential verification succeeds."""
     entry = SimpleNamespace(entry_id="mesh-two", data=deepcopy(CONFIG_DATA))
     flow = config_flow.TplinkDecoOptionsFlowHandler(entry)
+    flow.handler = entry.entry_id
     flow.hass = MagicMock()
+    flow.hass.config_entries.async_get_known_entry.return_value = entry
     flow.async_create_entry = MagicMock(return_value={"type": "create_entry"})
     submitted = {
         CONF_USERNAME: "different-user",
