@@ -202,7 +202,8 @@ async def _async_test_credentials(hass: HomeAssistant, data: dict[str:Any]):
             *(
                 coordinator.async_shutdown()
                 for key, coordinator in coordinators.items()
-                if key in (
+                if key
+                in (
                     COORDINATOR_DECOS_KEY,
                     COORDINATOR_CLIENTS_KEY,
                     COORDINATOR_WIRELESS_KEY,
