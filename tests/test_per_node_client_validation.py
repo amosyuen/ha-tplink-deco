@@ -60,7 +60,7 @@ def _coordinator(
         {"mac": ""},
         {"mac": 7},
         {"mac": CLIENT_MAC, "name": "duplicate"},
-        {"mac": NEW_CLIENT_MAC, "ip": {"private": PRIVATE_VALUE}},
+        {"mac": NEW_CLIENT_MAC, "name": {"private": PRIVATE_VALUE}},
     ],
     ids=[
         "non-mapping",
@@ -69,7 +69,7 @@ def _coordinator(
         "empty-mac",
         "numeric-mac",
         "duplicate-mac",
-        "invalid-client-ip",
+        "invalid-client-name",
     ],
 )
 async def test_late_invalid_node_reply_preserves_prior_client_state(
