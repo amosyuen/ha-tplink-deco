@@ -51,9 +51,7 @@ def _response(token: str, *, forbidden: bool) -> MagicMock:
     response.json = AsyncMock(return_value={"data": "synthetic-ciphertext"})
     if forbidden:
         request_info = MagicMock()
-        request_info.real_url = (
-            f"{HOST}/cgi-bin/luci/;stok={token}/admin/device"
-        )
+        request_info.real_url = f"{HOST}/cgi-bin/luci/;stok={token}/admin/device"
         request_info.url = request_info.real_url
         response.raise_for_status.side_effect = aiohttp.ClientResponseError(
             request_info=request_info,
@@ -82,13 +80,9 @@ def _mock_relogin(api: TplinkDecoApi) -> AsyncMock:
     return AsyncMock(side_effect=_perform_login)
 
 
-def _assert_device_request(
-    request: Any, *, token: str, cookie: str
-) -> None:
+def _assert_device_request(request: Any, *, token: str, cookie: str) -> None:
     """Verify the exact token-bearing URL, form, payload and request cookie."""
-    assert request.args == (
-        f"{HOST}/cgi-bin/luci/;stok={token}/admin/device",
-    )
+    assert request.args == (f"{HOST}/cgi-bin/luci/;stok={token}/admin/device",)
     assert request.kwargs["params"] == DEVICE_FORM
     assert request.kwargs["data"] == FORM_DATA
     assert request.kwargs["cookies"] == {"sysauth": cookie}
@@ -121,7 +115,9 @@ async def test_http_403_raises_privacy_safe_exception_without_context(
         assert private_value not in str(error.value)
         assert private_value not in rendered_error
         assert private_value not in caplog.text
-    _assert_device_request(post.await_args, token=OLD_TOKEN, cookie="old-private-cookie")
+    _assert_device_request(
+        post.await_args, token=OLD_TOKEN, cookie="old-private-cookie"
+    )
 
 
 @pytest.mark.asyncio
