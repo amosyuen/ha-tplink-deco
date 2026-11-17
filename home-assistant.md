@@ -461,7 +461,12 @@ master transitions, invalidates names immediately and rejects stale
 SSID snapshots returned by an in-flight request, including A -> B -> A
 transitions before a successful new poll. Boolean WiFi states retain their
 original behavior; a master switch cannot reattribute previously stored
-SSID names. Without consent, names are neither parsed into nor retained in
+SSID names. The optional endpoint's consecutive-failure counter and
+five-minute cooldown are scoped to the current master generation: changing
+masters resets the old retry budget, while a failure from an in-flight
+request started under the former master is not counted against the new
+one. Repeated refreshes for an unchanged master do not bypass backoff.
+Without consent, names are neither parsed into nor retained in
 coordinator state. The existing Main, Guest and IoT WiFi binary sensors expose
 a common `ssid` attribute for matching bands or individual `ssid_<band>`
 attributes for differing names; missing or invalid names are omitted. The
