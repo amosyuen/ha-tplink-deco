@@ -169,18 +169,19 @@ Their physical-firmware validation remains a separate limitation.
   failed node. When **all** node client polls fail, retain the complete
   previous client dictionary, including clients lacking a known Deco
   association.
-- **Proposed in open fork PR #53 (not yet on `main`):** regular
-  per-Deco client-list replies receive a full preflight before cached
+- **Merged in fork PR #53 (2026-11-17):** regular per-Deco
+  client-list replies undergo whole-response preflight before cached
   clients are updated. Missing, blank, non-string or duplicate client
   MAC identifiers and non-string/non-null client names are rejected
-  with a fixed error. An invalid IP value handled by the existing
-  `filter_invalid_ip` `ValueError` path is instead normalized to
-  `None`, not rejected.
+  with a fixed, privacy-safe error. Invalid IP data handled by the
+  existing `filter_invalid_ip` `ValueError` path is normalized to
+  `None`, rather than rejecting an otherwise valid reply.
   Previously known clients and successful-poll readiness survive an
   invalid list; valid empty lists and partial timeout recovery retain
-  their established behavior. PR #53 also removes client MACs from
-  discovery DEBUG logging. These claims describe the PR branch until
-  the merge and deployed code are independently verified.
+  their established behavior. Discovery DEBUG messages no longer
+  interpolate client MACs. The implementation and focused regressions
+  are on `main` (merge commit `35d1c0c`); physical firmware testing
+  remains unverified.
 - Down/Up throughput aggregation includes only clients with truthy
   `online` status. Per-Deco data rates additionally require the matching
   `deco_mac`; network-wide totals include online clients across nodes.
@@ -659,25 +660,21 @@ re-login/error contract. The file output remains plain UTF-8 text;
 there are no new entities, polling or network-forwarding operations.
 
 The compressed decoder is present on `main` after merge commit
-`a1208e7a0258271df50f69b4b6a51cf39e6a9b1c`. **Open PR #46**
-proposes two manual-export error fixes: detect standalone firmware
+`a1208e7a0258271df50f69b4b6a51cf39e6a9b1c`.
+**Merged fork PR #46 (2026-11-17; merge commit `477dd11`)**
+adds privacy-safe manual-export error handling: standalone firmware
 `errorcode`/`error_code` JSON mislabeled as `text/plain` or
-`application/octet-stream` before saving, and disable extra transient
-retries after a truncated response. It preserves JSON-formatted log
-lines without firmware error fields and retains one authentication
-re-login, while setting manual-download timeout and transient retry
-budgets to zero. The PR #46 hardening also classifies raw
-socket resets, interrupted stream reads and exceptional JSON
-parser recursion into fixed privacy-safe API errors without
-replaying the manual export. Normal Deco API retry defaults
-remain unchanged.
-**These fixes are not on `main` until PR #46 is merged.**
-The PR #46 follow-up also distinguishes standalone firmware-error
-JSON from multi-record JSON Lines log text, including nested
-`errorcode` fields. A complete first JSON record with trailing
-log records is not a standalone firmware error, while truncated
-standalone firmware error envelopes remain rejected. These changes
-remain pending until PR #46 is merged.
+`application/octet-stream` is rejected before saving, while ordinary
+JSON-formatted log lines are preserved. A complete first JSON record
+with trailing log records is not a standalone firmware error, but
+truncated standalone error envelopes are rejected. The manual download
+uses zero additional timeout/transient retries, while retaining one
+bounded authentication re-login; normal Deco API retry defaults remain
+unchanged. Raw socket resets, interrupted reads and exceptional JSON
+parser recursion yield fixed privacy-safe API errors without replaying
+the manual export. These changes and their regressions are on `main`.
+Physical firmware, concurrent filesystem races and Windows ACL
+behavior remain unverified.
 Legacy S7 sessions and syslog forwarding
 (#666) remain unimplemented. Physical firmware/Windows ACL tests,
 the parent-symlink race and best-effort cleanup remain unverified.
