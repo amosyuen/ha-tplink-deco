@@ -97,6 +97,16 @@ policy for AI-assisted development.
   related change and describe the updated files in the PR. Confirm the
   documented links and run relevant formatting and validation checks.
   If no new reusable lesson exists, leave the instructions unchanged.
+- **Markdown insertion safety (PR #51, 2026-11-17):** repeated
+  insertion anchors temporarily duplicated the `Keep tests for
+  unimplemented features` item in the upstream-sync skill and the
+  `307 → HTTPS` item in `home-assistant.md`. Before a scripted
+  guidance edit, count the exact anchor matches and examine adjacent
+  headings/list items. Stop on an ambiguous match; after editing,
+  verify each intended live rule appears exactly once without
+  deleting distinct historical context. Formatter success does not
+  detect duplicated or contradictory prose. Follow the
+  [guidance consistency skill](.agents/skills/deco-guidance-consistency-validation/SKILL.md).
 - Report unverified tests and incomplete work accurately. Do not mark a
   review thread resolved or a tracking-issue task complete merely because
   its lesson has been documented.
