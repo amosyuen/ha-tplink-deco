@@ -68,5 +68,12 @@
       "unknown": "Oväntat fel",
       "invalid_expose_wifi_ssids": "Välj på eller av för att visa Wi-Fi-nätverksnamn."
     }
+  },
+  "entity": {
+    "sensor": {
+      "mobile_data_usage": {
+        "name": "Mobildataanvändning"
+      }
+    }
   }
 }
