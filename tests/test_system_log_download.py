@@ -1,8 +1,13 @@
 """Regression tests for the manual Deco plain-text system-log API."""
 
 import asyncio
+import gzip
+import io
 import logging
+import tarfile
 import traceback
+from pathlib import Path
+from unittest.mock import patch
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
@@ -10,12 +15,15 @@ from unittest.mock import MagicMock
 import aiohttp
 import pytest
 
+from custom_components.tplink_deco import api as api_module
 from custom_components.tplink_deco.api import SYSTEM_LOG_CONTEXT
 from custom_components.tplink_deco.api import TplinkDecoApi
 from custom_components.tplink_deco.exceptions import ForbiddenException
 from custom_components.tplink_deco.exceptions import UnexpectedApiException
+from custom_components.tplink_deco.system_log import MAX_SYSTEM_LOG_ARCHIVE_MEMBERS
 from custom_components.tplink_deco.system_log import MAX_SYSTEM_LOG_BYTES
 from custom_components.tplink_deco.system_log import SystemLogLevel
+from custom_components.tplink_deco.system_log import decode_system_log
 
 SECRET = "PRIVATE_ROUTER_TOKEN_123"
 
@@ -164,8 +172,8 @@ async def test_expired_json_response_reauthenticates_once() -> None:
     [
         (_response(b"bad", content_type="application/octet-stream"), "unsupported"),
         (_response(b"not-json", content_type="application/json"), "malformed"),
-        (_response(b"\x1f\x8bcompressed"), "unsupported"),
-        (_response(b"\x00" * 257 + b"ustar" + b"\x00"), "unsupported"),
+        (_response(b"\x1f\x8bcompressed"), "gzip snapshot is malformed"),
+        (_response(b"\x00" * 257 + b"ustar" + b"\x00"), "tar snapshot is malformed"),
         (_response(b"\xff\xfe"), "encoding"),
         (_response(b"Z" * (MAX_SYSTEM_LOG_BYTES + 1)), "size limit"),
         (
@@ -236,3 +244,162 @@ async def test_log_build_decrypt_failure_does_not_log_payload(
             api._decrypt_data(SYSTEM_LOG_CONTEXT, "PRIVATE_CIPHERTEXT")
 
     assert "PRIVATE_CIPHERTEXT" not in caplog.text
+
+
+
+def _tar_snapshot(
+    *members: tuple[str, bytes],
+    symlink_name: str | None = None,
+) -> bytes:
+    """Build an in-memory tar fixture with optional unsafe link metadata."""
+    output = io.BytesIO()
+    with tarfile.open(fileobj=output, mode="w") as archive:
+        if symlink_name is not None:
+            link = tarfile.TarInfo(symlink_name)
+            link.type = tarfile.SYMTYPE
+            link.linkname = "/etc/passwd"
+            archive.addfile(link)
+        for name, content in members:
+            member = tarfile.TarInfo(name)
+            member.size = len(content)
+            archive.addfile(member, io.BytesIO(content))
+    return output.getvalue()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("snapshot", "expected"),
+    [
+        (b"normal\n", "normal\n"),
+        (gzip.compress(b"gzip\n"), "gzip\n"),
+        (_tar_snapshot(("./syslog.log", b"tar\n")), "tar\n"),
+        (
+            gzip.compress(_tar_snapshot(("nested/syslog.log", b"nested\n"))),
+            "nested\n",
+        ),
+        (
+            _tar_snapshot(("other.log", b"other"), ("logs/syslog.log", b"selected")),
+            "selected",
+        ),
+        (
+            _tar_snapshot(("first.log", b"first"), ("second.log", b"second")),
+            "first",
+        ),
+        (
+            _tar_snapshot(("safe.log", b"safe"), symlink_name="syslog.log"),
+            "safe",
+        ),
+        (_tar_snapshot(symlink_name="syslog.log"), ""),
+        (_tar_snapshot(), ""),
+        (gzip.compress(_tar_snapshot()), ""),
+        (_tar_snapshot(("syslog.log", b"")), ""),
+    ],
+)
+async def test_decodes_supported_snapshot_formats(
+    snapshot: bytes, expected: str
+) -> None:
+    """Return only the selected text without changing router authentication."""
+    api, session = _api_and_session()
+    session.post.return_value = _response(snapshot)
+
+    assert await api.async_get_system_log() == expected
+    api._async_post.assert_awaited_once()
+    session.post.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "content_type",
+    ["application/gzip", "application/x-gzip", "application/octet-stream"],
+)
+async def test_accepts_gzip_even_with_non_text_content_type(
+    content_type: str,
+) -> None:
+    """Recognize compressed firmware snapshots without a text MIME type."""
+    api, session = _api_and_session()
+    session.post.return_value = _response(
+        gzip.compress(b"alternate mime\n"), content_type=content_type
+    )
+
+    assert await api.async_get_system_log() == "alternate mime\n"
+
+
+@pytest.mark.asyncio
+async def test_decoding_does_not_block_event_loop() -> None:
+    """Offload both archive parsing and inflation to a worker thread."""
+    api, session = _api_and_session()
+    session.post.return_value = _response(gzip.compress(b"thread\n"))
+
+    def _check_thread(body: bytes) -> str:
+        """Assert this parser executes outside the running event loop."""
+        with pytest.raises(RuntimeError, match="no running event loop"):
+            asyncio.get_running_loop()
+        return decode_system_log(body)
+
+    with patch.object(api_module, "decode_system_log", side_effect=_check_thread) as decoder:
+        assert await api.async_get_system_log() == "thread\n"
+    decoder.assert_called_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("snapshot", "error"),
+    [
+        (gzip.compress(b"A" * (MAX_SYSTEM_LOG_BYTES + 1)), "size limit"),
+        (gzip.compress(b"broken\n")[:-5], "gzip snapshot is malformed"),
+        (b"\x1f\x8bnot-gzip", "gzip snapshot is malformed"),
+        (gzip.compress(b"bad\xff"), "encoding is unsupported"),
+        (_tar_snapshot(("syslog.log", b"\xff")), "encoding is unsupported"),
+        (_tar_snapshot(("syslog.log", b"binary\x00value")), "binary data"),
+        (_tar_snapshot(("other.log", b"ok"), ("syslog.log", b"A" * (MAX_SYSTEM_LOG_BYTES + 1))), "size limit"),
+    ],
+)
+async def test_rejects_corrupt_or_expanding_snapshots_without_auth_retry(
+    snapshot: bytes,
+    error: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Reject bad or expanding archives with fixed, secret-free errors."""
+    api, session = _api_and_session()
+    session.post.return_value = _response(snapshot)
+    with caplog.at_level(logging.DEBUG):
+        with pytest.raises(UnexpectedApiException, match=error) as caught:
+            await api.async_get_system_log()
+    assert SECRET not in "".join(traceback.format_exception(caught.value))
+    assert SECRET not in caplog.text
+    assert session.post.await_count == 1
+
+
+def test_rejects_archives_with_excessive_members() -> None:
+    """Cap tar metadata scanning independently of compressed transfer size."""
+    members = tuple((f"log-{index}", b"") for index in range(MAX_SYSTEM_LOG_ARCHIVE_MEMBERS + 1))
+    snapshot = _tar_snapshot(*members)
+    with pytest.raises(UnexpectedApiException, match="too many members"):
+        decode_system_log(snapshot)
+
+
+def test_truncated_member_is_rejected_without_partial_log() -> None:
+    """Reject tar headers claiming a larger file than available bytes."""
+    snapshot = _tar_snapshot(("syslog.log", b"record\n"))
+    incomplete = snapshot[:512 + 3]
+    with pytest.raises(UnexpectedApiException, match="incomplete|malformed"):
+        decode_system_log(incomplete)
+
+
+def test_tar_does_not_extract_files_to_disk(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Avoid disk writes even when archive member names contain traversal."""
+    monkeypatch.chdir(tmp_path)
+    snapshot = _tar_snapshot(("../private/syslog.log", b"safe\n"))
+    assert decode_system_log(snapshot) == "safe\n"
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_bad_binary_mime_is_not_treated_as_plain_text() -> None:
+    """Reject arbitrary non-archive octet-stream responses."""
+    api, session = _api_and_session()
+    session.post.return_value = _response(
+        b"not a snapshot", content_type="application/octet-stream"
+    )
+    with pytest.raises(UnexpectedApiException, match="content type is unsupported"):
+        await api.async_get_system_log()

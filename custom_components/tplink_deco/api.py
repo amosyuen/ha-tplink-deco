@@ -33,6 +33,7 @@ from .exceptions import TransientConnectionException
 from .exceptions import UnexpectedApiException
 from .system_log import MAX_SYSTEM_LOG_BYTES
 from .system_log import SystemLogLevel
+from .system_log import decode_system_log
 
 AES_KEY_BYTES = 16
 MIN_AES_KEY = 10 ** (AES_KEY_BYTES - 1)
@@ -394,21 +395,8 @@ class TplinkDecoApi:
                                 "System log snapshot exceeds size limit"
                             )
                     body = bytes(buffer)
-                    if (
-                        body.startswith(b"\x1f\x8b")
-                        or body[257:262] == b"ustar"
-                        or b"\x00" in body
-                    ):
-                        raise UnexpectedApiException(
-                            "System log format is unsupported (plain text only)"
-                        )
-                    if response.content_type == "text/plain":
-                        try:
-                            return body.decode("utf-8")
-                        except UnicodeError:
-                            raise UnexpectedApiException(
-                                "System log snapshot encoding is unsupported"
-                            ) from None
+                    # Keep firmware JSON error/auth-expiry responses separate
+                    # from archive decoding and its strict size limits.
                     if response.content_type == "application/json":
                         try:
                             error = json.loads(body)
@@ -427,9 +415,26 @@ class TplinkDecoApi:
                                 "System log authentication expired"
                             )
                         raise UnexpectedApiException("System log download was rejected")
-                    raise UnexpectedApiException(
-                        "System log format is unsupported (plain text only)"
-                    )
+                    if response.content_type not in (
+                        "text/plain",
+                        "application/gzip",
+                        "application/x-gzip",
+                        "application/x-tar",
+                        "application/octet-stream",
+                    ):
+                        raise UnexpectedApiException(
+                            "System log snapshot content type is unsupported"
+                        )
+                    if response.content_type != "text/plain" and not (
+                        body.startswith(b"\x1f\x8b")
+                        or body[257:262] == b"ustar"
+                    ):
+                        raise UnexpectedApiException(
+                            "System log snapshot content type is unsupported"
+                        )
+                    # Tar scans and gzip inflation are CPU-bound and must not
+                    # block Home Assistant's running event loop.
+                    return await asyncio.to_thread(decode_system_log, body)
                 finally:
                     response.release()
         except asyncio.TimeoutError:
