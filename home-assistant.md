@@ -410,3 +410,26 @@ For how to implement, test, review or approve those changes, use
 `AGENTS.md`, `AI_POLICY.md`, the applicable repository skills and
 `CLAUDE.md` **if/when that file is added**. This guide deliberately does
 not duplicate their general standards.
+
+
+## Optional read-only WiFi status (upstream #627)
+
+A third, entry-owned coordinator reads the local `admin/wireless?form=wlan`
+endpoint independently from the mandatory Deco and client coordinators.
+Its first refresh runs only after platform forwarding finishes and therefore
+does not delay entity setup. Supported Main, Guest and IoT networks are
+discovered only when valid firmware `enable` values are returned; the Main
+sensor is disabled by default. Sensor unique IDs are
+`<master_mac>_wifi_<network>`, tied to the existing master device without
+changing any previously registered IDs.
+
+An unsupported network is absent rather than incorrectly reported as OFF.
+Existing wireless entities become unavailable if their network disappears
+from a valid later response. Optional wireless failures cannot block Deco
+or client polling, and repeated failures defer wireless requests by five
+minutes. Existing pause and config-entry shutdown semantics apply.
+
+The coordinator stores only boolean states. SSIDs, passwords, PSKs and raw
+responses must not enter state attributes, diagnostics or logs. Optional
+SSID exposure (upstream #637) is not included. Real hardware compatibility
+remains unverified until independently tested.
