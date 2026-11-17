@@ -49,6 +49,19 @@ description: "Use when comparing, backporting, reviewing, or implementing change
   context secrets. Preserve existing
   HTTP 401 error type and non-auth transport retry behavior.
   See the [AGENTS HTTP 403 rules](../../../AGENTS.md).
+- **Generic HTTP/transport logging follow-up:** log controlled
+  HTTP status codes and the exception **class**, never the raw
+  `aiohttp.ClientResponseError`/connector message or the
+  call-site's `context` (reboot contexts can embed private MACs).
+  Preserve the existing 401/4xx/5xx exception types, 401/403
+  authentication invalidation and retry policy, and network-session
+  retention. Test real `_async_post` handling for HTTP
+  400/401/502/client-list 503, connector and generic client errors,
+  and timeout. Synthetic private request URLs, token/cookie strings,
+  error messages, context and connector hosts must not appear
+  in captured DEBUG logs. Raw propagated exceptions are a
+  **separate compatibility/privacy consideration**; do not claim
+  this log-only hardening sanitizes their traceback objects.
 - Keep tests for unimplemented features (S7 outer sessions and syslog
   forwarding) explicitly **pending**, not failed or silently claimed as
   ported. This is one focused increment toward test parity; do not check
