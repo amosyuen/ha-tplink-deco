@@ -11,6 +11,7 @@ from typing import Any
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.helpers.update_coordinator import UpdateFailed
@@ -193,8 +194,54 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator[dict[str, bool]]
         )
         self.data = {}
         self.ssids: dict[str, dict[str, str]] = {}
+        self._observed_master_mac = self._current_master_mac()
+        self._master_generation = 0
+        self._ssid_master_mac: str | None = None
+        self._ssid_master_generation: int | None = None
         self._next_retry = 0.0
         self._consecutive_failures = 0
+        if config_entry is not None:
+            config_entry.async_on_unload(
+                deco_coordinator.async_add_listener(self._handle_deco_update)
+            )
+
+    def _current_master_mac(self) -> str | None:
+        """Read the current master identity without exposing router metadata."""
+        data = getattr(self._deco_coordinator, "data", None)
+        master = getattr(data, "master_deco", None)
+        mac = getattr(master, "mac", None)
+        return mac if isinstance(mac, str) and mac else None
+
+    @callback
+    def _observe_master(self) -> tuple[str | None, int]:
+        """Invalidate SSID ownership whenever the current master changes."""
+        master_mac = self._current_master_mac()
+        if master_mac != self._observed_master_mac:
+            self._observed_master_mac = master_mac
+            self._master_generation += 1
+            self.ssids = {}
+            self._ssid_master_mac = None
+            self._ssid_master_generation = None
+        return master_mac, self._master_generation
+
+    @callback
+    def _handle_deco_update(self) -> None:
+        """Track every master transition before consumers publish entity state."""
+        self._observe_master()
+
+    def ssid_names_for_master(
+        self, master_mac: str, network_key: str
+    ) -> dict[str, str]:
+        """Return names only for a fresh snapshot owned by this master."""
+        current_mac, generation = self._observe_master()
+        if (
+            not self.expose_ssids
+            or current_mac != master_mac
+            or self._ssid_master_mac != master_mac
+            or self._ssid_master_generation != generation
+        ):
+            return {}
+        return self.ssids.get(network_key, {})
 
     @property
     def retry_remaining_seconds(self) -> int:
@@ -208,6 +255,7 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator[dict[str, bool]]
 
     async def _async_update_data(self) -> dict[str, bool]:
         """Read WiFi state without blocking Deco or client polling."""
+        request_master, request_generation = self._observe_master()
         if self._deco_coordinator.paused:
             return self.data
 
@@ -246,8 +294,21 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator[dict[str, bool]]
                 self._next_retry = now + WIRELESS_RETRY_INTERVAL_SECONDS
             _LOGGER.debug("Optional wireless request failed (%s)", type(error).__name__)
         else:
-            # Commit names and retry state only after both parsers succeed.
-            self.ssids = names
+            # A -> B -> A during the await must not revalidate A's response.
+            current_master, current_generation = self._observe_master()
+            if (
+                self.expose_ssids
+                and request_master is not None
+                and request_master == current_master
+                and request_generation == current_generation
+            ):
+                self.ssids = names
+                self._ssid_master_mac = current_master
+                self._ssid_master_generation = current_generation
+            else:
+                self.ssids = {}
+                self._ssid_master_mac = None
+                self._ssid_master_generation = None
             self.reset_retry()
             _LOGGER.debug("Wireless network keys=%s", sorted(states))
             return states
