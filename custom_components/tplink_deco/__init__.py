@@ -383,7 +383,9 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
         if coordinator is not None:
             await coordinator.async_shutdown()
 
-    for coordinator in (deco_coordinator, clients_coordinator, wireless_coordinator):
+    # Only fork-specific Deco/client coordinators implement async_close.
+    # Home Assistant's wireless DataUpdateCoordinator does not.
+    for coordinator in (deco_coordinator, clients_coordinator):
         if coordinator is not None:
             await coordinator.async_close()
 
