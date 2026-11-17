@@ -14,6 +14,7 @@ from homeassistant.components.sensor import SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.const import UnitOfDataRate
+from homeassistant.const import UnitOfInformation
 from homeassistant.const import UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.core import callback
@@ -24,12 +25,14 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
+from .const import COORDINATOR_MOBILE_KEY
 from .const import DOMAIN
 from .const import SIGNAL_DECO_ADDED
 from .coordinator import TpLinkDeco
 from .coordinator import TplinkDecoClientUpdateCoordinator
 from .coordinator import TplinkDecoUpdateCoordinator
 from .device import create_device_info
+from .mobile import TplinkDecoMobileDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -231,6 +234,9 @@ async def async_setup_entry(
     coordinator_clients: TplinkDecoClientUpdateCoordinator = data[
         COORDINATOR_CLIENTS_KEY
     ]
+    coordinator_mobile: TplinkDecoMobileDataUpdateCoordinator | None = data.get(
+        COORDINATOR_MOBILE_KEY
+    )
 
     tracked_macs: set[str] = set()
     tracked_client_count_macs: set[str] = set()
@@ -365,6 +371,89 @@ async def async_setup_entry(
     coordinator_clients.on_close(
         coordinator_clients.async_add_listener(_add_untracked_client_counts)
     )
+
+    # Register mobile usage only after a supported master's successful read.
+    # Each master receives a stable unique ID and previous owners go unavailable.
+    if coordinator_mobile is not None:
+        mobile_sensor_macs: set[str] = set()
+
+        @callback
+        def _add_mobile_sensor() -> None:
+            """Discover supported mobile usage without duplicate entities."""
+            master = coordinator_decos.data.master_deco
+            if (
+                master is None
+                or master.mac in mobile_sensor_macs
+                or not coordinator_mobile.has_current_usage(master.mac)
+            ):
+                return
+            mobile_sensor_macs.add(master.mac)
+            async_add_entities(
+                [TplinkMobileDataUsageSensor(coordinator_decos, coordinator_mobile, master.mac)]
+            )
+
+        entry.async_on_unload(
+            coordinator_mobile.async_add_listener(_add_mobile_sensor)
+        )
+        _add_mobile_sensor()
+
+
+class TplinkMobileDataUsageSensor(CoordinatorEntity, SensorEntity):
+    """Read-only mobile WAN usage for the master that supplied the value."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "mobile_data_usage"
+    _attr_name = "Mobile data usage"
+    _attr_device_class = SensorDeviceClass.DATA_SIZE
+    _attr_native_unit_of_measurement = UnitOfInformation.KIBIBYTES
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+
+    def __init__(
+        self,
+        coordinator_decos: TplinkDecoUpdateCoordinator,
+        coordinator_mobile: TplinkDecoMobileDataUpdateCoordinator,
+        master_mac: str,
+    ) -> None:
+        """Keep the per-master sensor's MAC-based entity ID stable."""
+        super().__init__(coordinator_mobile)
+        self._deco_coordinator = coordinator_decos
+        self._master_mac = master_mac
+        self._attr_unique_id = f"{master_mac}_mobile_data_usage"
+
+    async def async_added_to_hass(self) -> None:
+        """Update availability immediately if the mesh master changes."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self._deco_coordinator.async_add_listener(self._handle_deco_update)
+        )
+
+    @callback
+    def _handle_deco_update(self) -> None:
+        """Re-evaluate the current owner without exposing a stale value."""
+        self.async_write_ha_state()
+
+    @property
+    def available(self) -> bool:
+        """Hide old-master values after any master-generation transition."""
+        return (
+            super().available
+            and self.coordinator.has_current_usage(self._master_mac)
+        )
+
+    @property
+    def native_value(self) -> int | None:
+        """Return a current, validated usage value, including genuine zero."""
+        return self.coordinator.data if self.available else None
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Associate usage with the existing master Deco device."""
+        master = self._deco_coordinator.data.decos.get(self._master_mac)
+        return (
+            create_device_info(master, master, self._deco_coordinator)
+            if master is not None
+            else None
+        )
 
 
 class TplinkCoordinatorHealthSensor(SensorEntity):
