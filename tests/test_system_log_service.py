@@ -29,8 +29,13 @@ class FakeServices:
         self.handlers: dict[tuple[str, str], tuple[Any, Any]] = {}
 
     def async_register(
-        self, domain: str, service: str, handler: Any, *, schema: Any,
-        supports_response: Any
+        self,
+        domain: str,
+        service: str,
+        handler: Any,
+        *,
+        schema: Any,
+        supports_response: Any,
     ) -> None:
         """Register a service with schema validation."""
         self.handlers[(domain, service)] = (handler, schema)
@@ -114,10 +119,12 @@ async def test_action_is_registered_once_and_selects_correct_entry(
     assert response == {"path": str(path), "line_count": 2}
     assert path.read_text(encoding="utf-8") == "second\nlast\n"
     assert path.stat().st_mode & 0o077 == 0
-    hass.data[DOMAIN]["first"][COORDINATOR_DECOS_KEY].api.async_get_system_log.assert_not_awaited()
-    hass.data[DOMAIN]["second"][COORDINATOR_DECOS_KEY].api.async_get_system_log.assert_awaited_once_with(
-        SystemLogLevel.WARNING
-    )
+    hass.data[DOMAIN]["first"][
+        COORDINATOR_DECOS_KEY
+    ].api.async_get_system_log.assert_not_awaited()
+    hass.data[DOMAIN]["second"][
+        COORDINATOR_DECOS_KEY
+    ].api.async_get_system_log.assert_awaited_once_with(SystemLogLevel.WARNING)
 
 
 @pytest.mark.asyncio
@@ -130,9 +137,9 @@ async def test_single_loaded_entry_is_selected_without_identifier(
     await async_setup(hass, {})
 
     await _download(hass, filename="one.log")
-    hass.data[DOMAIN]["first"][COORDINATOR_DECOS_KEY].api.async_get_system_log.assert_awaited_once_with(
-        SystemLogLevel.ALL
-    )
+    hass.data[DOMAIN]["first"][
+        COORDINATOR_DECOS_KEY
+    ].api.async_get_system_log.assert_awaited_once_with(SystemLogLevel.ALL)
 
 
 @pytest.mark.asyncio
@@ -146,9 +153,7 @@ async def test_ambiguous_entry_requires_config_entry_id(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("entry_id", ["absent", "unrelated"])
-async def test_rejects_incorrect_config_entry(
-    tmp_path: Path, entry_id: str
-) -> None:
+async def test_rejects_incorrect_config_entry(tmp_path: Path, entry_id: str) -> None:
     """Reject missing or foreign integration entry IDs."""
     hass = _hass(tmp_path)
     await async_setup(hass, {})
@@ -168,8 +173,17 @@ async def test_rejects_unloaded_entry(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     "filename",
-    ["../secret.log", "folder/secret.log", r"folder\secret.log", "CON.log", ".hidden.log",
-     "evil.txt", "secret.log/..", "a" * 130 + ".log", "bad\x00.log"],
+    [
+        "../secret.log",
+        "folder/secret.log",
+        r"folder\secret.log",
+        "CON.log",
+        ".hidden.log",
+        "evil.txt",
+        "secret.log/..",
+        "a" * 130 + ".log",
+        "bad\x00.log",
+    ],
 )
 def test_filename_validation_blocks_traversal_and_reserved_names(filename: str) -> None:
     """Reject separators, reserved Windows names and unbounded filenames."""
@@ -203,4 +217,6 @@ async def test_rejects_invalid_log_level_before_router_request(
         await _download(
             hass, config_entry_id="first", filename="test.log", log_level="BROKEN"
         )
-    hass.data[DOMAIN]["first"][COORDINATOR_DECOS_KEY].api.async_get_system_log.assert_not_awaited()
+    hass.data[DOMAIN]["first"][
+        COORDINATOR_DECOS_KEY
+    ].api.async_get_system_log.assert_not_awaited()

@@ -48,4 +48,3 @@ download_system_log:
             - INFO
             - DEBUG
             - ALL
-

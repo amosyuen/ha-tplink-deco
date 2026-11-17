@@ -550,7 +550,6 @@ Physical firmware and Recorder/history behavior remain unverified.
 PR #43 is merged; this behavior is present on `main` but physical
 firmware behavior remains unverified.
 
-
 ## Manual system-log export (upstream #650; PR #44, not merged)
 
 The proposed `tplink_deco.download_system_log` action is registered

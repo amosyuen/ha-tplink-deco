@@ -330,7 +330,9 @@ class TplinkDecoApi:
         """Build the log snapshot through the encrypted LuCI endpoint."""
         await self.async_login_if_needed()
         if getattr(self, "_outer_id", None) is not None:
-            raise UnexpectedApiException("System log export is unsupported on legacy sessions")
+            raise UnexpectedApiException(
+                "System log export is unsupported on legacy sessions"
+            )
         response = await self._async_post(
             SYSTEM_LOG_CONTEXT,
             self._log_export_url(),
@@ -377,9 +379,29 @@ class TplinkDecoApi:
                 try:
                     response.raise_for_status()
                     self._update_https_host_after_redirect(response)
-                    body = await response.content.read(MAX_SYSTEM_LOG_BYTES + 1)
-                    if len(body) > MAX_SYSTEM_LOG_BYTES:
-                        raise UnexpectedApiException("System log snapshot exceeds size limit")
+                    # read(n) may yield fewer than n bytes even when more
+                    # data remains; keep reading until EOF under a hard cap.
+                    buffer = bytearray()
+                    while True:
+                        chunk = await response.content.read(
+                            min(65536, MAX_SYSTEM_LOG_BYTES + 1 - len(buffer))
+                        )
+                        if not chunk:
+                            break
+                        buffer.extend(chunk)
+                        if len(buffer) > MAX_SYSTEM_LOG_BYTES:
+                            raise UnexpectedApiException(
+                                "System log snapshot exceeds size limit"
+                            )
+                    body = bytes(buffer)
+                    if (
+                        body.startswith(b"\x1f\x8b")
+                        or body[257:262] == b"ustar"
+                        or b"\x00" in body
+                    ):
+                        raise UnexpectedApiException(
+                            "System log format is unsupported (plain text only)"
+                        )
                     if response.content_type == "text/plain":
                         try:
                             return body.decode("utf-8")
@@ -395,11 +417,15 @@ class TplinkDecoApi:
                                 "System log response is malformed"
                             ) from None
                         if not isinstance(error, dict):
-                            raise UnexpectedApiException("System log response is malformed")
+                            raise UnexpectedApiException(
+                                "System log response is malformed"
+                            )
                         error_code = error.get("errorcode") or error.get("error_code")
                         if error_code in ("timeout", -5002, "-5002"):
                             self.clear_auth()
-                            raise EmptyDataException("System log authentication expired")
+                            raise EmptyDataException(
+                                "System log authentication expired"
+                            )
                         raise UnexpectedApiException("System log download was rejected")
                     raise UnexpectedApiException(
                         "System log format is unsupported (plain text only)"
@@ -414,7 +440,9 @@ class TplinkDecoApi:
                 raise ForbiddenException("System log authentication expired") from None
             raise UnexpectedApiException("System log HTTP request failed") from None
         except (aiohttp.ClientPayloadError, aiohttp.ServerDisconnectedError):
-            raise TransientConnectionException("System log response incomplete") from None
+            raise TransientConnectionException(
+                "System log response incomplete"
+            ) from None
         except aiohttp.ClientError:
             raise UnexpectedApiException("System log transport failed") from None
 
@@ -670,7 +698,9 @@ class TplinkDecoApi:
             context == SYSTEM_LOG_CONTEXT and params.get("form") == "feedback_log"
         )
         private_status_request = (
-            params.get("form") == "wlan" or mobile_usage_request or system_log_build_request
+            params.get("form") == "wlan"
+            or mobile_usage_request
+            or system_log_build_request
         )
         private_label = (
             "System log"
@@ -807,7 +837,9 @@ class TplinkDecoApi:
             else:
                 _LOGGER.error("%s connection error: %s", context, err)
             if mobile_usage_request or system_log_build_request:
-                raise UnexpectedApiException(f"{private_label} connection failed") from None
+                raise UnexpectedApiException(
+                    f"{private_label} connection failed"
+                ) from None
             raise
         except aiohttp.ClientError as err:
             if private_status_request:
@@ -821,7 +853,9 @@ class TplinkDecoApi:
                     err,
                 )
             if mobile_usage_request or system_log_build_request:
-                raise UnexpectedApiException(f"{private_label} transport failed") from None
+                raise UnexpectedApiException(
+                    f"{private_label} transport failed"
+                ) from None
             raise
 
     def _encode_payload(self, payload: Any):
@@ -909,11 +943,19 @@ class TplinkDecoApi:
             data_json = json.loads(data_decrypted)
             return data_json
         except Exception as err:
-            if context in ("Get wireless status", "Get mobile data usage", SYSTEM_LOG_CONTEXT):
+            if context in (
+                "Get wireless status",
+                "Get mobile data usage",
+                SYSTEM_LOG_CONTEXT,
+            ):
                 private_label = (
                     "System log"
                     if context == SYSTEM_LOG_CONTEXT
-                    else ("Mobile data" if context == "Get mobile data usage" else "Wireless status")
+                    else (
+                        "Mobile data"
+                        if context == "Get mobile data usage"
+                        else "Wireless status"
+                    )
                 )
                 _LOGGER.debug(
                     "%s response decoding failed (%s)",

@@ -2,7 +2,6 @@
 
 from enum import IntEnum
 
-
 MAX_SYSTEM_LOG_BYTES = 8 * 1024 * 1024
 
 

@@ -2,8 +2,8 @@
 
 import asyncio
 import logging
-from types import SimpleNamespace
 import traceback
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 
@@ -51,7 +51,10 @@ def _response(
     response.content_type = content_type
     response.status = status
     response.history = ()
-    response.content.read = AsyncMock(return_value=body)
+    response.content.read = AsyncMock(
+        side_effect=[body[index : index + 65536] for index in range(0, len(body), 65536)]
+        + [b""]
+    )
     response.release = MagicMock()
     response.raise_for_status = MagicMock()
     if status >= 400:
@@ -80,12 +83,9 @@ async def test_build_then_save_once_at_selected_level() -> None:
         {"operation": "build", "params": {"level": 4}}
     )
     assert session.post.await_args.kwargs["params"] == {"form": "save_log"}
-    assert session.post.await_args.kwargs["cookies"] == {
-        "sysauth": "PRIVATE_COOKIE"
-    }
-    session.post.return_value.content.read.assert_awaited_once_with(
-        MAX_SYSTEM_LOG_BYTES + 1
-    )
+    assert session.post.await_args.kwargs["cookies"] == {"sysauth": "PRIVATE_COOKIE"}
+    assert session.post.return_value.content.read.await_count == 2
+    session.post.return_value.content.read.assert_any_await(65536)
     session.post.return_value.release.assert_called_once()
 
 
@@ -162,9 +162,14 @@ async def test_expired_json_response_reauthenticates_once() -> None:
     [
         (_response(b"bad", content_type="application/octet-stream"), "unsupported"),
         (_response(b"not-json", content_type="application/json"), "malformed"),
+        (_response(b"\x1f\x8bcompressed"), "unsupported"),
+        (_response(b"\x00" * 257 + b"ustar" + b"\x00"), "unsupported"),
         (_response(b"\xff\xfe"), "encoding"),
         (_response(b"Z" * (MAX_SYSTEM_LOG_BYTES + 1)), "size limit"),
-        (_response(b'{"errorcode": "-42"}', content_type="application/json"), "rejected"),
+        (
+            _response(b'{"errorcode": "-42"}', content_type="application/json"),
+            "rejected",
+        ),
         (_response(status=502), "HTTP request failed"),
     ],
 )
