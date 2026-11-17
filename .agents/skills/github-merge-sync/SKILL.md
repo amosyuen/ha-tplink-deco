@@ -119,6 +119,9 @@ PR's successful Python/HA and linting checks.
 - The job records a GitHub-confirmed merge, not a hardware/runtime test.
   Human review remains responsible for checking the merged change's actual
   behavior, and for any further checklist work without an explicit PR link.
-- The workflow does not retroactively process merges that happened before
-  it was installed, update arbitrary external repositories, or infer
-  relationships from GitHub discussions without explicit references.
+- Scheduled reconciliation may revisit confirmed merges from the last
+  48 hours, including missed events near deployment. It skips merges
+  with a completed bot-owned summary and never scans older history
+  automatically. Older gaps require explicit operator review. The
+  workflow never updates external repositories or infers relationships
+  without explicit references.
