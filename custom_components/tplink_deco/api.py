@@ -246,18 +246,26 @@ class TplinkDecoApi:
             params={"form": "wlan"},
             data=self._encode_payload({"operation": "read"}),
         )
-        payload = self._decrypt_data(context, response_json["data"])
+        if not isinstance(response_json, dict):
+            raise UnexpectedApiException("Wireless status response is malformed")
+        encrypted_data = response_json.get("data")
+        if not isinstance(encrypted_data, str):
+            raise UnexpectedApiException("Wireless status encrypted data is missing")
+
+        payload = self._decrypt_data(context, encrypted_data)
         if not isinstance(payload, dict):
-            raise ValueError("Wireless status response is malformed")
-        error_code = payload.get("error_code", payload.get("errorcode", 0))
-        if error_code == -5002:
+            raise UnexpectedApiException("Wireless status response is malformed")
+        error_code = payload.get("error_code") or payload.get("errorcode")
+        if error_code in (-5002, "-5002"):
             self.clear_auth()
             raise EmptyDataException("Wireless status authentication expired")
+        if error_code == "timeout":
+            raise TimeoutException("Wireless status request timed out")
         if error_code not in (0, None, ""):
             raise UnexpectedApiException("Wireless status request was rejected")
         result = payload.get("result")
         if not isinstance(result, dict):
-            raise ValueError("Wireless status response is malformed")
+            raise UnexpectedApiException("Wireless status response is malformed")
         return result
 
     # Return performance data (CPU / memory)
@@ -333,8 +341,7 @@ class TplinkDecoApi:
         self._aes_iv = secrets.randbelow(MAX_AES_KEY - MIN_AES_KEY) + MIN_AES_KEY
         self._aes_key_bytes = str(self._aes_key).encode("utf-8")
         self._aes_iv_bytes = str(self._aes_iv).encode("utf-8")
-        _LOGGER.debug("aes_key=%s", self._aes_key)
-        _LOGGER.debug("aes_iv=%s", self._aes_iv)
+        _LOGGER.debug("Deco request encryption initialized")
 
     # Fetch password RSA keys
     async def _async_fetch_keys(self):
@@ -459,7 +466,7 @@ class TplinkDecoApi:
 
         try:
             self._stok = result["stok"]
-            _LOGGER.debug("stok=%s", self._stok)
+            _LOGGER.debug("Deco authenticated session established")
         except Exception as err:
             _LOGGER.error("%s parse response error=%s, data=%s", context, err, data)
             raise UnexpectedApiException from err
@@ -516,7 +523,7 @@ class TplinkDecoApi:
                 if len(cookie_parts) == 2:
                     request_cookies[cookie_parts[0]] = cookie_parts[1]
             except Exception:
-                _LOGGER.warning("Could not parse cookie: %s", self._cookie)
+                _LOGGER.warning("Could not parse session cookie")
         try:
             async with async_timeout.timeout(self._timeout_seconds):
                 response = await self._session.post(
@@ -535,11 +542,15 @@ class TplinkDecoApi:
                     match = re.search(r"(sysauth=[a-f0-9]+)", cookie_header)
                     if match:
                         self._cookie = match.group(1)
-                        _LOGGER.debug("Found new cookie: %s", self._cookie)
+                        _LOGGER.debug("Deco session cookie updated")
                         break
 
                 # Soms antwoordt de server met de verkeerde content-type
                 response_json = await response.json(content_type=None)
+                if params.get("form") == "wlan" and not isinstance(
+                    response_json, dict
+                ):
+                    raise UnexpectedApiException("Wireless status response is malformed")
                 if "error_code" in response_json:
                     error_code = response_json.get("error_code")
                     if error_code == -5002 and authenticated_request:
@@ -548,12 +559,15 @@ class TplinkDecoApi:
                             f"{context} authenticated session expired (error_code=-5002)"
                         )
                     if error_code != 0 and error_code != "":
-                        _LOGGER.debug(
-                            "%s error_code=%s, response_json=%s",
-                            context,
-                            error_code,
-                            response_json,
-                        )
+                        if params.get("form") == "wlan":
+                            _LOGGER.debug("%s returned API error", context)
+                        else:
+                            _LOGGER.debug(
+                                "%s error_code=%s, response_json=%s",
+                                context,
+                                error_code,
+                                response_json,
+                            )
                         raise UnexpectedApiException(f"{context} error: {error_code}")
 
                 return response_json
@@ -564,11 +578,10 @@ class TplinkDecoApi:
             )
             raise TimeoutException from err
         except aiohttp.ClientResponseError as err:
-            if (
-                params is not None
-                and params.get("form") == "client_list"
-                and (500 <= err.status < 600)
-            ):
+            if params.get("form") == "wlan":
+                # aiohttp errors can contain the LuCI token in request_info.
+                _LOGGER.debug("Wireless status HTTP error: %d", err.status)
+            elif params.get("form") == "client_list" and 500 <= err.status < 600:
                 # aiohttp exceptions can contain a LuCI session token in
                 # request_info.real_url. Never interpolate these exceptions.
                 _LOGGER.debug("Deco client-list server error: HTTP %d", err.status)
@@ -583,7 +596,11 @@ class TplinkDecoApi:
                 raise err
             if err.status == 403:
                 self.clear_auth()
-                message = f"{context} Forbidden error: {err}"
+                message = (
+                    f"{context} Forbidden error: HTTP {err.status}"
+                    if params.get("form") == "wlan"
+                    else f"{context} Forbidden error: {err}"
+                )
                 raise ForbiddenException(message) from err
             raise err
         except (aiohttp.ClientPayloadError, aiohttp.ServerDisconnectedError) as err:
@@ -597,15 +614,21 @@ class TplinkDecoApi:
             ) from None
         except aiohttp.ClientConnectorError as err:
             # Network failures do not prove authentication expired.
-            _LOGGER.error("%s connection error: %s", context, err)
+            if params.get("form") == "wlan":
+                _LOGGER.debug("Wireless connection failed (%s)", type(err).__name__)
+            else:
+                _LOGGER.error("%s connection error: %s", context, err)
             raise
         except aiohttp.ClientError as err:
-            _LOGGER.error(
-                "%s client error: %s",
-                context,
-                err,
-            )
-            raise err
+            if params.get("form") == "wlan":
+                _LOGGER.debug("Wireless transport failed (%s)", type(err).__name__)
+            else:
+                _LOGGER.error(
+                    "%s client error: %s",
+                    context,
+                    err,
+                )
+            raise
 
     def _encode_payload(self, payload: Any):
         data = self._encode_data(payload)
@@ -692,6 +715,13 @@ class TplinkDecoApi:
             data_json = json.loads(data_decrypted)
             return data_json
         except Exception as err:
+            if context == "Get wireless status":
+                _LOGGER.debug(
+                    "Wireless response decoding failed (%s)", type(err).__name__
+                )
+                raise UnexpectedApiException(
+                    "Wireless status response could not be decoded"
+                ) from None
             _LOGGER.error(
                 "%s decode data error=%s, data=%s",
                 context,
