@@ -892,6 +892,32 @@ policy for AI-assisted development.
   Python/HA matrices plus Pre-commit/HACS/Hassfest on the **final**
   commit (including a documentation-only follow-up).
 
+## Shared login cancellation and single-flight recovery (PR #51 follow-up)
+
+- **Verified failure:** `async_login` awaited the same shared future in
+  its `finally` block even if its owner was cancelled; because
+  `asyncio.CancelledError` bypasses `except Exception`, the future
+  remained pending, leaving both the owner and other polling callers
+  waiting indefinitely. Cancelling a waiter could also cancel that
+  unshielded shared future and break a still-running owner.
+- **Single-flight rule:** shield the shared login **only for waiters**;
+  never shield the owner or swallow its cancellation. The owner must
+  publish success, a genuine exception or cancellation to existing
+  waiters, then clear the exact shared future without awaiting it in
+  cleanup. Retrieve an unobserved owner exception to avoid event-loop
+  "Future exception was never retrieved" warnings. A cancelled
+  owner must clear the potentially partial token, cookie and sequence;
+  other timeout/network errors keep their existing handling.
+- **Deterministic tests:** use `asyncio.Event` gates and bounded
+  `asyncio.wait_for` to exercise concurrent successful logins,
+  independently cancelled waiters, cancelled owners with other
+  waiters, failure propagation and a later successful retry.
+  Assert the original exception types, complete state cleanup and
+  that each attempt calls the login implementation at most once.
+  Do not turn `CancelledError` into a login/authentication failure
+  or change the ordinary single-relogin retry budget. Do not use
+  real network sessions or credentials.
+
 ## Firmware payload privacy and API error boundaries (issue #2, PR #51)
 
 - **Verified leak on `main`:** malformed device/client lists, login
