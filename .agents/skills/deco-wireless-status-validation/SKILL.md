@@ -87,6 +87,21 @@ present on an open PR is not yet present on deployed `main`.
   merging stale names; omit unsupported networks and avoid exposing names
   on unavailable former-master entities. Never include names in diagnostics,
   DEBUG logs or raw responses.
+- **P1: associate SSID snapshots with a master and generation (PR #42).**
+  Record the owner MAC **and** a monotonic per-entry generation when a
+  successful WLAN refresh begins. Register a Deco coordinator listener
+  before adding wireless sensors; increment the generation and clear
+  SSIDs/ownership whenever the master changes. A -> B -> A is **not**
+  equivalent to no change: an older A snapshot must remain hidden until
+  a fresh A request completes. Recheck the MAC and generation when the
+  asynchronous request returns; do not publish SSIDs for a stale response.
+  Before returning sensor attributes, revalidate ownership against the
+  current master and generation. Keep boolean enabled-state behavior and
+  stable MAC-based entity IDs unchanged. Register the coordinator listener
+  for config-entry unload cleanup without closing shared sessions.
+  Test A -> B, A -> B -> A (both with and without an intervening poll),
+  an in-flight master switch, opt-out, callback publication, listener
+  lifecycle and recovery on the new owner's successful poll.
 - **Validate before committing coordinator data:** SSID parsing and boolean
   state parsing must run inside the **same** guarded update. A decoder error
   must become a sanitized `UpdateFailed`, increment the normal wireless
