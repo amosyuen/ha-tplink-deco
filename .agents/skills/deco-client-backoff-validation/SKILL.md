@@ -12,8 +12,9 @@ description: "Use when porting, reviewing, or debugging capped HTTP 5xx Deco cli
    Inspect `custom_components/tplink_deco/api.py` and
    `coordinator.py`, existing transport and multi-node tests, plus
    [upstream PR #624](https://github.com/amosyuen/ha-tplink-deco/pull/624).
-   Upstream has global-list fallback and health structures that are not
-   yet present in this fork: port the _behavior_, not its architecture.
+   This fork already includes coordinator-health sensors and a capped
+   per-node 5xx backoff. Port global fallback **behavior**, not an
+   unrelated upstream coordinator architecture.
 2. Preserve the fork's token/cookie and the existing separate
    reauthentication, timeout and truncated-response handling. An HTTP
    5xx client-list response is not proof that the session has expired;
@@ -25,12 +26,13 @@ description: "Use when porting, reviewing, or debugging capped HTTP 5xx Deco cli
    240, 300, 300... seconds** after consecutive 5xx polling cycles.
    Use `time.monotonic()` for expiry; never block the Home Assistant
    event loop with `sleep()` or create an unbounded retry loop.
-4. Skip all Deco client-list calls while the delay is active. Return
-   the previous known clients unchanged, preserving online flags,
-   `last_activity`, node associations and stable entity IDs. With a
-   partial multi-node failure, keep results from successful nodes and
-   previous clients assigned to failed nodes. If every node fails,
-   return the whole previous inventory, including unassigned clients.
+4. Before a working global fallback has been established, skip
+   client-list calls during 5xx backoff and retain cached clients.
+   Once global fallback succeeds, continue **one global query** per
+   regular scheduled poll during per-node cooldown, without retrying
+   the faulty nodes. Keep previously valid peer results and cached
+   clients on a failed fallback; preserve identities and online state
+   whenever no query returns valid data.
 5. A _successful empty list_ is not a failed poll: retain the existing
    `consider_home` policy and reset the delay once **all** requested
    nodes return valid results. A transient or authentication failure
@@ -58,9 +60,8 @@ description: "Use when porting, reviewing, or debugging capped HTTP 5xx Deco cli
 
 ## Tracking
 
-9. Link the PR as `Part of #2` and update the in-progress status in
-   issue #2 as soon as the PR is opened. Leave #624's tracking
-   checklist item unchecked until a verified merge into `main`.
-   Document remaining work (global client-list fallback, coordinator
-   health sensors, real hardware validation). Save reusable new lessons
-   here and repository-wide rules in `AGENTS.md`.
+9. Link the PR as `Part of #2` and update its status immediately.
+   Keep the combined #527/#556 checklist item unchecked until the
+   fallback is merged and verified on `main`. Coordinator-health
+   sensors already exist in fork PR #30. Report real hardware testing
+   separately and record verified lessons in `AGENTS.md` and here.
