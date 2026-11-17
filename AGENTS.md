@@ -1167,8 +1167,13 @@ policy for AI-assisted development.
   per entry, and reject non-boolean form submissions. Keep SSIDs out of
   coordinator status data, logs, diagnostics and entities when consent
   is off; when enabled, expose names only on verified, available networks
-  owned by the current master. Replace (do not merge) cached names on a
-  successful poll. Opting out does **not** erase Home Assistant Recorder
+  owned by the current master **and the same observed master generation**.
+  Track A -> B -> A transitions via a per-entry Deco coordinator listener,
+  invalidate SSID ownership before sensor listeners publish state, and
+  discard names from a request that crossed any master change (even if
+  the original MAC becomes master again). A matching MAC alone is not
+  sufficient proof of ownership. Replace (do not merge) cached names on
+  a successful poll. Opting out does **not** erase Home Assistant Recorder
   history, backups or third-party exports.
 - **Atomic WLAN failure handling (PR #42):** parse both boolean flags and
   optional SSID names within the same guarded refresh; do not replace the
