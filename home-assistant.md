@@ -11,25 +11,30 @@ This file does not replace those instructions or the task-specific procedures
 in [`.agents/skills/`](.agents/skills/). The repository's governing policy
 remains `AI_POLICY.md`.
 
-**Baseline:** verified against fork `main` at
+**Historical baseline:** fork `main` at
 `a657aa06636884404fc1ec08ae9462f244d10047` (15 November 2026),
-before the optional-signal fix in this PR. This describes the fork,
-**not** the current upstream architecture. Deco discovery (PR #25),
-client restoration (PR #26), tracker discovery (PR #27), per-node client
-counts (PR #28), non-blocking initial client refresh (PR #29),
-coordinator health (PR #30), privacy-safe diagnostics (PR #31),
-numeric-string telemetry (PR #33), independent status polling (PR #34),
-bounded client-list concurrency (PR #35), and restore-state error
-hardening/test parity (PR #36) are merged.
+before subsequent fixes and optional WLAN support. It is **not** a
+claim that this old commit represents the present integration or
+upstream architecture. Deco discovery (PR #25), client restoration
+(PR #26), tracker discovery (PR #27), per-node client counts (PR #28),
+non-blocking initial client refresh (PR #29), coordinator health
+(PR #30), privacy-safe diagnostics (PR #31), numeric-string telemetry
+(PR #33), independent status polling (PR #34), bounded client-list
+concurrency (PR #35), restore-state error hardening (PR #36), and
+read-only WLAN status (PR #41) have since merged into the fork.
+The SSID opt-in contract below is introduced by PR #42; it applies
+to that PR branch, and is **not** a deployed `main` capability until
+the PR actually merges.
 
 ## 1. Integration boundary and data ownership
 
 - Home Assistant integration domain: `tplink_deco`. The manifest declares
   `integration_type: hub` and `iot_class: local_polling`, with configuration
   through a config flow.
-- The integration exposes exactly these platforms at this baseline:
-  `device_tracker`, `sensor`, `binary_sensor`, `switch` and `select`.
-  Relevant sources: `const.py` and `manifest.json`.
+- The integration forwards these six platforms:
+  `device_tracker`, `sensor`, `binary_sensor`, `switch`, `select`
+  and `button`. The authoritative list is `PLATFORMS` in `const.py`;
+  confirm it before changing this guide.
 - Each configuration entry stores three independent coordinators under
   `hass.data[DOMAIN][entry_id]`: **two required** for mesh/client data
   and **one optional** for read-only WiFi status:
@@ -341,10 +346,11 @@ hardening/test parity (PR #36) are merged.
   selection **before** sending any reboot command. Device-registry
   records may carry additional unrelated identifiers.
 - Do not silently add upstream syslog forwarding, log-download actions,
-  mobile-usage sensors or **other wireless features**, including opt-in
-  SSID exposure, as side effects of maintaining existing entities.
-  The optional read-only WiFi coordinator is specifically scoped to PR #41;
-  remaining features are tracked in
+  mobile-usage sensors or **unscoped wireless features** while maintaining
+  existing entities. Read-only WLAN status was scoped to merged PR #41;
+  optional SSID attributes are separately scoped to PR #42 and must remain
+  disabled unless per-entry boolean consent is explicitly `true`.
+  Remaining unrelated work is tracked in
   [issue #2](https://github.com/HiDiHo01/ha-tplink-deco/issues/2).
 
 ## 8. Config flow, setup, reload and unload
