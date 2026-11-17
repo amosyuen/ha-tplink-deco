@@ -11,6 +11,8 @@ import pytest
 from custom_components.tplink_deco import async_setup_entry
 from custom_components.tplink_deco.const import COORDINATOR_CLIENTS_KEY
 from custom_components.tplink_deco.const import COORDINATOR_DECOS_KEY
+from custom_components.tplink_deco.const import COORDINATOR_MOBILE_KEY
+from custom_components.tplink_deco.const import COORDINATOR_WIRELESS_KEY
 from custom_components.tplink_deco.const import DOMAIN
 from custom_components.tplink_deco.const import PLATFORMS
 
@@ -125,3 +127,133 @@ async def test_failed_platform_forwarding_does_not_schedule_client_refresh() -> 
     client_coordinator.async_refresh.assert_not_called()
     config_entry.async_create_background_task.assert_not_called()
     hass.services.async_register.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_all_initial_refreshes_are_deferred_until_after_platform_setup() -> None:
+    """Port upstream optional-refresh parity without starting foreground tasks."""
+    events: list[str] = []
+    scheduled: list[tuple[str, Coroutine[Any, Any, None]]] = []
+    hass = MagicMock()
+    hass.data = {}
+
+    async def _forward_platforms(*_args: object) -> None:
+        """Record completion of platform forwarding."""
+        events.append("platforms_forwarded")
+
+    hass.config_entries.async_forward_entry_setups = AsyncMock(
+        side_effect=_forward_platforms
+    )
+    config_entry = MagicMock()
+    config_entry.entry_id = "all-coordinators"
+
+    def _capture_task(
+        target_hass: MagicMock,
+        coroutine: Coroutine[Any, Any, None],
+        *,
+        name: str,
+    ) -> None:
+        """Capture entry-owned tasks without awaiting or scheduling them."""
+        assert target_hass is hass
+        assert events and events[0] == "platforms_forwarded"
+        scheduled.append((name, coroutine))
+        events.append(name)
+
+    config_entry.async_create_background_task.side_effect = _capture_task
+
+    coordinators = {
+        key: MagicMock()
+        for key in (
+            COORDINATOR_DECOS_KEY,
+            COORDINATOR_CLIENTS_KEY,
+            COORDINATOR_WIRELESS_KEY,
+            COORDINATOR_MOBILE_KEY,
+        )
+    }
+    for key in (
+        COORDINATOR_CLIENTS_KEY,
+        COORDINATOR_WIRELESS_KEY,
+        COORDINATOR_MOBILE_KEY,
+    ):
+        coordinators[key].async_refresh = AsyncMock()
+        coordinators[key].async_request_refresh = AsyncMock()
+
+    try:
+        with patch(
+            "custom_components.tplink_deco.async_create_config_data",
+            new=AsyncMock(return_value=coordinators),
+        ):
+            assert await async_setup_entry(hass, config_entry) is True
+
+        expected_names = [
+            "tplink_deco initial client refresh",
+            "tplink_deco initial wireless refresh",
+            "tplink_deco initial mobile data refresh",
+        ]
+        assert events == ["platforms_forwarded", *expected_names]
+        assert [name for name, _coroutine in scheduled] == expected_names
+        hass.config_entries.async_forward_entry_setups.assert_awaited_once_with(
+            config_entry, PLATFORMS
+        )
+        assert hass.data[DOMAIN][config_entry.entry_id] is coordinators
+        assert config_entry.async_create_background_task.call_count == 3
+
+        for key in (
+            COORDINATOR_CLIENTS_KEY,
+            COORDINATOR_WIRELESS_KEY,
+            COORDINATOR_MOBILE_KEY,
+        ):
+            coordinator = coordinators[key]
+            coordinator.async_refresh.assert_called_once_with()
+            coordinator.async_refresh.assert_not_awaited()
+            coordinator.async_request_refresh.assert_not_called()
+    finally:
+        for _name, coroutine in scheduled:
+            coroutine.close()
+
+
+@pytest.mark.asyncio
+async def test_failed_platform_setup_does_not_start_any_optional_refresh() -> None:
+    """Avoid scheduling client, WiFi or mobile tasks when forwarding fails."""
+    hass = MagicMock()
+    hass.data = {}
+    hass.config_entries.async_forward_entry_setups = AsyncMock(
+        side_effect=RuntimeError("synthetic platform setup failure")
+    )
+    config_entry = MagicMock()
+    config_entry.entry_id = "all-coordinators"
+
+    coordinators = {
+        key: MagicMock()
+        for key in (
+            COORDINATOR_DECOS_KEY,
+            COORDINATOR_CLIENTS_KEY,
+            COORDINATOR_WIRELESS_KEY,
+            COORDINATOR_MOBILE_KEY,
+        )
+    }
+    for key in (
+        COORDINATOR_CLIENTS_KEY,
+        COORDINATOR_WIRELESS_KEY,
+        COORDINATOR_MOBILE_KEY,
+    ):
+        coordinators[key].async_refresh = AsyncMock()
+
+    with patch(
+        "custom_components.tplink_deco.async_create_config_data",
+        new=AsyncMock(return_value=coordinators),
+    ):
+        with pytest.raises(RuntimeError, match="synthetic platform setup failure"):
+            await async_setup_entry(hass, config_entry)
+
+    hass.config_entries.async_forward_entry_setups.assert_awaited_once_with(
+        config_entry, PLATFORMS
+    )
+    config_entry.async_create_background_task.assert_not_called()
+    for key in (
+        COORDINATOR_CLIENTS_KEY,
+        COORDINATOR_WIRELESS_KEY,
+        COORDINATOR_MOBILE_KEY,
+    ):
+        coordinators[key].async_refresh.assert_not_called()
+        coordinators[key].async_request_refresh.assert_not_called()
