@@ -13,8 +13,9 @@ description: "Use when porting, reviewing, or debugging capped HTTP 5xx Deco cli
    `coordinator.py`, existing transport and multi-node tests, plus
    [upstream PR #624](https://github.com/amosyuen/ha-tplink-deco/pull/624).
    This fork already includes coordinator-health sensors and a capped
-   per-node 5xx backoff. Port global fallback **behavior**, not an
-   unrelated upstream coordinator architecture.
+   per-node 5xx backoff and the global fallback merged in fork PR #40.
+   Validate that existing **behavior**, not a different upstream
+   coordinator architecture; do not port the fallback again.
 2. Preserve the fork's token/cookie and the existing separate
    reauthentication, timeout and truncated-response handling. An HTTP
    5xx client-list response is not proof that the session has expired;
@@ -89,8 +90,11 @@ description: "Use when porting, reviewing, or debugging capped HTTP 5xx Deco cli
 
 ## Tracking
 
-9. Link the PR as `Part of #2` and update its status immediately.
-   Keep the combined #527/#556 checklist item unchecked until the
-   fallback is merged and verified on `main`. Coordinator-health
-   sensors already exist in fork PR #30. Report real hardware testing
-   separately and record verified lessons in `AGENTS.md` and here.
+9. Link partial follow-ups as `Part of #2` and update their status.
+   Global fallback (#527) is already merged through fork PR #40 and
+   bounded per-node queries (#556, partial) through fork PR #35.
+   Verify their implementation on `main` before marking any specific
+   tracking item complete; leave broader combined acceptance gates
+   unchecked until **all** their requirements are met. Coordinator-
+   health sensors already exist in fork PR #30. Report real hardware
+   tests separately and record verified lessons in `AGENTS.md` and here.
