@@ -232,3 +232,38 @@ async def test_reauth_unexpected_firmware_error_returns_safe_form(
     flow.hass.config_entries.async_update_entry.assert_not_called()
     flow.hass.config_entries.async_reload.assert_not_awaited()
     assert SECRET not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_failed_options_persistence_leaves_handler_data_unchanged() -> None:
+    """Do not accept staged settings when Home Assistant rejects the write."""
+    entry = SimpleNamespace(entry_id="mesh-write", data=deepcopy(CONFIG_DATA))
+    flow = config_flow.TplinkDecoOptionsFlowHandler(entry)
+    flow.handler = entry.entry_id
+    flow.hass = MagicMock()
+    flow.hass.config_entries.async_get_known_entry.return_value = entry
+    flow.hass.config_entries.async_update_entry.side_effect = RuntimeError(
+        "simulated storage failure"
+    )
+    flow.async_create_entry = MagicMock()
+    original = deepcopy(flow.data)
+
+    with patch.object(
+        config_flow,
+        "_async_test_credentials",
+        new=AsyncMock(return_value={}),
+    ) as credentials:
+        with pytest.raises(RuntimeError, match="simulated storage failure"):
+            await flow.async_step_init(
+                {
+                    CONF_USERNAME: "updated",
+                    CONF_PASSWORD: "new-password",
+                    CONF_CLIENT_PREFIX: "Updated preference",
+                }
+            )
+
+    credentials.assert_awaited_once()
+    flow.hass.config_entries.async_update_entry.assert_called_once()
+    flow.async_create_entry.assert_not_called()
+    assert flow.data == original
+    assert entry.data == original
