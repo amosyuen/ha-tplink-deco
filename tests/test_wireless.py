@@ -6,6 +6,8 @@ from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
+import aiohttp
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import UpdateFailed
 import pytest
 
@@ -17,6 +19,10 @@ from custom_components.tplink_deco.const import COORDINATOR_WIRELESS_KEY
 from custom_components.tplink_deco.const import DOMAIN
 from custom_components.tplink_deco.coordinator import TpLinkDeco
 from custom_components.tplink_deco.coordinator import TpLinkDecoData
+from custom_components.tplink_deco.exceptions import EmptyDataException
+from custom_components.tplink_deco.exceptions import ForbiddenException
+from custom_components.tplink_deco.exceptions import LoginInvalidException
+from custom_components.tplink_deco.exceptions import TimeoutException
 from custom_components.tplink_deco.exceptions import UnexpectedApiException
 from custom_components.tplink_deco.wireless import TplinkDecoWirelessUpdateCoordinator
 from custom_components.tplink_deco.wireless import WIRELESS_NETWORKS
@@ -241,3 +247,178 @@ async def test_two_wireless_coordinators_keep_independent_state() -> None:
     assert await second._async_update_data() == {"iot": False}
     first._next_retry = 500.0
     assert second._next_retry == 0.0
+
+def _test_api() -> TplinkDecoApi:
+    """Provide a mocked wireless API without making any HTTP requests."""
+    api = TplinkDecoApi(
+        MagicMock(), "http://192.0.2.1", "test", "test", True
+    )
+    api.async_login_if_needed = AsyncMock()
+    api._stok = "test-stok"
+    api._encode_payload = MagicMock(return_value="encoded")
+    api._async_post = AsyncMock(return_value={"data": "encrypted"})
+    return api
+
+
+@pytest.mark.parametrize("outer_response", [[], {}, {"data": None}, {"data": 12}])
+@pytest.mark.asyncio
+async def test_wireless_api_rejects_invalid_outer_envelope(
+    outer_response: object,
+) -> None:
+    """Untrusted HTTP envelopes must fail with predictable, sanitized errors."""
+    api = _test_api()
+    api._async_post.return_value = outer_response
+    api._decrypt_data = MagicMock()
+
+    with pytest.raises(UnexpectedApiException, match="Wireless status") as error:
+        await api.async_get_wireless()
+
+    assert SECRET not in str(error.value)
+    api._decrypt_data.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_wireless_api_reauths_once_after_legacy_errorcode() -> None:
+    """Retry a real expired session once, preserving existing API semantics."""
+    api = _test_api()
+    api._decrypt_data = MagicMock(
+        side_effect=[
+            {"errorcode": "-5002"},
+            {"result": {"band2_4": {"guest": {"enable": True}}}},
+        ]
+    )
+
+    assert await api.async_get_wireless() == {
+        "band2_4": {"guest": {"enable": True}}
+    }
+    assert api._async_post.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_wireless_api_timeout_error_does_not_retry() -> None:
+    """A firmware timeout is classified and the optional retry budget is zero."""
+    api = _test_api()
+    api._decrypt_data = MagicMock(return_value={"errorcode": "timeout"})
+
+    with pytest.raises(TimeoutException, match="timed out"):
+        await api.async_get_wireless()
+    api._async_post.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_wireless_decryption_errors_never_log_raw_payload(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Prevent the shared decrypt helper from dumping private WLAN bytes."""
+    api = _test_api()
+    caplog.set_level(logging.DEBUG)
+    with pytest.raises(
+        UnexpectedApiException, match="Wireless status response could not be decoded"
+    ):
+        api._decrypt_data("Get wireless status", SECRET + "!")
+    assert SECRET not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_wireless_http_api_error_never_logs_private_json(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A rejected WLAN API request must not log its password-bearing response."""
+    api = _test_api()
+    response = MagicMock()
+    response.history = []
+    response.raise_for_status = MagicMock()
+    response.headers.getall.return_value = []
+    response.json = AsyncMock(
+        return_value={"error_code": 123, "message": SECRET}
+    )
+    api._session.post = AsyncMock(return_value=response)
+    caplog.set_level(logging.DEBUG)
+
+    with pytest.raises(UnexpectedApiException, match="Get wireless status error"):
+        await api._async_post(
+            "Get wireless status",
+            "http://192.0.2.1/cgi-bin/luci/;stok=test-stok/admin/wireless",
+            {"form": "wlan"},
+            "encoded",
+        )
+
+    assert SECRET not in caplog.text
+
+
+@pytest.mark.parametrize("status", [403, 502])
+@pytest.mark.asyncio
+async def test_wireless_http_failures_redact_token_and_preserve_status(
+    status: int,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """HTTP failures must preserve error classes without logging token URLs."""
+    api = _test_api()
+    response = MagicMock()
+    response.history = []
+    request_info = MagicMock()
+    request_info.real_url = "http://192.0.2.1/cgi-bin/luci/;stok=" + SECRET
+    failure = aiohttp.ClientResponseError(
+        request_info=request_info,
+        history=(),
+        status=status,
+        message=SECRET,
+    )
+    response.raise_for_status.side_effect = failure
+    api._session.post = AsyncMock(return_value=response)
+    caplog.set_level(logging.DEBUG)
+
+    if status == 403:
+        with pytest.raises(ForbiddenException) as error:
+            await api._async_post(
+                "Get wireless status",
+                "http://192.0.2.1/cgi-bin/luci/;stok=test-stok/admin/wireless",
+                {"form": "wlan"},
+                "encoded",
+            )
+        assert "HTTP 403" in str(error.value)
+        assert SECRET not in str(error.value)
+        assert api._stok is None
+    else:
+        with pytest.raises(aiohttp.ClientResponseError) as error:
+            await api._async_post(
+                "Get wireless status",
+                "http://192.0.2.1/cgi-bin/luci/;stok=test-stok/admin/wireless",
+                {"form": "wlan"},
+                "encoded",
+            )
+        assert error.value.status == 502
+    assert SECRET not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_wireless_authentication_failure_skips_backoff() -> None:
+    """Credentials errors must be escalated, not treated as optional downtime."""
+    coordinator = _coordinator(LoginInvalidException(1))
+    with pytest.raises(ConfigEntryAuthFailed):
+        await coordinator._async_update_data()
+
+    assert coordinator._consecutive_failures == 0
+    assert coordinator._next_retry == 0.0
+
+
+@pytest.mark.asyncio
+async def test_wireless_unexpected_programming_failure_is_not_hidden() -> None:
+    """Do not mask unexpected code defects as routine wireless API failures."""
+    coordinator = _coordinator(RuntimeError("unexpected internal failure"))
+    with pytest.raises(RuntimeError, match="unexpected internal failure"):
+        await coordinator._async_update_data()
+
+    assert coordinator._consecutive_failures == 0
+    assert coordinator._next_retry == 0.0
+
+
+@pytest.mark.asyncio
+async def test_malformed_coordinator_response_obeys_retry_policy() -> None:
+    """A nonmapping API result is a failed poll, never a successful empty result."""
+    coordinator = _coordinator(["invalid"])
+    with pytest.raises(UpdateFailed, match="Unable to read optional wireless"):
+        await coordinator._async_update_data()
+
+    assert coordinator._consecutive_failures == 1
+    assert coordinator._next_retry == 0.0
