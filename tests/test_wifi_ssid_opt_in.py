@@ -313,7 +313,7 @@ async def test_ssid_decoder_failures_are_sanitized_and_use_wireless_backoff(
                 ) as raised:
                     await coordinator._async_update_data()
                 assert raised.value.__cause__ is None
-                assert raised.value.__suppress_context__
+                assert raised.value.__context__ is None
                 assert coordinator._consecutive_failures == attempt
                 assert coordinator.ssids == previous_names
                 assert coordinator.data == previous_states
