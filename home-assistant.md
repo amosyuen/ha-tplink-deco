@@ -425,8 +425,8 @@ invariants for the _modified subsystem_:
 4. **Surface:** the six existing platforms listed in `PLATFORMS` in
    `const.py`, fork-specific network totals, connected-client and
    diagnostic entities, and the three existing per-entry services
-   continue to behave as described. The proposed manual log action
-   must not alter those service contracts.
+   continue to behave as described. The separately registered manual
+   log action (merged PR #44) must not alter those service contracts.
 5. **Lifecycle:** awaited platform forwarding and failure-safe unload
    preserve live state until cleanup can complete.
 6. **Firmware:** optional fields and legacy naming formats remain optional
