@@ -107,6 +107,20 @@ Keep `AI_POLICY.md` unchanged unless governing policy itself changes.
   concurrency model and platform-specific tests. Record untested
   Windows behavior and adversarial race cases as limitations, not
   security guarantees.
+- **PR #50 scope and validation drift (2026-11-17):** after
+  expanding HTTP 403 hardening to generic HTTP, connector and timeout
+  logging, `AGENTS.md` still claimed the change only covered HTTP
+  403. Compare the entire PR branch's production diff and focused
+  tests with all applicable scope statements before a documentation
+  follow-up, and distinguish sanitized **integration logs** from
+  still-propagated raw HTTP exceptions. The first follow-up test run
+  also expected `HTTP 400` where the actual fixed log label was
+  `Deco API HTTP error: 400`; update the expected message to match
+  the verified contract, without changing correctly sanitized
+  application behavior. Black also changed line wrapping in both
+  source and tests. For every cause, read CI failures, apply the
+  smallest verified edit and re-run both Python/HA matrices plus
+  Pre-commit, HACS and Hassfest on the latest documentation head.
 - **Formatter false finish:** PR #43 pre-commit failed twice on
   documentation/test changes because Black or Prettier rewrote files.
   Read the failing job's actual diff and apply exactly those changes;
