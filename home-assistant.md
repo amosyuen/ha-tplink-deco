@@ -420,7 +420,10 @@ does not delay entity setup. Supported Main, Guest and IoT networks are
 discovered only when valid firmware `enable` values are returned; the Main
 sensor is disabled by default. Sensor unique IDs are
 `<master_mac>_wifi_<network>`, tied to the existing master device without
-changing any previously registered IDs.
+changing any previously registered IDs. Sensors tied to a former master
+remain registered but become unavailable immediately when the Deco
+coordinator publishes a different master. A listener on the Deco
+coordinator refreshes availability even between wireless API polls.
 
 An unsupported network is absent rather than incorrectly reported as OFF.
 Existing wireless entities become unavailable if their network disappears
