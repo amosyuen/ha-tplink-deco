@@ -16,7 +16,8 @@
           "client_postfix": "Klientnamn suffix",
           "deco_prefix": "Deconamn prefix",
           "deco_postfix": "Deconamn suffix",
-          "link_client_devices": "Länka klientspårare till enheter via MAC-adress"
+          "link_client_devices": "Länka klientspårare till enheter via MAC-adress",
+          "expose_wifi_ssids": "Visa Wi-Fi-nätverksnamn på Wi-Fi-statussensorerna"
         }
       },
       "reauth_confirm": {
@@ -34,7 +35,8 @@
       "invalid_auth": "Ogiltig autentisering",
       "invalid_host": "Kunde inte ansluta till värd.",
       "timeout_connect": "Det tog för lång tid att etablera anslutning",
-      "unknown": "Oväntat fel"
+      "unknown": "Oväntat fel",
+      "invalid_expose_wifi_ssids": "Välj på eller av för att visa Wi-Fi-nätverksnamn."
     }
   },
   "options": {
@@ -54,7 +56,8 @@
           "client_postfix": "Klientnamn suffix",
           "deco_prefix": "Deconamn prefix",
           "deco_postfix": "Deconamn suffix",
-          "link_client_devices": "Länka klientspårare till enheter via MAC-adress"
+          "link_client_devices": "Länka klientspårare till enheter via MAC-adress",
+          "expose_wifi_ssids": "Visa Wi-Fi-nätverksnamn på Wi-Fi-statussensorerna"
         }
       }
     },
@@ -62,7 +65,8 @@
       "invalid_auth": "Ogiltig autentisering",
       "invalid_host": "Kunde inte ansluta till värd.",
       "timeout_connect": "Det tog för lång tid att etablera anslutning",
-      "unknown": "Oväntat fel"
+      "unknown": "Oväntat fel",
+      "invalid_expose_wifi_ssids": "Välj på eller av för att visa Wi-Fi-nätverksnamn."
     }
   }
 }
