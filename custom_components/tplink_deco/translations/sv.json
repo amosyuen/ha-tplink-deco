@@ -8,6 +8,7 @@
           "username": "Användarnamn",
           "password": "Lösenord",
           "interval_seconds": "Sekunder mellan uppdateringar",
+          "device_list_interval": "Sekunder mellan Deco-statusuppdateringar (0 = endast vid start)",
           "consider_home": "Sekunder att vänta tills att en enhet markeras som inte hemma efter inkativitet.",
           "timeout_seconds": "Timeout sekunder",
           "timeout_error_retries": "Timeout error retry count",
@@ -36,6 +37,8 @@
       "invalid_host": "Kunde inte ansluta till värd.",
       "timeout_connect": "Det tog för lång tid att etablera anslutning",
       "unknown": "Oväntat fel",
+      "invalid_scan_interval": "Välj ett uppdateringsintervall på 10, 30, 60 eller 120 sekunder.",
+      "invalid_device_list_interval": "Välj 0 för uppdatering endast vid start eller minst 10 sekunder för Deco-status.",
       "invalid_expose_wifi_ssids": "Välj på eller av för att visa Wi-Fi-nätverksnamn."
     }
   },
@@ -48,6 +51,7 @@
           "username": "Användarnamn",
           "password": "Lösenord",
           "interval_seconds": "Sekunder mellan uppdateringar",
+          "device_list_interval": "Sekunder mellan Deco-statusuppdateringar (0 = endast vid start)",
           "consider_home": "Sekunder att vänta tills att en enhet markeras som inte hemma efter inkativitet.",
           "timeout_seconds": "Timeout sekunder",
           "timeout_error_retries": "Timeout error retry count",
@@ -61,11 +65,16 @@
         }
       }
     },
+    "abort": {
+      "reauth_successful": "återautentisering lyckades"
+    },
     "error": {
       "invalid_auth": "Ogiltig autentisering",
       "invalid_host": "Kunde inte ansluta till värd.",
       "timeout_connect": "Det tog för lång tid att etablera anslutning",
       "unknown": "Oväntat fel",
+      "invalid_scan_interval": "Välj ett uppdateringsintervall på 10, 30, 60 eller 120 sekunder.",
+      "invalid_device_list_interval": "Välj 0 för uppdatering endast vid start eller minst 10 sekunder för Deco-status.",
       "invalid_expose_wifi_ssids": "Välj på eller av för att visa Wi-Fi-nätverksnamn."
     }
   },
