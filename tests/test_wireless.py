@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 import aiohttp
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.update_coordinator import UpdateFailed
 import pytest
 
@@ -432,3 +433,68 @@ async def test_malformed_coordinator_response_obeys_retry_policy() -> None:
 
     assert coordinator._consecutive_failures == 1
     assert coordinator._next_retry == 0.0
+
+
+def _wireless_sensor_with_master() -> tuple[
+    TplinkDecoWirelessBinarySensor, MagicMock
+]:
+    """Build a real wireless entity with an independent fake mesh coordinator."""
+    master = TpLinkDeco(MASTER_MAC)
+    master.name = "Master"
+    deco_coordinator = MagicMock()
+    deco_coordinator.data = TpLinkDecoData(master, {master.mac: master})
+    wireless_coordinator = MagicMock()
+    wireless_coordinator.data = {"guest": True}
+    wireless_coordinator.last_update_success = True
+    guest = next(network for network in WIRELESS_NETWORKS if network.key == "guest")
+    sensor = TplinkDecoWirelessBinarySensor(
+        wireless_coordinator, deco_coordinator, master, guest
+    )
+    return sensor, deco_coordinator
+
+
+def test_wireless_sensor_preserves_id_but_invalidates_old_master() -> None:
+    """Former-master networks must not report the new master's WiFi state."""
+    sensor, deco_coordinator = _wireless_sensor_with_master()
+    assert sensor.available is True
+    old_id = sensor.unique_id
+    old_device = sensor.device_info["identifiers"]
+
+    replacement = TpLinkDeco("02:00:00:00:62:02")
+    deco_coordinator.data = TpLinkDecoData(replacement, {
+        MASTER_MAC: sensor._master_deco,
+        replacement.mac: replacement,
+    })
+    assert sensor.available is False
+    assert sensor.unique_id == old_id
+    assert sensor.device_info["identifiers"] == old_device
+
+    deco_coordinator.data = TpLinkDecoData()
+    assert sensor.available is False
+    deco_coordinator.data = TpLinkDecoData(
+        sensor._master_deco, {MASTER_MAC: sensor._master_deco}
+    )
+    assert sensor.available is True
+
+
+@pytest.mark.asyncio
+async def test_wireless_sensor_subscribes_to_master_coordinator_updates() -> None:
+    """Update former-master availability immediately on a Deco refresh."""
+    sensor, deco_coordinator = _wireless_sensor_with_master()
+
+    with (
+        patch.object(
+            CoordinatorEntity, "async_added_to_hass", new_callable=AsyncMock
+        ) as setup_base,
+        patch.object(sensor, "async_on_remove") as register_cleanup,
+        patch.object(sensor, "async_write_ha_state") as write_state,
+    ):
+        await sensor.async_added_to_hass()
+        setup_base.assert_awaited_once()
+        deco_coordinator.async_add_listener.assert_called_once()
+        update_callback = deco_coordinator.async_add_listener.call_args.args[0]
+        update_callback()
+        write_state.assert_called_once()
+        register_cleanup.assert_called_once_with(
+            deco_coordinator.async_add_listener.return_value
+        )
