@@ -341,15 +341,14 @@ class TplinkDecoOptionsFlowHandler(config_entries.OptionsFlow):
                 _ensure_user_input_optionals(user_input)
                 candidate_data = {**self.data, **user_input}
                 self._errors = await _async_test_credentials(self.hass, candidate_data)
-                if not self._errors:
-                    self.data = candidate_data
             if not self._errors:
                 self.hass.config_entries.async_update_entry(
                     entry=self.config_entry,
-                    title=self.data[CONF_HOST],
-                    data=self.data,
+                    title=candidate_data[CONF_HOST],
+                    data=candidate_data,
                     options={},
                 )
+                self.data = candidate_data
                 return self.async_create_entry(data={})
 
         return self.async_show_form(
