@@ -5,7 +5,6 @@ from datetime import datetime
 from datetime import timezone
 import importlib.util
 from pathlib import Path
-import re
 import unittest
 
 import yaml
@@ -192,8 +191,7 @@ class MergeReferenceSyncTests(unittest.TestCase):
             {
                 "name": "Set up Python 3.14",
                 "uses": (
-                    "actions/setup-python@"
-                    "a309ff8b426b58ec0e2a45f0f869d46889d02405"
+                    "actions/setup-python@" "a309ff8b426b58ec0e2a45f0f869d46889d02405"
                 ),
                 "with": {"python-version": "3.14"},
             },
@@ -233,9 +231,9 @@ class MergeReferenceSyncTests(unittest.TestCase):
                 elif case == "wrong_checkout":
                     job["steps"][0]["with"]["ref"] = "${{ github.head_ref }}"
                 elif case == "bracket_checkout":
-                    job["steps"][0]["with"]["ref"] = (
-                        "${{ github.event.pull_request['head']['sha'] }}"
-                    )
+                    job["steps"][0]["with"][
+                        "ref"
+                    ] = "${{ github.event.pull_request['head']['sha'] }}"
                 else:
                     workflow["concurrency"]["queue"] = "single"
                 with self.assertRaises(AssertionError):
@@ -244,9 +242,7 @@ class MergeReferenceSyncTests(unittest.TestCase):
     def test_all_workflows_pin_external_actions(self) -> None:
         """Enforce the repository-wide immutable action revision policy."""
         workflow_dir = Path(__file__).resolve().parents[1] / ".github" / "workflows"
-        paths = sorted(workflow_dir.glob("*.yml")) + sorted(
-            workflow_dir.glob("*.yaml")
-        )
+        paths = sorted(workflow_dir.glob("*.yml")) + sorted(workflow_dir.glob("*.yaml"))
         self.assertGreaterEqual(len(paths), 6)
         for path in paths:
             with self.subTest(workflow=path.name):
@@ -285,9 +281,7 @@ class MergeReferenceSyncTests(unittest.TestCase):
         api.closed_pages[1] = list(reversed(merged_pulls))
         now = datetime(2026, 11, 17, 12, tzinfo=timezone.utc)
         self.assertEqual(
-            sync.reconcile_recent_merges(
-                api, REPOSITORY, "main", current_time=now
-            ),
+            sync.reconcile_recent_merges(api, REPOSITORY, "main", current_time=now),
             [19, 20, 21],
         )
         for number in (19, 20, 21):
@@ -296,9 +290,7 @@ class MergeReferenceSyncTests(unittest.TestCase):
         self.assertIn("- [ ] Broad acceptance", api.issues[2]["body"])
         original_posts = api.posted.copy()
         self.assertEqual(
-            sync.reconcile_recent_merges(
-                api, REPOSITORY, "main", current_time=now
-            ),
+            sync.reconcile_recent_merges(api, REPOSITORY, "main", current_time=now),
             [],
         )
         self.assertEqual(api.posted, original_posts)
@@ -315,9 +307,7 @@ class MergeReferenceSyncTests(unittest.TestCase):
         ]
         now = datetime(2026, 11, 17, 12, tzinfo=timezone.utc)
         self.assertEqual(
-            sync.reconcile_recent_merges(
-                api, REPOSITORY, "main", current_time=now
-            ),
+            sync.reconcile_recent_merges(api, REPOSITORY, "main", current_time=now),
             [],
         )
         self.assertEqual(api.posted, [])
@@ -329,9 +319,7 @@ class MergeReferenceSyncTests(unittest.TestCase):
             }
         ]
         self.assertEqual(
-            sync.reconcile_recent_merges(
-                api, REPOSITORY, "main", current_time=now
-            ),
+            sync.reconcile_recent_merges(api, REPOSITORY, "main", current_time=now),
             [],
         )
 
@@ -343,9 +331,7 @@ class MergeReferenceSyncTests(unittest.TestCase):
         ]
         now = datetime(2026, 11, 17, 12, tzinfo=timezone.utc)
         with self.assertRaisesRegex(ValueError, "invalid timestamp"):
-            sync.reconcile_recent_merges(
-                api, REPOSITORY, "main", current_time=now
-            )
+            sync.reconcile_recent_merges(api, REPOSITORY, "main", current_time=now)
 
     def test_issue_reference_parsing_skips_upstream_links_and_code(self) -> None:
         """Parse explicit repository issue references but not unrelated sources."""

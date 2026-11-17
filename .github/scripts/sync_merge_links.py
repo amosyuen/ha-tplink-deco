@@ -345,7 +345,6 @@ def synchronize_merge(
     return updated_issues, updated_prs
 
 
-
 def _timestamp(value: object) -> datetime:
     """Validate a timezone-aware GitHub timestamp without exposing input."""
     if not isinstance(value, str):
