@@ -98,7 +98,8 @@ async def test_http_5xx_starts_backoff_without_losing_known_clients(
     assert old.deco_mac == MASTER_MAC
     assert coordinator._client_backoff_seconds == CLIENT_BACKOFF_INITIAL_SECONDS
     assert coordinator._client_backoff_until == 1030
-    assert api.async_list_clients.await_count == 1
+    assert api.async_list_clients.await_count == 2
+    assert api.async_list_clients.await_args_list[-1].args == ("default",)
     assert STOK not in caplog.text
     assert COOKIE not in caplog.text
 
@@ -123,7 +124,7 @@ async def test_backoff_skips_requests_and_preserves_last_known_state() -> None:
 
     assert result is coordinator.data
     assert result[MASTER_CLIENT].online is True
-    assert api.async_list_clients.await_count == 1
+    assert api.async_list_clients.await_count == 2
 
 
 @pytest.mark.asyncio
@@ -150,7 +151,7 @@ async def test_repeated_http_500_backoff_doubles_and_caps() -> None:
             assert coordinator.remaining_backoff_seconds == delay
 
     assert coordinator._client_backoff_seconds == CLIENT_BACKOFF_MAX_SECONDS
-    assert api.async_list_clients.await_count == 6
+    assert api.async_list_clients.await_count == 12
 
 
 @pytest.mark.asyncio
@@ -160,7 +161,9 @@ async def test_successful_recovery_resets_backoff_and_next_failure_restarts() ->
     api.async_list_clients = AsyncMock(
         side_effect=[
             _response_error(),
+            _response_error(),
             [{"mac": MASTER_CLIENT, "name": "recovered", "online": True}],
+            _response_error(),
             _response_error(),
         ]
     )
@@ -184,7 +187,7 @@ async def test_successful_recovery_resets_backoff_and_next_failure_restarts() ->
         coordinator.data = await coordinator._async_update_data()
 
     assert coordinator._client_backoff_seconds == 30
-    assert api.async_list_clients.await_count == 3
+    assert api.async_list_clients.await_count == 5
 
 
 @pytest.mark.asyncio
@@ -196,8 +199,8 @@ async def test_partial_node_success_preserved_during_500_backoff() -> None:
     async def _per_node_clients(
         deco_mac: str, *, timeout_error_retries: int
     ) -> list[dict[str, object]]:
-        """Simulate a master 500 and successful satellite client list."""
-        if deco_mac == MASTER_MAC:
+        """Simulate a master 500, healthy satellite and failed global fallback."""
+        if deco_mac in (MASTER_MAC, "default"):
             raise _response_error()
         return [{"mac": NEW_CLIENT, "name": "new", "online": True}]
 
@@ -213,7 +216,7 @@ async def test_partial_node_success_preserved_during_500_backoff() -> None:
     assert result[NEW_CLIENT].online is True
     assert result[NEW_CLIENT].deco_mac == SATELLITE_MAC
     assert coordinator._client_backoff_seconds == 30
-    assert api.async_list_clients.await_count == 2
+    assert api.async_list_clients.await_count == 3
 
 
 @pytest.mark.asyncio
@@ -244,6 +247,7 @@ async def test_all_nodes_failing_preserves_last_known_data() -> None:
     assert result[NEW_CLIENT] is unassigned
     assert all(client.online for client in result.values())
     assert coordinator._client_backoff_seconds == 30
+    assert api.async_list_clients.await_count == 3
 
 
 @pytest.mark.asyncio
