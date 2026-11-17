@@ -695,9 +695,7 @@ class TplinkDecoApi:
             else:
                 _LOGGER.error("%s connection error: %s", context, err)
             if mobile_usage_request:
-                raise UnexpectedApiException(
-                    "Mobile data connection failed"
-                ) from None
+                raise UnexpectedApiException("Mobile data connection failed") from None
             raise
         except aiohttp.ClientError as err:
             if private_status_request:
@@ -711,9 +709,7 @@ class TplinkDecoApi:
                     err,
                 )
             if mobile_usage_request:
-                raise UnexpectedApiException(
-                    "Mobile data transport failed"
-                ) from None
+                raise UnexpectedApiException("Mobile data transport failed") from None
             raise
 
     def _encode_payload(self, payload: Any):
