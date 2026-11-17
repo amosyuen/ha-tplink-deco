@@ -230,6 +230,36 @@ class TplinkDecoApi:
         self._check_authenticated_data_error_code(context, data)
         _LOGGER.debug("Rebooted decos %s", deco_macs)
 
+    async def async_get_wireless(self) -> dict[str, Any]:
+        """Read optional wireless status without additional timeout retries."""
+        return await self._async_call_with_retry(
+            self._async_get_wireless, timeout_error_retries=0
+        )
+
+    async def _async_get_wireless(self) -> dict[str, Any]:
+        """Return a validated WiFi mapping without logging its contents."""
+        await self.async_login_if_needed()
+        context = "Get wireless status"
+        response_json = await self._async_post(
+            context,
+            f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/wireless",
+            params={"form": "wlan"},
+            data=self._encode_payload({"operation": "read"}),
+        )
+        payload = self._decrypt_data(context, response_json["data"])
+        if not isinstance(payload, dict):
+            raise ValueError("Wireless status response is malformed")
+        error_code = payload.get("error_code", payload.get("errorcode", 0))
+        if error_code == -5002:
+            self.clear_auth()
+            raise EmptyDataException("Wireless status authentication expired")
+        if error_code not in (0, None, ""):
+            raise UnexpectedApiException("Wireless status request was rejected")
+        result = payload.get("result")
+        if not isinstance(result, dict):
+            raise ValueError("Wireless status response is malformed")
+        return result
+
     # Return performance data (CPU / memory)
     async def async_get_performance(self) -> dict:
         return await self._async_call_with_retry(self._async_get_performance)
