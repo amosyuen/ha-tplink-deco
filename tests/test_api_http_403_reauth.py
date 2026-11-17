@@ -109,6 +109,7 @@ async def test_http_403_raises_privacy_safe_exception_without_context(
     assert str(error.value) == "Deco API authentication forbidden (HTTP 403)"
     assert error.value.__cause__ is None
     assert error.value.__context__ is None
+    assert error.value.__suppress_context__
     assert (api._stok, api._cookie, api._seq) == (None, None, None)
     rendered_error = "".join(traceback.format_exception(error.value))
     for private_value in (OLD_TOKEN, OLD_COOKIE, private_context):
@@ -168,6 +169,7 @@ async def test_repeated_device_list_403_stops_after_one_reauthentication(
     assert str(error.value) == "Deco API authentication forbidden (HTTP 403)"
     assert error.value.__cause__ is None
     assert error.value.__context__ is None
+    assert error.value.__suppress_context__
     api.async_login.assert_awaited_once_with()
     assert post.await_count == 2
     _assert_device_request(
