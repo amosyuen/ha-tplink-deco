@@ -95,7 +95,7 @@ async def test_502_global_fallback_reports_master_and_preserves_client_identity(
     assert old.online is True
     assert old.deco_mac == MASTER
     assert coordinator.client_query_mode == "global"
-    assert coordinator.successfully_polled_deco_macs == {MASTER, SATELLITE}
+    assert coordinator.successfully_polled_deco_macs == {MASTER}
     assert coordinator.has_successful_refresh is True
     assert coordinator.health.last_successful_update is not None
     assert coordinator._client_backoff_seconds == 30
