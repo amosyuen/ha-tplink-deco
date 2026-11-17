@@ -826,6 +826,40 @@ policy for AI-assisted development.
   Follow the device-registry parent-link skill for the full test procedure.
   Do not claim live hardware verification based solely on unit or CI results.
 
+## HTTP 403 session recovery and privacy (upstream test parity, issue #2)
+
+- **Verified boundary:** a generic Deco `aiohttp.ClientResponseError`
+  for HTTP 403 could include the LuCI `;stok=` URL in both the logger's
+  interpolated exception and the raised `ForbiddenException`; the
+  exception's cause could retain the original token-bearing request.
+  Do not interpolate raw HTTP exceptions, request URLs or context strings
+  (reboot contexts can include private MAC identifiers).
+- Keep existing HTTP semantics: 403 invalidates the current token, cookie
+  and sequence and raises a fixed, sanitized `ForbiddenException` for
+  the shared **one-relogin** retry; a repeated 403 stops after that
+  retry. Preserve HTTP 401's existing propagated error type (while
+  keeping its logs sanitized), non-auth HTTP error contracts,
+  network-failure session retention, other retries and cancellation.
+- **No retained sensitive exception context:** raise the sanitized 403
+  exception only **after leaving** the `except aiohttp.ClientResponseError`
+  block so both `__cause__` and `__context__` are `None`. Merely
+  using `raise ... from None` suppresses traceback formatting but
+  does not remove the original `__context__` object.
+- **Bound-request regression:** drive the real `async_list_devices`
+  and `_async_post` methods with mocked `aiohttp.ClientSession.post`
+  responses. Assert **both** requests' exact LuCI token URLs, form data
+  and session cookies, successful token rotation, one login, and no
+  third retry after repeated 403. Inject synthetic secrets into
+  `request_info` and error text and verify DEBUG logs, public
+  exception and rendered traceback do not expose them. No actual
+  router, cookies or real credentials belong in tests or PR logs.
+- This addresses only the proven generic HTTP 403 parity/privacy path;
+  do not present it as full API error-log sanitation or complete
+  upstream test parity. Use
+  [upstream-sync validation](.agents/skills/deco-upstream-sync/SKILL.md)
+  and run both supported Python/HA matrices plus lint/HACS/Hassfest
+  on the final head.
+
 ## Authenticated API expiry error -5002 (upstream PR #620)
 
 - Some Deco firmware reports an expired authenticated LuCI session as
