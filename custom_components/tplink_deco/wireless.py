@@ -7,7 +7,6 @@ from math import ceil
 from time import monotonic
 from typing import Any
 
-import aiohttp
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -19,11 +18,6 @@ from .api import TplinkDecoApi
 from .const import DOMAIN
 from .coordinator import TplinkDecoUpdateCoordinator
 from .coordinator import async_call_and_propagate_config_error
-from .exceptions import EmptyDataException
-from .exceptions import ForbiddenException
-from .exceptions import TimeoutException
-from .exceptions import TransientConnectionException
-from .exceptions import UnexpectedApiException
 
 _LOGGER = logging.getLogger(__name__)
 WIRELESS_RETRY_INTERVAL_SECONDS = 300
@@ -172,16 +166,10 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator[dict[str, bool]]
             # Authentication is handled by the config-entry flow, not by
             # optional endpoint retry/backoff.
             raise
-        except (
-            aiohttp.ClientError,
-            EmptyDataException,
-            ForbiddenException,
-            OSError,
-            TimeoutException,
-            TransientConnectionException,
-            UnexpectedApiException,
-            ValueError,
-        ) as error:
+        except Exception as error:
+            # Optional endpoint errors can include private router data in
+            # their text. Contain even unexpected API exceptions, but never
+            # cancellation or the config-entry auth failure above.
             self._consecutive_failures += 1
             if self._consecutive_failures >= WIRELESS_FAILURES_BEFORE_RETRY_DELAY:
                 self._next_retry = now + WIRELESS_RETRY_INTERVAL_SECONDS
