@@ -61,6 +61,34 @@ description: "Use when changing or testing Home Assistant configuration/options 
   test; syslog forwarding is not yet implemented in the fork. Do not
   introduce syslog keys solely to copy upstream test fixtures.
 
+## Privacy-safe credential failures and transactional options (issue #2)
+
+- **Verified failure on main before this fix:** `_async_test_credentials`
+  interpolated upstream exception messages for auth/host failures, including
+  potentially sensitive router credentials, token-bearing URLs or payloads.
+  Unexpected exceptions were re-raised and could break setup, reauth or options
+  forms instead of returning the existing translated `unknown` form error.
+- Classify known auth, connection and timeout exceptions into the existing
+  `invalid_auth`, `invalid_host` and `timeout_connect` error codes.
+  Return the existing `unknown` code for unexpected ordinary exceptions.
+  Never interpolate upstream error messages or enable traceback logging at
+  this privacy boundary; a controlled exception type name is sufficient for
+  unexpected failures. **Do not catch `asyncio.CancelledError`**, which
+  must propagate to Home Assistant.
+- **Options submission:** merge submitted values into a staged copy of
+  `self.data`, validate credentials against that copy and commit it only
+  when validation succeeds. A rejected submission or unexpected router
+  error must leave both the in-memory options handler and the saved entry
+  unchanged. Keep the previous setup/reauth contracts and unique IDs.
+- Regress using malicious exception messages containing a synthetic secret;
+  assert both fixed form errors and that the secret is absent from DEBUG
+  logs. Cover valid, invalid, host-unavailable, timeouts, unexpected
+  exceptions, cancellation, successful temporary-coordinator shutdown,
+  cleanup failure, rejected options and reauth persistence.
+- Re-run both supported Python/Home Assistant regression matrices and
+  Pre-commit/HACS/Hassfest **on the final commit**, including any
+  formatter-only follow-up. A skipped job does not establish compatibility.
+
 ## Optional SSID consent in setup and options (upstream #637, PR #42)
 
 - Use the per-entry `CONF_EXPOSE_WIFI_SSIDS` key, with the default
