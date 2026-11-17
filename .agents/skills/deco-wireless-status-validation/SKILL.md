@@ -102,7 +102,13 @@ existing tests. Do not adopt upstream code or review suggestions blindly.
     with the current code, implement only valid changes, reply with
     evidence and resolve the thread after its fix is verified. Re-read
     the PR and review threads after bots have updated them.
-13. Link partial work as `Part of #2`. Keep issue #2's combined
+13. Before appending feature notes to `home-assistant.md`, inspect
+    **earlier** coordinator-count, platform/entity and unimplemented-feature
+    statements. PR #41's review found that the old two-coordinator and
+    "no WiFi status" claims contradicted a later WLAN section. Reconcile
+    both locations in the same PR, while keeping separately unported SSID,
+    syslog and mobile functionality explicitly pending.
+14. Link partial work as `Part of #2`. Keep issue #2's combined
     WiFi/SSID checklist unchecked until the relevant scope is merged
     and the remaining SSID work is addressed. Update the issue's
     existing in-progress record with the **actual** final head, test
