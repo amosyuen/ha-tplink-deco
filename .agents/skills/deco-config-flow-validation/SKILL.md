@@ -100,7 +100,7 @@ description: "Validate TP-Link Deco setup, options and reauthentication flows, i
   On failed options persistence, the handler must retain its prior data;
   the failure is not silently labeled a successful save.
 - **CI verification:** start with the relevant focused tests, then run both
-  supported Python/Home Assistant *full* regression matrices and
+  supported Python/Home Assistant _full_ regression matrices and
   Pre-commit, HACS and Hassfest **on the same final head SHA**, including
   after a documentation or formatter-only commit. Read failing job
   output and apply the **exact** Black/isort/Prettier correction;
