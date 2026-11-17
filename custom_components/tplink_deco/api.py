@@ -388,7 +388,7 @@ class TplinkDecoApi:
                 parsed, end_index = json.JSONDecoder().raw_decode(log_text)
                 if log_text[end_index:].strip():
                     return None
-        except (UnicodeError, ValueError, TypeError):
+        except (UnicodeError, ValueError, TypeError, RecursionError):
             raise UnexpectedApiException("System log response is malformed") from None
         if not isinstance(parsed, dict):
             if declared_json:
@@ -471,11 +471,17 @@ class TplinkDecoApi:
                 self.clear_auth()
                 raise ForbiddenException("System log authentication expired") from None
             raise UnexpectedApiException("System log HTTP request failed") from None
-        except (aiohttp.ClientPayloadError, aiohttp.ServerDisconnectedError):
+        except (
+            aiohttp.ClientPayloadError,
+            aiohttp.ServerDisconnectedError,
+            asyncio.IncompleteReadError,
+            ConnectionResetError,
+            BrokenPipeError,
+        ):
             raise TransientConnectionException(
                 "System log response incomplete"
             ) from None
-        except aiohttp.ClientError:
+        except (aiohttp.ClientError, OSError):
             raise UnexpectedApiException("System log transport failed") from None
 
     # Return performance data (CPU / memory)

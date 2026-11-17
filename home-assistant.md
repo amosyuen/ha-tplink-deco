@@ -610,7 +610,11 @@ proposes two manual-export error fixes: detect standalone firmware
 retries after a truncated response. It preserves JSON-formatted log
 lines without firmware error fields and retains one authentication
 re-login, while setting manual-download timeout and transient retry
-budgets to zero. Normal Deco API retry defaults remain unchanged.
+budgets to zero. The PR #46 hardening also classifies raw
+socket resets, interrupted stream reads and exceptional JSON
+parser recursion into fixed privacy-safe API errors without
+replaying the manual export. Normal Deco API retry defaults
+remain unchanged.
 **These fixes are not on `main` until PR #46 is merged.**
 The PR #46 follow-up also distinguishes standalone firmware-error
 JSON from multi-record JSON Lines log text, including nested

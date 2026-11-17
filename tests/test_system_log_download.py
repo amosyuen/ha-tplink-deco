@@ -3,6 +3,7 @@
 import asyncio
 import gzip
 import io
+import json
 import logging
 from pathlib import Path
 import tarfile
@@ -558,6 +559,110 @@ async def test_manual_system_log_incomplete_response_does_not_retry() -> None:
     assert api._async_post.await_count == 1
     assert session.post.await_count == 1
     response.release.assert_called_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("stream_error", "expected_error", "message"),
+    [
+        (
+            asyncio.IncompleteReadError(partial=b"PRIVATE_ROUTER_TOKEN_123", expected=200),
+            TransientConnectionException,
+            "response incomplete",
+        ),
+        (
+            ConnectionResetError("PRIVATE_ROUTER_TOKEN_123"),
+            TransientConnectionException,
+            "response incomplete",
+        ),
+        (
+            BrokenPipeError("PRIVATE_ROUTER_TOKEN_123"),
+            TransientConnectionException,
+            "response incomplete",
+        ),
+        (
+            OSError("PRIVATE_ROUTER_TOKEN_123"),
+            UnexpectedApiException,
+            "transport failed",
+        ),
+    ],
+)
+async def test_log_stream_failures_are_sanitized_without_extra_retry(
+    stream_error: Exception,
+    expected_error: type[Exception],
+    message: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Map low-level stream failures to fixed errors without leaking tokens."""
+    api, session = _api_and_session()
+    api._timeout_error_retries = 3
+    response = _response()
+    response.content.read.side_effect = stream_error
+    session.post.return_value = response
+
+    with caplog.at_level(logging.DEBUG):
+        with pytest.raises(expected_error, match=message) as caught:
+            await api.async_get_system_log()
+
+    assert SECRET not in "".join(traceback.format_exception(caught.value))
+    assert SECRET not in caplog.text
+    api._async_post.assert_awaited_once()
+    session.post.assert_awaited_once()
+    response.release.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_log_request_socket_failure_does_not_leak_or_retry(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Classify an underlying socket OSError even before an HTTP response exists."""
+    api, session = _api_and_session()
+    api._timeout_error_retries = 3
+    session.post.side_effect = OSError(SECRET)
+
+    with caplog.at_level(logging.DEBUG):
+        with pytest.raises(
+            UnexpectedApiException, match="System log transport failed"
+        ) as caught:
+            await api.async_get_system_log()
+
+    assert SECRET not in "".join(traceback.format_exception(caught.value))
+    assert SECRET not in caplog.text
+    api._async_post.assert_awaited_once()
+    session.post.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("content_type", ["text/plain", "application/json"])
+async def test_deep_firmware_json_parser_failures_are_sanitized(
+    content_type: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Handle JSON parser recursion failures as classified malformed responses."""
+    api, session = _api_and_session()
+    session.post.return_value = _response(
+        b'{"errorcode":"timeout"}', content_type=content_type
+    )
+    if content_type == "application/json":
+        parser_patch = patch.object(
+            json, "loads", side_effect=RecursionError(SECRET)
+        )
+    else:
+        parser_patch = patch.object(
+            json.JSONDecoder, "raw_decode", side_effect=RecursionError(SECRET)
+        )
+    with caplog.at_level(logging.DEBUG):
+        with parser_patch:
+            with pytest.raises(
+                UnexpectedApiException, match="System log response is malformed"
+            ) as caught:
+                await api.async_get_system_log()
+
+    assert SECRET not in "".join(traceback.format_exception(caught.value))
+    assert SECRET not in caplog.text
+    api._async_post.assert_awaited_once()
+    session.post.assert_awaited_once()
+    session.post.return_value.release.assert_called_once()
 
 
 @pytest.mark.asyncio

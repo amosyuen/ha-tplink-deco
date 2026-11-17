@@ -1241,6 +1241,16 @@ policy for AI-assisted development.
   to two when the **one permitted authentication re-login** occurs.
   Check `response.release()`, cancellation propagation and that
   an API retry-budget override never changes unrelated operations.
+  **Additional stream failure handling:** an `aiohttp` body read
+  may raise `asyncio.IncompleteReadError`, raw
+  `ConnectionResetError` or `BrokenPipeError` as well as
+  `ClientPayloadError`. Classify interrupted responses using a
+  fixed exception; classify other raw socket `OSError` failures
+  with a fixed transport error. Do not restart a manual export
+  after any of these failures. Test response release, zero
+  unintended retries and secrecy of rendered tracebacks/DEBUG
+  logs. Catch `RecursionError` from deeply nested untrusted
+  JSON as malformed firmware data rather than an untyped failure.
   PR #46 remains unmerged until independently verified on `main`.
 - **Remaining scope:** manual plain-text (#650) and bounded gzip/tar
   (#673) merged in PRs #44/#45 and are present on `main`.

@@ -39,7 +39,12 @@ description: "Use when changing authenticated manual Deco system-log downloads, 
    response may produce a second attempt after re-login. Other Deco
    methods must retain their default transient retry budget. Verify
    no retries for HTTP 5xx, malformed payloads or corrupt archives.
-   Assert release of the response and propagation of cancellation.
+   Include `asyncio.IncompleteReadError`, raw
+   `ConnectionResetError`/`BrokenPipeError`, and other socket
+   `OSError` paths in the bound `save_log` transport tests.
+   These failures must produce fixed sanitized interrupted/transport
+   errors, with no extra manual retries. Assert response release
+   when a response exists, and preserve cancellation.
    Decode gzip/tar off the event loop and exercise the actual worker.
 5. Before archive/text decoding, classify standalone firmware
    error JSON by content type: treat `application/json` as the
@@ -57,8 +62,11 @@ description: "Use when changing authenticated manual Deco system-log downloads, 
    plain-text/binary MIME types, check whether a complete parsed
    JSON object is the **only** document before applying top-level
    firmware error keys; trailing JSON Lines records remain valid log
-   content. Verify the focused regression and final-head CI before
-   resolving the corresponding review thread.
+   content. A deeply nested or otherwise pathological JSON body
+   may trigger parser `RecursionError`; map it to a fixed malformed
+   response without leaking the upstream payload. Verify all
+   focused regressions and final-head CI before claiming review
+   completion.
 6. For tar decoding, prefer the exact `syslog.log` basename among
    **regular** archive members; otherwise use the first regular
    member. Ignore symbolic/hard links, directories and device
