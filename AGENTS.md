@@ -1124,3 +1124,20 @@ policy for AI-assisted development.
   functions and methods; keep asynchronous operations and errors explicit.
 - Make the smallest change that meets the issue's acceptance criteria,
   document user-visible behavior, and explain regression coverage in the PR.
+
+
+## Read-only WLAN status backport lessons (upstream #627)
+
+- Keep optional WLAN requests in an independent coordinator per config
+  entry; a failed or unsupported WLAN endpoint must not fail Deco inventory,
+  client polling, Home Assistant startup or device migration.
+- Interpret only known enable flags from known network paths; absent or
+  invalid flags are not OFF. Discover only confirmed networks and make
+  repeated entity discovery idempotent, retaining MAC-based master identity.
+- Keep raw settings and private wireless details transient. Persist only
+  boolean network states and export only network keys/counters. Never log
+  SSIDs, PSKs, passwords, URL session tokens or upstream exception text.
+- Validate background startup ordering, authentication and cancellation,
+  bounded retry, paused polling, master detection, multi-entry isolation,
+  teardown, diagnostics redaction and source compatibility on both supported
+  Home Assistant versions. Hardware tests must be reported separately.
