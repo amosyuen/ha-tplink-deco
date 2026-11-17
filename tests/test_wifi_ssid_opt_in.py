@@ -13,6 +13,7 @@ from homeassistant.const import CONF_PASSWORD
 from homeassistant.const import CONF_USERNAME
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers.data_entry_flow import _BaseFlowManagerView
+from homeassistant.helpers.update_coordinator import UpdateFailed
 import pytest
 import voluptuous as vol
 
@@ -199,8 +200,28 @@ def test_ssid_parser_rejects_missing_and_malformed_names(payload: object) -> Non
     assert parse_wireless_ssids(payload) == {}
 
 
+def test_ssid_parser_rejects_untrusted_band_attribute_suffixes() -> None:
+    """Only compact numeric band identifiers can become attribute names."""
+    response = {
+        "band2_4": {"host": {"enable": True, "ssid": "SG9tZQ=="}},
+        "band6_1": {"host": {"enable": True, "ssid": "SG9tZS02Rw=="}},
+        "band5_private/key": {"host": {"enable": True, "ssid": PRIVATE_SSID}},
+        "band5_bad": {"host": {"enable": True, "ssid": PRIVATE_SSID}},
+        "band" + "9" * 64: {"host": {"enable": True, "ssid": PRIVATE_SSID}},
+    }
+
+    assert parse_wireless_ssids(response) == {
+        "main": {"band2_4": "Home", "band6_1": "Home-6G"}
+    }
+    assert wireless_ssid_attributes(parse_wireless_ssids(response)["main"]) == {
+        "ssid_band2_4": "Home",
+        "ssid_band6_1": "Home-6G",
+    }
+
+
 def test_ssid_attributes_collapse_shared_names_or_distinguish_bands() -> None:
     """Use a single SSID for matching bands, otherwise stable per-band keys."""
+    assert wireless_ssid_attributes({}) == {}
     assert wireless_ssid_attributes({"band2_4": "Home", "band5": "Home"}) == {
         "ssid": "Home"
     }
@@ -257,6 +278,57 @@ def test_wireless_sensor_hides_or_exposes_names_only_with_consent(
     """Existing entity identities remain unchanged when consent changes."""
     sensor = _sensor(consent=consent, names={"guest": {"band2_4": "Guests"}})
     assert sensor.extra_state_attributes == ({"ssid": "Guests"} if consent else None)
+
+
+@pytest.mark.asyncio
+async def test_ssid_decoder_failures_are_sanitized_and_use_wireless_backoff(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Avoid partial state, reset or private logs when name parsing fails."""
+    coordinator = _coordinator(
+        NETWORK_RESPONSE,
+        NETWORK_RESPONSE,
+        NETWORK_RESPONSE,
+        NETWORK_RESPONSE,
+        consent=True,
+    )
+    previous_states = await coordinator._async_update_data()
+    coordinator.data = previous_states
+    previous_names = {
+        key: dict(bands) for key, bands in coordinator.ssids.items()
+    }
+    caplog.set_level(logging.DEBUG)
+
+    with patch(
+        "custom_components.tplink_deco.wireless.monotonic",
+        side_effect=[100.0, 110.0, 120.0, 411.0],
+    ):
+        with patch(
+            "custom_components.tplink_deco.wireless.decode_name_with_fallback",
+            side_effect=ValueError(PRIVATE_PASSWORD),
+        ):
+            for attempt in (1, 2):
+                with pytest.raises(
+                    UpdateFailed, match="Unable to read optional wireless status"
+                ) as raised:
+                    await coordinator._async_update_data()
+                assert raised.value.__cause__ is None
+                assert raised.value.__suppress_context__
+                assert coordinator._consecutive_failures == attempt
+                assert coordinator.ssids == previous_names
+                assert coordinator.data == previous_states
+
+            assert coordinator._next_retry == 410.0
+            with pytest.raises(UpdateFailed, match="retry is deferred"):
+                await coordinator._async_update_data()
+            assert coordinator.api.async_get_wireless.await_count == 3
+
+        assert await coordinator._async_update_data() == previous_states
+        assert coordinator.ssids == previous_names
+        assert coordinator._consecutive_failures == 0
+        assert coordinator._next_retry == 0.0
+
+    assert PRIVATE_PASSWORD not in caplog.text
 
 
 def test_former_master_or_unavailable_network_does_not_expose_names() -> None:
