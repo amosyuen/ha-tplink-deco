@@ -62,9 +62,7 @@ async def test_generic_http_error_logs_status_without_private_request(
     api, post = _api()
     response = MagicMock()
     request_info = MagicMock()
-    request_info.real_url = (
-        f"{HOST}/cgi-bin/luci/;stok={TOKEN}/admin/device"
-    )
+    request_info.real_url = f"{HOST}/cgi-bin/luci/;stok={TOKEN}/admin/device"
     request_info.url = request_info.real_url
     response.raise_for_status.side_effect = aiohttp.ClientResponseError(
         request_info=request_info,
@@ -85,7 +83,13 @@ async def test_generic_http_error_logs_status_without_private_request(
 
     assert failure.value.status == status
     _assert_private_values_absent(caplog)
-    assert ("HTTP %d" % status) in caplog.text
+    expected_log = {
+        400: "Deco API HTTP error: 400",
+        401: "Deco API authentication HTTP error: 401",
+        502: "Deco API HTTP error: 502",
+        503: "Deco client-list server error: HTTP 503",
+    }[status]
+    assert expected_log in caplog.text
     assert (api._stok is None) is auth_invalidated
     assert (api._cookie is None) is auth_invalidated
 
