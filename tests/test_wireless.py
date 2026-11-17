@@ -38,6 +38,8 @@ def _coordinator(*responses: object) -> TplinkDecoWirelessUpdateCoordinator:
     coordinator.api = MagicMock()
     coordinator.api.async_get_wireless = AsyncMock(side_effect=responses)
     coordinator._deco_coordinator = MagicMock(paused=False)
+    coordinator.expose_ssids = False
+    coordinator.ssids = {}
     coordinator.data = {}
     coordinator._next_retry = 0.0
     coordinator._consecutive_failures = 0
