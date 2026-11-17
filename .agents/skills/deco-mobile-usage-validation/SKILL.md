@@ -50,6 +50,37 @@ description: "Use when adding, reviewing or maintaining read-only 4G/5G Deco mob
    message **outside** the catch block, with neither `__context__`
    nor `__cause__`; preserve prior data and propagate cancellation.
 
+### Error classification and privacy verification
+
+- **Authentication:** HTTP 401/403 clears the session and enters the
+  existing `ForbiddenException`/single-relogin path. Authenticated
+  firmware `-5002` uses the established `EmptyDataException` retry.
+  Verify exactly one re-login and no unbounded second retry. Login
+  failures must still reach the mobile coordinator as
+  `ConfigEntryAuthFailed`, not an ordinary optional `UpdateFailed`.
+- **Unsupported versus failed:** missing `mobile_cpe`/counter produces
+  `None` without inventing a zero; malformed outer/inner mappings,
+  invalid firmware errors and malformed JSON raise a fixed safe error.
+  HTTP errors other than 401/403 and connector/client transport errors
+  must not pass raw aiohttp exceptions or authenticated URLs to direct
+  consumers. Preserve the shared truncated-response retry policy and the
+  mobile-specific zero *additional timeout* retries.
+- **Tracebacks are part of the privacy boundary:** `raise ... from None`
+  suppresses automatic display of `__context__` but does **not** clear
+  that attribute. At `TplinkDecoApi` boundaries check
+  `__suppress_context__`, the exception message,
+  `traceback.format_exception(error)` and DEBUG logs using synthetic
+  token-bearing request URLs and error payloads. Separately verify that
+  coordinator-raised `UpdateFailed` and `ConfigEntryAuthFailed` have
+  `__cause__ is None` **and** `__context__ is None`, since they are
+  raised only after leaving the relevant `except` block.
+- **Failure-state invariant:** an unsuccessful optional poll leaves
+  the validated same-master cache intact but makes the related sensor
+  unavailable through Home Assistant's coordinator success state.
+  Cancellation propagates and must not become a success or optional
+  failure. Revalidate these contracts on both supported HA/Python
+  matrices without claiming physical firmware coverage.
+
 ## Coordinator ownership and sensor lifecycle
 
 5. Use a **per-entry optional** five-minute DataUpdateCoordinator. Schedule

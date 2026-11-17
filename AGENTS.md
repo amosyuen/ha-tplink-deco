@@ -1181,6 +1181,17 @@ policy for AI-assisted development.
   handler so upstream cause/context is not retained. Test error types,
   one-relogin limit, rendered tracebacks, coordinator cached state
   and DEBUG logs with synthetic tokens.
+- **Exception-context precision (PR #43):** `raise SafeError(...) from None`
+  sets `__suppress_context__` for normal traceback formatting but does
+  **not** remove the underlying `__context__` object. At the mobile API
+  transport/decrypt boundary, assert the sanitized exception type/message,
+  suppressed context, formatted traceback and DEBUG log redaction; never
+  claim that `from None` erases sensitive context. At the mobile
+  coordinator boundary, raise fresh `UpdateFailed` and
+  `ConfigEntryAuthFailed` *after leaving* their exception handlers and
+  verify that **both** `__cause__` and `__context__` are `None`.
+  Keep the HTTP 401/403 single-relogin contract and non-mobile error
+  behavior intact.
 - Mobile diagnostics may report support status, update success and interval,
   but must not export the numeric usage, router model, API payload, token
   or credentials. Test parsing, unsupported models, late master discovery,

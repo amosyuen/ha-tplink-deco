@@ -10,14 +10,16 @@ description: "Use when changing Home Assistant entry setup/unload, coordinator s
 1. Read repository `AI_POLICY.md` and `AGENTS.md`, then inspect the
    current `custom_components/tplink_deco/__init__.py`, `coordinator.py`,
    `api.py`, existing lifecycle tests, and any relevant upstream PR.
-2. Identify the coordinators **actually created by this fork** and the
-   ownership of their resources. On PR #41's branch the fork has required
-   Deco and client coordinators plus a separate **optional WLAN**
-   `DataUpdateCoordinator`; the aiohttp `ClientSession` is owned by
-   Home Assistant. Do not assume upstream mobile coordinators or legacy
-   outer-session protocols exist. Verify each coordinator's supported
-   cleanup methods independently; do not infer them from a shared base
-   class.
+2. Identify the coordinators **actually created at the target ref** and
+   their resource owners. On PR #43's branch, `async_create_and_refresh_coordinators`
+   creates **two required** Deco/client coordinators and **two optional**
+   `DataUpdateCoordinator` instances for WLAN and mobile WAN usage.
+   PR #43 is **not deployed on `main` until merged**: verify the target
+   branch before applying this inventory elsewhere. The aiohttp
+   `ClientSession` belongs to Home Assistant. Do not assume the
+   unsupported upstream legacy outer-session protocol exists. Check
+   supported shutdown methods per coordinator class rather than
+   inferring them from a shared base class.
 3. Review `async_setup_entry` as well as `async_unload_entry`. Await
    `async_forward_entry_setups` before completing setup, and do not
    register services/listeners after a failed platform setup.
@@ -34,14 +36,14 @@ description: "Use when changing Home Assistant entry setup/unload, coordinator s
    `async_close()` **only for coordinator classes that implement the
    fork-specific hook** (currently Deco/client coordinators). A plain
    Home Assistant `DataUpdateCoordinator`, including the optional WLAN
-   coordinator introduced in PR #41, provides `async_shutdown()` but not
+   and PR #43 mobile coordinators, provides `async_shutdown()` but not
    that custom `async_close()` method. Calling it prevents logout and
    removal of entry data. These are different cleanup steps; do not
-   substitute one for the other. Include a test fixture with a wireless
-   coordinator that deliberately has no `async_close` attribute.
-   Also verify that an optional WLAN failure cannot prevent required
-   coordinators from refreshing or a successfully unloaded entry from
-   logging out, removing services and releasing its stored runtime.
+   substitute one for the other. Include test fixtures where **neither
+   optional coordinator** exposes `async_close`. Verify that optional
+   WLAN/mobile failures do not interrupt required coordinator refreshes
+   or prevent logout, service cleanup and runtime removal after a
+   successful platform unload.
 6. Only after coordinator cleanup, attempt the router's best-effort logout.
    Skip the request if there is no complete session, and always clear
    local token/cookie/sequence data on completion or failure.
@@ -75,8 +77,11 @@ description: "Use when changing Home Assistant entry setup/unload, coordinator s
 The WLAN-specific HTTP boundary, authentication, timeout, cache,
 redaction and master-availability regression procedures live in
 [Deco wireless-status validation](../deco-wireless-status-validation/SKILL.md).
-This lifecycle skill owns the cross-platform unload order and shared
-session contract; do not duplicate the full WLAN test matrix here.
+The corresponding optional mobile WAN ownership, privacy and error-path
+checks live in
+[Deco mobile WAN usage validation](../deco-mobile-usage-validation/SKILL.md).
+This lifecycle skill owns cross-platform unload order and the shared
+session contract; do not duplicate the feature-specific test matrices here.
 
 ## Handoff
 

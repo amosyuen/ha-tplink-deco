@@ -351,12 +351,14 @@ deployed until that PR is merged.
   entry to a nonempty `(DOMAIN, MAC)` identifier; reject an invalid
   selection **before** sending any reboot command. Device-registry
   records may carry additional unrelated identifiers.
-- Do not silently add upstream syslog forwarding, log-download actions,
-  mobile-usage sensors or **unscoped wireless features** while maintaining
-  existing entities. Read-only WLAN status was scoped to merged PR #41;
-  optional SSID attributes are separately scoped to PR #42 and must remain
-  disabled unless per-entry boolean consent is explicitly `true`.
-  Remaining unrelated work is tracked in
+- Do not silently add upstream syslog forwarding, log-download actions or
+  **unscoped wireless features** while maintaining existing entities.
+  Read-only WLAN status was scoped to merged PR #41; optional SSID
+  attributes were scoped to merged PR #42 and remain disabled unless
+  per-entry boolean consent is explicitly `true`. Read-only mobile
+  usage sensors are scoped to **open PR #43** and must not be claimed
+  as deployed on `main` before merge verification. Remaining unrelated
+  work is tracked in
   [issue #2](https://github.com/HiDiHo01/ha-tplink-deco/issues/2).
 
 ## 8. Config flow, setup, reload and unload
@@ -418,9 +420,10 @@ invariants for the _modified subsystem_:
 3. **Polls:** global pause/resume behavior, configured scan intervals,
    independent API retries, bounded 5xx backoff and CPU/memory caching
    are preserved as applicable.
-4. **Surface:** the five existing platforms, fork-specific network totals,
-   connected-client and diagnostic entities, and three registered services
-   continue to behave as described.
+4. **Surface:** the six existing platforms listed in `PLATFORMS` in
+   `const.py`, fork-specific network totals, connected-client and
+   diagnostic entities, and three registered services continue to
+   behave as described.
 5. **Lifecycle:** awaited platform forwarding and failure-safe unload
    preserve live state until cleanup can complete.
 6. **Firmware:** optional fields and legacy naming formats remain optional
@@ -437,8 +440,10 @@ not duplicate their general standards.
 
 ## Optional read-only WiFi status (upstream #627)
 
-A third, entry-owned coordinator reads the local `admin/wireless?form=wlan`
+The third, entry-owned coordinator reads the local `admin/wireless?form=wlan`
 endpoint independently from the mandatory Deco and client coordinators.
+The optional mobile coordinator proposed in PR #43 is a **separate fourth**
+coordinator on that PR branch; it does not replace or modify WLAN polling.
 Its first refresh runs only after platform forwarding finishes and therefore
 does not delay entity setup. Supported Main, Guest and IoT networks are
 discovered only when valid firmware `enable` values are returned; the Main
@@ -510,18 +515,33 @@ crypto material are not logged during transport/login. Unexpected wireless
 API exceptions are contained as optional update failures, while Home
 Assistant authentication errors and task cancellation remain distinct.
 
-## Optional mobile WAN error contract (PR #43, not yet merged)
+## Optional mobile WAN usage and error contract (PR #43, not yet merged)
 
-The optional mobile coordinator uses the existing authenticated encrypted
-read-only endpoint independently from mandatory polling. For mobile requests,
-HTTP 401/403 invalidates the stale session and permits the existing single
-authenticated retry; other HTTP failures, transport errors, malformed JSON
-and timeouts are sanitized at the API boundary to avoid exposing LuCI
-tokens or raw router responses. Ordinary mobile refresh errors produce a
-fixed `UpdateFailed`. Login failures remain `ConfigEntryAuthFailed` but
-carry a fresh privacy-safe message with no prior cause/context.
+The optional, per-entry mobile coordinator polls the encrypted, read-only
+`admin/network?form=internet` endpoint every five minutes, only while
+polling is active and a current master is recognized as a 4G/5G model.
+Its first refresh is scheduled as an entry-owned background task **after**
+platform forwarding. The result is an optional, translated per-master
+KiB sensor with stable `<master_mac>_mobile_data_usage` unique ID;
+a genuine zero is valid, while an absent or unsupported counter is not
+published as zero. Master MAC/generation ownership rejects stale values
+returned after master switches, including A -> B -> A transitions.
+Mandatory Deco/client and optional WLAN polling are not blocked.
+
+For mobile requests, HTTP 401/403 invalidates the stale session and
+permits the existing **single** authenticated retry; other HTTP failures,
+transport errors, malformed JSON and timeouts are sanitized at the API
+boundary to avoid exposing LuCI token URLs or raw router responses.
+At that API boundary, `raise ... from None` suppresses display of an
+original exception context in the standard traceback but does **not**
+remove the underlying `__context__` object. Ordinary mobile refresh
+errors produce a fixed `UpdateFailed`. Login failures remain
+`ConfigEntryAuthFailed` but are re-raised **outside** the exception
+handler with a fixed message and neither `__cause__` nor `__context__`.
 Cancellation propagates normally. Failed optional polling retains the
 previous cached same-master reading, which remains unavailable to the
 Home Assistant sensor while the coordinator reports a failed update.
+The actual counter and raw payload must not appear in diagnostics.
+Physical firmware and Recorder/history behavior remain unverified.
 This describes PR #43's branch, not a feature deployed on `main` before
 merge verification.
