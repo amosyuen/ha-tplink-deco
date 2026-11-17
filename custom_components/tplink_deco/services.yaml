@@ -11,3 +11,41 @@ reboot_deco:
           integration: tplink_deco
           manufacturer: TP-Link Deco
           multiple: true
+download_system_log:
+  name: Download system log
+  description: >-
+    Download a plain-text Deco system log on demand to a private file under
+    the Home Assistant configuration directory. System logs may contain
+    personal or network data; protect and remove exports when no longer needed.
+  fields:
+    config_entry_id:
+      name: Deco configuration
+      description: Required if multiple TP-Link Deco entries are loaded.
+      required: false
+      selector:
+        config_entry:
+          integration: tplink_deco
+    filename:
+      name: File name
+      description: Optional plain ASCII .log name; an existing file is never overwritten.
+      required: false
+      example: deco.log
+      selector:
+        text:
+    log_level:
+      name: Log level
+      description: Minimum severity of lines to include.
+      required: false
+      default: ALL
+      selector:
+        select:
+          options:
+            - ALERT
+            - CRITICAL
+            - ERROR
+            - WARNING
+            - NOTICE
+            - INFO
+            - DEBUG
+            - ALL
+

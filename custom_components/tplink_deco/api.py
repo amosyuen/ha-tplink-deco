@@ -31,6 +31,8 @@ from .exceptions import LoginInvalidException
 from .exceptions import TimeoutException
 from .exceptions import TransientConnectionException
 from .exceptions import UnexpectedApiException
+from .system_log import MAX_SYSTEM_LOG_BYTES
+from .system_log import SystemLogLevel
 
 AES_KEY_BYTES = 16
 MIN_AES_KEY = 10 ** (AES_KEY_BYTES - 1)
@@ -40,6 +42,7 @@ PKCS1_v1_5_HEADER_BYTES = 11
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 LEGACY_ERROR_DECODING_PATTERN = re.compile(r"^<Error Decoding (.*)>$")
+SYSTEM_LOG_CONTEXT = "Get System Log"
 
 
 def normalize_name(name: str | None) -> str | None:
@@ -315,6 +318,106 @@ class TplinkDecoApi:
             return parsed if parsed is not None and parsed <= 2**63 - 1 else None
         return None
 
+    async def async_get_system_log(
+        self, level: SystemLogLevel = SystemLogLevel.ALL
+    ) -> str:
+        """Return a bounded plain-text log snapshot after the usual auth retry."""
+        return await self._async_call_with_retry(
+            self._async_get_system_log, level, timeout_error_retries=0
+        )
+
+    async def _async_get_system_log(self, level: SystemLogLevel) -> str:
+        """Build the log snapshot through the encrypted LuCI endpoint."""
+        await self.async_login_if_needed()
+        if getattr(self, "_outer_id", None) is not None:
+            raise UnexpectedApiException("System log export is unsupported on legacy sessions")
+        response = await self._async_post(
+            SYSTEM_LOG_CONTEXT,
+            self._log_export_url(),
+            params={"form": "feedback_log"},
+            data=self._encode_payload(
+                {"operation": "build", "params": {"level": int(level)}}
+            ),
+        )
+        if not isinstance(response, dict) or not isinstance(response.get("data"), str):
+            raise UnexpectedApiException("System log build response is malformed")
+        payload = self._decrypt_data(SYSTEM_LOG_CONTEXT, response["data"])
+        if not isinstance(payload, dict):
+            raise UnexpectedApiException("System log build response is malformed")
+        error_code = payload.get("error_code") or payload.get("errorcode")
+        if error_code in (-5002, "-5002"):
+            self.clear_auth()
+            raise EmptyDataException("System log authentication expired")
+        if error_code == "timeout":
+            raise TimeoutException("System log build timed out")
+        if error_code not in (0, None, ""):
+            raise UnexpectedApiException("System log build was rejected")
+        return await self._async_save_system_log()
+
+    def _log_export_url(self) -> str:
+        """Return the authenticated URL without logging its LuCI token."""
+        return f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/log_export"
+
+    async def _async_save_system_log(self) -> str:
+        """Fetch the unencrypted Save Log response without logging its content."""
+        form = aiohttp.FormData()
+        form.add_field("operation", "save")
+        cookies = {}
+        if self._cookie and self._cookie.startswith("sysauth="):
+            cookies["sysauth"] = self._cookie.partition("=")[2]
+        try:
+            async with asyncio.timeout(self._timeout_seconds):
+                response = await self._session.post(
+                    self._log_export_url(),
+                    params={"form": "save_log"},
+                    data=form,
+                    cookies=cookies,
+                    ssl=self._ssl_context,
+                )
+                try:
+                    response.raise_for_status()
+                    self._update_https_host_after_redirect(response)
+                    body = await response.content.read(MAX_SYSTEM_LOG_BYTES + 1)
+                    if len(body) > MAX_SYSTEM_LOG_BYTES:
+                        raise UnexpectedApiException("System log snapshot exceeds size limit")
+                    if response.content_type == "text/plain":
+                        try:
+                            return body.decode("utf-8")
+                        except UnicodeError:
+                            raise UnexpectedApiException(
+                                "System log snapshot encoding is unsupported"
+                            ) from None
+                    if response.content_type == "application/json":
+                        try:
+                            error = json.loads(body)
+                        except (ValueError, TypeError):
+                            raise UnexpectedApiException(
+                                "System log response is malformed"
+                            ) from None
+                        if not isinstance(error, dict):
+                            raise UnexpectedApiException("System log response is malformed")
+                        error_code = error.get("errorcode") or error.get("error_code")
+                        if error_code in ("timeout", -5002, "-5002"):
+                            self.clear_auth()
+                            raise EmptyDataException("System log authentication expired")
+                        raise UnexpectedApiException("System log download was rejected")
+                    raise UnexpectedApiException(
+                        "System log format is unsupported (plain text only)"
+                    )
+                finally:
+                    response.release()
+        except asyncio.TimeoutError:
+            raise TimeoutException("System log request timed out") from None
+        except aiohttp.ClientResponseError as error:
+            if error.status in (401, 403):
+                self.clear_auth()
+                raise ForbiddenException("System log authentication expired") from None
+            raise UnexpectedApiException("System log HTTP request failed") from None
+        except (aiohttp.ClientPayloadError, aiohttp.ServerDisconnectedError):
+            raise TransientConnectionException("System log response incomplete") from None
+        except aiohttp.ClientError:
+            raise UnexpectedApiException("System log transport failed") from None
+
     # Return performance data (CPU / memory)
     async def async_get_performance(self) -> dict:
         return await self._async_call_with_retry(self._async_get_performance)
@@ -563,8 +666,17 @@ class TplinkDecoApi:
         mobile_usage_request = (
             context == "Get mobile data usage" and params.get("form") == "internet"
         )
-        private_status_request = params.get("form") == "wlan" or mobile_usage_request
-        private_label = "Mobile data" if mobile_usage_request else "Wireless status"
+        system_log_build_request = (
+            context == SYSTEM_LOG_CONTEXT and params.get("form") == "feedback_log"
+        )
+        private_status_request = (
+            params.get("form") == "wlan" or mobile_usage_request or system_log_build_request
+        )
+        private_label = (
+            "System log"
+            if system_log_build_request
+            else ("Mobile data" if mobile_usage_request else "Wireless status")
+        )
         headers = {CONTENT_TYPE: "application/json"}
         # Gebruik een dictionary voor cookies in plaats van een string in headers
         request_cookies = {}
@@ -601,9 +713,9 @@ class TplinkDecoApi:
                 try:
                     response_json = await response.json(content_type=None)
                 except (TypeError, ValueError):
-                    if mobile_usage_request:
+                    if mobile_usage_request or system_log_build_request:
                         raise UnexpectedApiException(
-                            "Mobile data response is malformed"
+                            f"{private_label} response is malformed"
                         ) from None
                     raise
                 if private_status_request and not isinstance(response_json, dict):
@@ -639,7 +751,7 @@ class TplinkDecoApi:
                 "%s timed out",
                 context,
             )
-            if mobile_usage_request:
+            if mobile_usage_request or system_log_build_request:
                 raise TimeoutException from None
             raise TimeoutException from err
         except aiohttp.ClientResponseError as err:
@@ -658,10 +770,10 @@ class TplinkDecoApi:
                 )
             if err.status == 401:
                 self.clear_auth()
-                if mobile_usage_request:
+                if mobile_usage_request or system_log_build_request:
                     # Use the shared bounded re-login path.
                     raise ForbiddenException(
-                        "Mobile data forbidden (HTTP 401)"
+                        f"{private_label} forbidden (HTTP 401)"
                     ) from None
                 raise err
             if err.status == 403:
@@ -672,9 +784,9 @@ class TplinkDecoApi:
                     ) from None
                 message = f"{context} Forbidden error: {err}"
                 raise ForbiddenException(message) from err
-            if mobile_usage_request:
+            if mobile_usage_request or system_log_build_request:
                 raise UnexpectedApiException(
-                    "Mobile data HTTP request failed"
+                    f"{private_label} HTTP request failed"
                 ) from None
             raise err
         except (aiohttp.ClientPayloadError, aiohttp.ServerDisconnectedError) as err:
@@ -694,8 +806,8 @@ class TplinkDecoApi:
                 )
             else:
                 _LOGGER.error("%s connection error: %s", context, err)
-            if mobile_usage_request:
-                raise UnexpectedApiException("Mobile data connection failed") from None
+            if mobile_usage_request or system_log_build_request:
+                raise UnexpectedApiException(f"{private_label} connection failed") from None
             raise
         except aiohttp.ClientError as err:
             if private_status_request:
@@ -708,8 +820,8 @@ class TplinkDecoApi:
                     context,
                     err,
                 )
-            if mobile_usage_request:
-                raise UnexpectedApiException("Mobile data transport failed") from None
+            if mobile_usage_request or system_log_build_request:
+                raise UnexpectedApiException(f"{private_label} transport failed") from None
             raise
 
     def _encode_payload(self, payload: Any):
@@ -797,11 +909,11 @@ class TplinkDecoApi:
             data_json = json.loads(data_decrypted)
             return data_json
         except Exception as err:
-            if context in ("Get wireless status", "Get mobile data usage"):
+            if context in ("Get wireless status", "Get mobile data usage", SYSTEM_LOG_CONTEXT):
                 private_label = (
-                    "Mobile data"
-                    if context == "Get mobile data usage"
-                    else "Wireless status"
+                    "System log"
+                    if context == SYSTEM_LOG_CONTEXT
+                    else ("Mobile data" if context == "Get mobile data usage" else "Wireless status")
                 )
                 _LOGGER.debug(
                     "%s response decoding failed (%s)",
