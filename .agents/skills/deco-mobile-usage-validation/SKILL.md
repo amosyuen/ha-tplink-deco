@@ -31,6 +31,16 @@ description: "Use when adding, reviewing or maintaining read-only 4G/5G Deco mob
    Never log the payload, usage, credentials, session URLs or exception
    message. Ordinary errors become a fixed sanitized `UpdateFailed`
    outside `except`, with neither `__cause__` nor `__context__`.
+   **P1 review lesson:** a safe coordinator exception is too late if
+   `TplinkDecoApi._async_post` or `_decrypt_data` already logged a raw
+   HTTP error, nonzero outer response, connection exception or ciphertext.
+   Extend the existing WLAN-sensitive boundary to the **exact**
+   `Get mobile data usage` / `form=internet` read operation without
+   changing unrelated LuCI errors. Test the **real bound methods**,
+   not a fixture that replaces both with `AsyncMock`, using synthetic
+   authenticated `request_info.real_url`, secret-containing error
+   messages, nonzero API JSON, connection failures and decrypt errors.
+   Preserve the existing HTTP 401/403 and one-relogin semantics.
 
 ## Coordinator ownership and sensor lifecycle
 
