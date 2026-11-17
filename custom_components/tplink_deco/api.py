@@ -131,8 +131,10 @@ def check_data_error_code(context, data):
         if error_code == "timeout":
             raise TimeoutException(f'{context} response error_code="timeout"')
 
-        _LOGGER.debug("%s error_code=%s, data=%s", context, error_code, data)
-        raise UnexpectedApiException(f"{context} error_code={error_code}")
+        # Codes and firmware payloads can contain attacker-controlled strings.
+        _LOGGER.debug("Deco API returned an error code")
+        safe_code = error_code if type(error_code) is int else "unknown"
+        raise UnexpectedApiException(f"Deco API error_code={safe_code}")
 
 
 class TplinkDecoApi:
@@ -206,8 +208,8 @@ class TplinkDecoApi:
 
             return device_list
         except Exception as err:
-            _LOGGER.error("%s parse response error=%s, data=%s", context, err, data)
-            raise err
+            _LOGGER.error("Deco device-list parsing failed (%s)", type(err).__name__)
+            raise
 
     # Reboot decos.
     async def async_reboot_decos(self, deco_macs: list[str]) -> None:
@@ -232,7 +234,7 @@ class TplinkDecoApi:
 
         data = self._decrypt_data(context, response_json["data"])
         self._check_authenticated_data_error_code(context, data)
-        _LOGGER.debug("Rebooted decos %s", deco_macs)
+        _LOGGER.debug("Deco reboot request accepted")
 
     async def async_get_wireless(self) -> dict[str, Any]:
         """Read optional wireless status without additional timeout retries."""
@@ -541,15 +543,15 @@ class TplinkDecoApi:
         try:
             client_list = data["result"]["client_list"]
             # client_list is only the connected clients
-            _LOGGER.debug("%s client_count=%d", context, len(client_list))
+            _LOGGER.debug("Deco client-list client_count=%d", len(client_list))
 
             for client in client_list:
                 client["name"] = decode_name_with_fallback(client["name"])
 
             return client_list
         except Exception as err:
-            _LOGGER.error("%s parse response error=%s, data=%s", context, err, data)
-            raise err
+            _LOGGER.error("Deco client-list parsing failed (%s)", type(err).__name__)
+            raise
 
     def _generate_aes_key_and_iv(self):
         # TPLink requires key and IV to be a 16 digit number (no leading 0s)
@@ -573,16 +575,11 @@ class TplinkDecoApi:
             keys = response_json["result"]["password"]
             self._password_rsa_n = int(keys[0], 16)
             self._password_rsa_e = int(keys[1], 16)
-            _LOGGER.debug("password_rsa_n=%s", self._password_rsa_n)
-            _LOGGER.debug("password_rsa_e=%s", self._password_rsa_e)
+            _LOGGER.debug("Deco password encryption key received")
+
         except Exception as err:
-            _LOGGER.error(
-                "%s parse response error=%s, response_json=%s",
-                context,
-                err,
-                response_json,
-            )
-            raise err
+            _LOGGER.error("Deco password key parsing failed (%s)", type(err).__name__)
+            raise
 
     # Fetch sign RSA keys and seq no
     async def _async_fetch_auth(self):
@@ -598,20 +595,15 @@ class TplinkDecoApi:
             auth_result = response_json["result"]
             auth_key = auth_result["key"]
             self._sign_rsa_n = int(auth_key[0], 16)
-            _LOGGER.debug("sign_rsa_n=%s", self._sign_rsa_n)
+            _LOGGER.debug("Deco request signing key received")
             self._sign_rsa_e = int(auth_key[1], 16)
-            _LOGGER.debug("sign_rsa_e=%s", self._sign_rsa_e)
+
 
             self._seq = auth_result["seq"]
-            _LOGGER.debug("seq=%s", self._seq)
+
         except Exception as err:
-            _LOGGER.error(
-                "%s parse response error=%s, response_json=%s",
-                context,
-                err,
-                response_json,
-            )
-            raise err
+            _LOGGER.error("Deco signing parameters parsing failed (%s)", type(err).__name__)
+            raise
 
     async def async_login_if_needed(self):
         if self._seq is None or self._stok is None or self._cookie is None:
@@ -677,15 +669,15 @@ class TplinkDecoApi:
                 self.clear_auth()
                 attempts = result.get("attemptsAllowed", "unknown")
                 raise LoginInvalidException(attempts)
-            raise UnexpectedApiException(f"Login error data={data}")
+            raise UnexpectedApiException("Deco login request was rejected")
         check_data_error_code(context, data)
 
         try:
             self._stok = result["stok"]
             _LOGGER.debug("Deco authenticated session established")
         except Exception as err:
-            _LOGGER.error("%s parse response error=%s, data=%s", context, err, data)
-            raise UnexpectedApiException from err
+            _LOGGER.error("Deco login result parsing failed (%s)", type(err).__name__)
+            raise UnexpectedApiException("Deco login response is malformed") from None
 
         if self._cookie is None:
             raise UnexpectedApiException(
@@ -802,17 +794,15 @@ class TplinkDecoApi:
                         if private_status_request:
                             _LOGGER.debug("%s returned API error", context)
                         else:
-                            _LOGGER.debug(
-                                "%s error_code=%s, response_json=%s",
-                                context,
-                                error_code,
-                                response_json,
-                            )
+                            _LOGGER.debug("Deco API response reported an error")
                         if private_status_request:
                             raise UnexpectedApiException(
                                 f"{private_label} request was rejected"
                             ) from None
-                        raise UnexpectedApiException(f"{context} error: {error_code}")
+                        safe_code = error_code if type(error_code) is int else "unknown"
+                        raise UnexpectedApiException(
+                            f"Deco API request rejected (error_code={safe_code})"
+                        )
 
                 return response_json
         except asyncio.TimeoutError as err:
@@ -1002,13 +992,8 @@ class TplinkDecoApi:
                 raise UnexpectedApiException(
                     f"{private_label} response could not be decoded"
                 ) from None
-            _LOGGER.error(
-                "%s decode data error=%s, data=%s",
-                context,
-                err,
-                data,
-            )
-            raise err
+            _LOGGER.error("Deco API response decoding failed (%s)", type(err).__name__)
+            raise
 
     async def _async_call_with_retry(
         self,
