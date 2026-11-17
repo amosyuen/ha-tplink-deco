@@ -1,6 +1,6 @@
 ---
 name: deco-config-flow-validation
-description: "Use when changing or testing Home Assistant configuration/options flows, polling interval selectors, test dependencies, Python/HA compatibility or CI for HiDiHo01/ha-tplink-deco. Covers the failure modes learned from PR #3 and PR #4; not for unrelated Home Assistant integrations."
+description: "Validate TP-Link Deco setup, options and reauthentication flows, including privacy-safe errors, transactional config updates, polling selectors and Home Assistant CI. Use only for HiDiHo01/ha-tplink-deco."
 ---
 
 # Validate Deco setup, options and test environments
@@ -81,14 +81,31 @@ description: "Use when changing or testing Home Assistant configuration/options 
   Home Assistant accepts the write. Rejected credentials, unexpected
   router errors and failed persistence must leave the in-memory handler
   unchanged. Keep the previous setup/reauth contracts and unique IDs.
-- Regress using malicious exception messages containing a synthetic secret;
-  assert both fixed form errors and that the secret is absent from DEBUG
-  logs. Cover valid, invalid, host-unavailable, timeouts, unexpected
-  exceptions, cancellation, successful temporary-coordinator shutdown,
-  cleanup failure, rejected options, failed persistence and reauth retention.
-- Re-run both supported Python/Home Assistant regression matrices and
-  Pre-commit/HACS/Hassfest **on the final commit**, including any
-  formatter-only follow-up. A skipped job does not establish compatibility.
+- **Real options-flow fixture:** after constructing
+  `TplinkDecoOptionsFlowHandler(entry)`, set
+  `flow.handler = entry.entry_id`, attach `flow.hass` and configure
+  `flow.hass.config_entries.async_get_known_entry.return_value = entry`.
+  The inherited `OptionsFlow.config_entry` property performs this
+  lookup; the constructor's copied data alone does not initialize it.
+  Exercise the successful **write** branch as well as rejected input,
+  an error from `async_update_entry` and credentials-only reauth.
+  Assert the exact entry and complete candidate data in write calls;
+  a mocked manager call is not evidence of persisted Home Assistant state.
+- **Privacy and failure matrix:** inject synthetic secrets into auth,
+  timeout, host, malformed/unexpected and coordinator-shutdown exceptions.
+  Assert the existing fixed form error code and secret-free DEBUG logs
+  with no raw traceback/exception message. Confirm valid temporary
+  coordinators shut down, ordinary failures do not save data, and
+  `asyncio.CancelledError` propagates rather than becoming a form error.
+  On failed options persistence, the handler must retain its prior data;
+  the failure is not silently labeled a successful save.
+- **CI verification:** start with the relevant focused tests, then run both
+  supported Python/Home Assistant *full* regression matrices and
+  Pre-commit, HACS and Hassfest **on the same final head SHA**, including
+  after a documentation or formatter-only commit. Read failing job
+  output and apply the **exact** Black/isort/Prettier correction;
+  do not infer a runtime regression from a missing test fixture.
+  A skipped, still-running or superseded check is not a pass.
 
 ## Optional SSID consent in setup and options (upstream #637, PR #42)
 
