@@ -41,6 +41,10 @@ def _coordinator(*responses: object) -> TplinkDecoWirelessUpdateCoordinator:
     coordinator.expose_ssids = False
     coordinator.ssids = {}
     coordinator.data = {}
+    coordinator._observed_master_mac = None
+    coordinator._master_generation = 0
+    coordinator._ssid_master_mac = None
+    coordinator._ssid_master_generation = None
     coordinator._next_retry = 0.0
     coordinator._consecutive_failures = 0
     return coordinator
