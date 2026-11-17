@@ -892,6 +892,36 @@ policy for AI-assisted development.
   Python/HA matrices plus Pre-commit/HACS/Hassfest on the **final**
   commit (including a documentation-only follow-up).
 
+## Firmware payload privacy and API error boundaries (issue #2, PR #51)
+
+- **Verified leak on `main`:** malformed device/client lists, login
+  key/auth/result parsing, decrypted payload decode failures, and
+  nonzero LuCI API errors logged raw `data` or `response_json`
+  together with an untrusted error/context. The login path also
+  interpolated the full decrypted response into an exception.
+  Never log raw firmware payloads, ciphertext, RSA key/sequence
+  values, credentials or device/client MAC lists—even at DEBUG.
+- Use fixed **operation labels** and exception **class names** for
+  diagnostic parsing failures, while preserving prior exception types
+  and API timeout/authentication/retry handling. A protocol error
+  code may be displayed only when it is a genuine `int` (excluding
+  `bool`); unknown/string error values are untrusted and must not
+  be interpolated into public errors. Avoid caller-supplied context
+  (client MAC/reboot MAC) in log messages and exceptions.
+- Validate against the actual `_async_post`, `_decrypt_data`,
+  `_async_list_devices`, `_async_list_clients`, login metadata and
+  reboot paths. Include negative tests with synthetic secrets in
+  success metadata, malformed responses, ciphertext and error text;
+  assert they never appear in DEBUG logs or normalized
+  `UnexpectedApiException` messages. Preserve previously valid
+  responses, one-shot authentication, stable identities and
+  explicit retry limits. Where the original exception is retained
+  for compatibility, a safe integration log does **not** guarantee
+  external traceback sanitization.
+- Keep the broad issue #2 privacy and test-parity acceptance boxes
+  unchecked until separately audited; only mocked CI is performed
+  unless actual router/firmware verification is documented.
+
 ## Authenticated API expiry error -5002 (upstream PR #620)
 
 - Some Deco firmware reports an expired authenticated LuCI session as
