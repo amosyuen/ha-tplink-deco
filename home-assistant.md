@@ -460,8 +460,14 @@ may be captured by Recorder/history, user dashboards, automations and
 backups; disabling exposure does not erase previously stored history.
 Never log or export SSIDs, passwords, PSKs, router tokens, or raw WLAN
 responses through diagnostics. SSID exposure does not enable changing WiFi
-configuration. Real hardware compatibility remains unverified until
-independently tested.
+configuration. Only bounded numeric firmware band keys may become SSID
+attribute suffixes; malformed or excessively long keys are ignored.
+Status and optional SSID names must parse successfully together **before**
+cached SSID names are replaced or wireless retry counters are reset.
+Unexpected SSID decoder failures follow the same sanitized, bounded
+optional-wireless failure/backoff path while preserving the last known
+states and names; they cannot break the mandatory coordinators.
+Real hardware compatibility remains unverified until independently tested.
 
 The wireless API validates the outer encrypted-response envelope and inner
 `result` mapping before reading network status. An authenticated `-5002`
