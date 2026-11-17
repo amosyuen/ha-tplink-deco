@@ -26,23 +26,31 @@ description: "Use when porting, reviewing, or debugging capped HTTP 5xx Deco cli
    240, 300, 300... seconds** after consecutive 5xx polling cycles.
    Use `time.monotonic()` for expiry; never block the Home Assistant
    event loop with `sleep()` or create an unbounded retry loop.
-4. Before a working global fallback has been established, skip
-   client-list calls during 5xx backoff and retain cached clients.
-   Once global fallback succeeds, continue **one global query** per
-   regular scheduled poll during per-node cooldown, without retrying
-   the faulty nodes. Keep previously valid peer results and cached
-   clients on a failed fallback; preserve identities and online state
-   whenever no query returns valid data.
+4. Before a validated global fallback succeeds, skip client polling
+   during per-node backoff and retain cached clients. Once a global
+   response succeeds, record `client_query_mode=global` and permit
+   **one global query** per regular scheduled poll during per-node
+   cooldown, without retrying faulty nodes. Attribute global clients
+   to the actual master MAC; when no master is known, never create a
+   fictional `default` device. If global polling subsequently fails,
+   retain the previous mode and cached clients. Keep valid peer
+   results and previous client state when the initial fallback fails.
 5. A _successful empty list_ is not a failed poll: retain the existing
-   `consider_home` policy and reset the delay once **all** requested
-   nodes return valid results. A transient or authentication failure
-   must not count as a successful HTTP 5xx recovery.
+   `consider_home` policy. Reset the per-node delay only when **all
+   actual per-node requests** succeed after cooldown expiry; a valid
+   global empty response does **not** reset that delay. After per-node
+   recovery, restore actual satellite associations and `per_node`
+   diagnostics. A timeout, transient failure, malformed global payload,
+   or authentication error must not count as a successful fallback.
 6. Log only the numeric HTTP status and delay, never `ClientResponseError`
    text, `request_info`, URLs, cookies, client MACs or LuCI `stok`
-   tokens. Do not alter user-configured scan intervals, sensors,
-   config-entry data, unique IDs or other device classes. Expose the
-   remaining delay through an internal coordinator property; adding
-   separate health sensors remains outside the scope of upstream #624.
+   tokens. Use a request-local timeout retry override of zero for
+   per-node **and global** client queries; other API calls keep their
+   configured retry policies. Do not alter scan intervals, entities,
+   config-entry data or unique IDs. Expose remaining delay through
+   the coordinator property. Optional coordinator-health sensors
+   **already exist** (fork PR #30); preserve their success, incomplete
+   and per-cycle timeout reporting without adding router requests.
 
 ## Regression matrix
 
@@ -56,9 +64,13 @@ description: "Use when porting, reviewing, or debugging capped HTTP 5xx Deco cli
    before changing cached clients or marking query mode successful:
    reject missing/invalid/duplicate MACs and values that cannot be
    processed by the existing client model with a fixed redacted
-   `ValueError`. Test a valid first item followed by corrupt data and
-   a later failed retry after a valid global poll. Mock the monotonic
-   clock for deterministic tests.
+   `ValueError`, without retaining the upstream exception context.
+   Test a valid first item followed by corrupt data and a later failed
+   retry after a valid global poll. Assert that cached client identity,
+   name, activity, online state, query mode and last-success metrics
+   remain unchanged when validation fails. Cover absent master, 401/403,
+   cancellation, one timeout count per poll and independent entries.
+   Mock the monotonic clock for deterministic tests.
 8. Run both supported Home Assistant/Python matrix entries, pre-commit,
    HACS and Hassfest on the **final** PR head. If Black, isort or
    Prettier reformats files, commit its changes and verify again.

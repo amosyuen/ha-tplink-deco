@@ -357,8 +357,9 @@ policy for AI-assisted development.
   Deco only, once its inventory is known. Use stable
   `<master_mac>_<metric_key>` unique IDs; disable all health sensors by
   default and keep historical error values available during failures.
-  Report `per_node` query mode for the current fork; do not imply the
-  global client-list fallback is implemented.
+  Report the actual query mode (`per_node` by default, `global` only
+  after a validated fallback). A failed global request or malformed
+  response must not manufacture success or change this diagnostic.
 - **Review finding (PR #30):** Home Assistant 2025.12 and 2026.11
   `DataUpdateCoordinator._async_refresh` skip ordinary listener
   notifications when both the previous and current refresh failed.
@@ -801,17 +802,23 @@ policy for AI-assisted development.
 
 ## Capped HTTP 5xx backoff for Deco client polling (upstream PR #624)
 
-- After a client-list HTTP 5xx response, pause further client-list requests
-  per config entry for 30, 60, 120, 240, then at most 300 seconds.
+- After a per-node client-list HTTP 5xx response, apply a cooldown to
+  further **per-node** client requests in that config entry for 30, 60,
+  120, 240, then at most 300 seconds. Before global fallback has been
+  validated, skip client polls during that delay; after a successful
+  global fallback, allow at most one global `device_mac=default`
+  request per regular refresh while the per-node delay continues.
   Use monotonic time and non-blocking skips, **not** event-loop sleeps.
-  Do not conflate 5xx backoff with configured timeout or transient-body retries.
+  Do not conflate 5xx backoff with timeout/transient-body retries.
 - Preserve valid credentials and existing clients (including `online`,
   `last_activity`, and node identity) during skipped polls. When one node
   fails, still accept successful peer-node replies. When all nodes fail,
   retain every previous client, including those with no known Deco mapping.
-- Reset the delay only after all queried nodes provide valid responses;
-  an empty successful list is valid and retains the current
-  `consider_home` semantics. Non-5xx HTTP/auth failures still propagate.
+- Reset the per-node cooldown only after **all actual per-node queries**
+  return valid responses following expiry. A successful global response,
+  even an empty list, must not reset the per-node 5xx backoff; a valid
+  empty list still retains the existing `consider_home` semantics.
+  Non-5xx HTTP/auth failures and cancellations still propagate.
 - Never interpolate `aiohttp.ClientResponseError` or its request URL
   into client-list logs because LuCI `stok` tokens can occur in URLs.
   Test sanitized logging, the 300-second cap, recovery and multi-node
@@ -826,9 +833,14 @@ policy for AI-assisted development.
   After per-node recovery, restore true associations, the normal query
   mode and zero backoff. With failed global recovery preserve cached
   clients and healthy peers, and never misreport failure as empty.
-  Non-5xx HTTP/authentication errors and cancellation must propagate.
-  Test multi-node partial/all failures, global empty/success/failure,
-  timeout and privacy, backoff boundaries and per-entry isolation.
+  Missing master identity means no global fallback: never create a
+  synthetic `default` Deco. Both per-node and global client queries
+  use a request-local timeout retry budget of zero; unrelated API
+  methods retain their configured retry policies. Non-5xx HTTP/auth
+  errors and cancellation must propagate without recording a fake
+  success. Test multi-node partial/all failures, global
+  empty/success/failure, timeout and privacy, mode transitions, cooldown
+  boundaries, and independent config entries.
 - **Validate global payloads before mutation (PR #40 review):** a later
   missing, empty, non-string or duplicate client MAC can otherwise
   raise after earlier cached clients were mutated and `global` mode

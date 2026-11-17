@@ -263,8 +263,11 @@ as a successful query; a valid empty list does count as success.
 
 Store the last successful aware UTC timestamp, measured API duration,
 sanitized error **type** (never exception text), and client timeout
-count. Keep current `client_query_mode` factual (`per_node` until the
-global fallback exists). Do not add router requests solely for health.
+count. Keep `client_query_mode` factual: `per_node` until a valid global
+fallback succeeds, `global` while the known-good global strategy is in
+use, and `per_node` again after complete node recovery. Neither
+failed fallback attempts nor skipped refreshes should change the mode.
+Do not add router requests solely for health.
 Attach all new sensor entities to the known master, disabled by default,
 with stable MAC-prefixed unique IDs. Register them once and support late
 master discovery, partial mesh failures and separate config entries.
@@ -410,10 +413,11 @@ long-running client requests. It is distinct from global-list fallback.
    per-node partial-success and last-activity behavior before editing.
 2. Bound each coordinator's client-list requests to two simultaneous
    calls with `asyncio.Semaphore`. Pass
-   `timeout_error_retries=0` only for those per-node calls; keep
-   global/default timeout and transient retry settings unchanged for
-   other API methods. Validate negative, boolean, float and string
-   overrides before network access.
+   `timeout_error_retries=0` for per-node calls and the separate
+   global fallback `device_mac=default` request. Keep default
+   timeout and transient retry settings for **unrelated** API methods.
+   Validate negative, boolean, float and string overrides before
+   network access.
 3. Handle per-node timeout exhaustion as a failed/incomplete node without
    resetting online flags or starting the HTTP 5xx backoff. Maintain
    health sensor/diagnostics parity: count **one timeout per real poll
@@ -432,9 +436,10 @@ long-running client requests. It is distinct from global-list fallback.
    **without weakening their existing assertions**. Re-run both Python/
    Home Assistant matrices, pre-commit, HACS and Hassfest on the final
    head SHA; record hardware verification separately.
-6. Link the scoped PR as `Part of #2`; do not check off upstream #527/
-   #556 global-list fallback until the actual fallback is implemented.
-   Revalidate the issue status when the PR is merged or closed.
+6. Link the scoped PR as `Part of #2`. Global fallback is present
+   on the separate PR #40 branch; do not mark combined upstream #527/
+   #556 complete until that PR is **merged and verified** on `main`.
+   Revalidate issue #2 when the PR is merged or closed.
 
 ## HTTP 5xx client polling backoff (upstream #624)
 
@@ -442,9 +447,11 @@ For client-list HTTP 500/502/503, capped non-blocking 30–300-second
 retry delays, session retention, partial mesh failures and sanitized
 response logging, follow
 [Deco client-backoff validation](../deco-client-backoff-validation/SKILL.md).
-Preserve the fork's per-node client data and pending distinct global
-client-list fallback; no global query-mode or health infrastructure is
-required for this narrow port.
+Preserve the fork's per-node data, validated global fallback, existing
+health diagnostics and bounded cooldown. Global recovery is handled
+on the separate PR #40 branch: see the backoff validation skill for
+preflight, partial-failure and mode-transition tests. Do not replace
+the fork's architecture to mirror upstream.
 
 ## Incomplete response and client-state recovery (upstream #590)
 
