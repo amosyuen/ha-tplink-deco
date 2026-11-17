@@ -40,6 +40,27 @@ description: "Use when changing or testing Home Assistant configuration/options 
 9. Install test dependencies in an isolated environment using `requirements-test.txt` plus a separately pinned Home Assistant version. **Do not mix** this with `requirements.txt`, which pins legacy `homeassistant==2025.1.0`. Keep the local setup consistent with the CI matrix: Python 3.13/HA 2025.12 and Python 3.14/HA 2026.11.
 10. Run `python -m pytest --no-cov tests/` for the focused suite; check formatting/pre-commit, HACS and Hassfest as available. The standalone regression workflow supports PRs, pushes, daily runs and manual `workflow_dispatch`; it must verify the pinned Home Assistant version and imports before pytest. Distinguish tests added from tests executed and passed; report missing dependencies, unavailable CI or failed checks explicitly.
 
+## Reauthentication must preserve stored options (upstream test parity, issue #2)
+
+- **Verified failure:** `async_step_reauth_confirm` previously called
+  `_ensure_user_input_optionals` on the credentials-only reauth payload.
+  That inserted empty Deco/client name prefixes and postfixes, which then
+  overwrote the user's saved values when the reauth credentials were merged.
+- On **reauthentication**, copy the existing config entry data and update
+  only submitted credentials; do **not** populate absent optional naming
+  fields as empty strings. Keep the optional-name defaulting helper for
+  first-time setup and explicit options submissions, where missing fields
+  have different semantics.
+- Test the real reauth handler with both configured custom names and legacy
+  entries without optional-name keys. Verify the exact credential-check and
+  config-entry-update payloads; preserve scan intervals, opt-in SSID consent,
+  client-device linking, TLS settings and other options. Invalid credentials
+  must not write or reload an entry. Confirm Home Assistant's form can open
+  without changing stored data.
+- This is a focused behavioral backport of the upstream reauth preservation
+  test; syslog forwarding is not yet implemented in the fork. Do not
+  introduce syslog keys solely to copy upstream test fixtures.
+
 ## Optional SSID consent in setup and options (upstream #637, PR #42)
 
 - Use the per-entry `CONF_EXPOSE_WIFI_SSIDS` key, with the default
