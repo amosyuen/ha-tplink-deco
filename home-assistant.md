@@ -466,7 +466,9 @@ Status and optional SSID names must parse successfully together **before**
 cached SSID names are replaced or wireless retry counters are reset.
 Unexpected SSID decoder failures follow the same sanitized, bounded
 optional-wireless failure/backoff path while preserving the last known
-states and names; they cannot break the mandatory coordinators.
+states and names. The sanitized `UpdateFailed` is raised outside the
+handler so private parser exceptions are not retained as `__context__`;
+they cannot break the mandatory coordinators.
 Real hardware compatibility remains unverified until independently tested.
 
 The wireless API validates the outer encrypted-response envelope and inner
