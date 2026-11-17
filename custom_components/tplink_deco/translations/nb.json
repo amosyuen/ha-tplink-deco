@@ -6,7 +6,8 @@
         "data": {
           "username": "Brukernavn",
           "password": "Passord",
-          "link_client_devices": "Koble klientsporere til enheter via MAC-adresse"
+          "link_client_devices": "Koble klientsporere til enheter via MAC-adresse",
+          "expose_wifi_ssids": "Vis Wi-Fi-nettverksnavn på Wi-Fi-statussensorene"
         }
       },
       "reauth_confirm": {
@@ -17,7 +18,9 @@
         }
       }
     },
-    "error": {}
+    "error": {
+      "invalid_expose_wifi_ssids": "Velg på eller av for å vise Wi-Fi-nettverksnavn."
+    }
   },
   "options": {
     "step": {
@@ -26,9 +29,13 @@
         "data": {
           "username": "Brukernavn",
           "password": "Passord",
-          "link_client_devices": "Koble klientsporere til enheter via MAC-adresse"
+          "link_client_devices": "Koble klientsporere til enheter via MAC-adresse",
+          "expose_wifi_ssids": "Vis Wi-Fi-nettverksnavn på Wi-Fi-statussensorene"
         }
       }
+    },
+    "error": {
+      "invalid_expose_wifi_ssids": "Velg på eller av for å vise Wi-Fi-nettverksnavn."
     }
   }
 }
