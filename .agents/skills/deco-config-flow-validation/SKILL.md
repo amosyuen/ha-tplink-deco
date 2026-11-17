@@ -29,7 +29,7 @@ description: "Validate TP-Link Deco setup, options and reauthentication flows, i
   including `device_list_interval`, both interval errors in setup and
   options, and the options reauthentication abort. The matrix now
   requires complete source-key parity for `en`, `nl`, `sk`, `sv`;
-  keep other incomplete locales out of a *full-parity* claim until
+  keep other incomplete locales out of a _full-parity_ claim until
   their remaining fields are genuinely translated. Preserve
   existing localized values, Dutch titles, legacy metadata and
   validation errors; do **not** add unimplemented upstream syslog
