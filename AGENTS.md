@@ -1162,6 +1162,17 @@ policy for AI-assisted development.
   transitions. Verify both Python/HA matrices, pre-commit, HACS and
   Hassfest on the same final commit; do not treat skipped reviewers or
   untested physical hardware as passes.
+- **Coordinator test-double parity (PR #42 regression):** when a coordinator
+  gains new private state or listener registration, audit existing tests
+  that bypass its constructor with `object.__new__` as well as new tests.
+  These fixtures must explicitly initialize the real attributes read by
+  the changed code, including consent, owner MAC/generation, retry counters
+  and cached values; avoid relying on `MagicMock`'s implicit attributes
+  to simulate valid master or API state. Separately exercise the real
+  constructor/listener registration and config-entry unload ownership,
+  instead of treating a manually invoked handler as proof of subscription.
+  Keep pre-existing failure, privacy and call-count assertions intact and
+  run the full supported Home Assistant test matrices after the fix.
 - **SSID privacy (upstream #637, PR #42):** never infer consent from
   truthy config values; use an explicit boolean defaulting to `False`
   per entry, and reject non-boolean form submissions. Keep SSIDs out of
