@@ -16,7 +16,8 @@
           "client_postfix": "Klient názov koncovky",
           "deco_prefix": "Deco názov predpony",
           "deco_postfix": "Deco názov koncovky",
-          "link_client_devices": "Prepojiť sledovače klientov so zariadeniami podľa adresy MAC"
+          "link_client_devices": "Prepojiť sledovače klientov so zariadeniami podľa adresy MAC",
+          "expose_wifi_ssids": "Zobrazovať názvy Wi-Fi sietí na snímačoch stavu Wi-Fi"
         }
       },
       "reauth_confirm": {
@@ -34,7 +35,8 @@
       "invalid_auth": "Neplatné overenie",
       "invalid_host": "Nedá sa pripojiť k hostiteľovi.",
       "timeout_connect": "Časový limit nadväzovania spojenia",
-      "unknown": "Neočakávaná chyba"
+      "unknown": "Neočakávaná chyba",
+      "invalid_expose_wifi_ssids": "Vyberte zapnuté alebo vypnuté pre zobrazovanie názvov Wi-Fi sietí."
     }
   },
   "options": {
@@ -54,7 +56,8 @@
           "client_postfix": "Klient názov koncovky",
           "deco_prefix": "Deco názov predpony",
           "deco_postfix": "Deco názov koncovky",
-          "link_client_devices": "Prepojiť sledovače klientov so zariadeniami podľa adresy MAC"
+          "link_client_devices": "Prepojiť sledovače klientov so zariadeniami podľa adresy MAC",
+          "expose_wifi_ssids": "Zobrazovať názvy Wi-Fi sietí na snímačoch stavu Wi-Fi"
         }
       }
     },
@@ -62,7 +65,8 @@
       "invalid_auth": "Neplatné overenie",
       "invalid_host": "Nedá sa pripojiť k hostiteľovi.",
       "timeout_connect": "Časový limit nadväzovania spojenia",
-      "unknown": "Neočakávaná chyba"
+      "unknown": "Neočakávaná chyba",
+      "invalid_expose_wifi_ssids": "Vyberte zapnuté alebo vypnuté pre zobrazovanie názvov Wi-Fi sietí."
     }
   }
 }
