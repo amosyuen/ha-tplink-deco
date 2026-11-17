@@ -52,8 +52,12 @@ description: "Use when implementing or reviewing bounded Deco API retries for tr
 8. Exercise the real coordinator update methods with a multi-node mesh:
    one failed node and one successful node, a genuinely empty success,
    all nodes failing, a client with old activity data, optional CPU/memory
-   failure and propagation of other errors. Assert no raw upstream
-   errors, credentials or identifiers appear in logs.
+   failure and propagation of other errors. Validate per-node list types,
+   missing/non-string/duplicate MACs and invalid fields **after** a valid
+   cached client. Assert whole-list preflight before any cached mutation,
+   preserved identities/activity/count readiness on failure, and no client
+   MACs in discovery DEBUG logs. Assert no raw upstream errors,
+   credentials or identifiers appear in logs.
 9. Update existing transport tests that assumed a disconnect always
    propagates immediately. Preserve their original authentication
    assertions and check `timeout_error_retries=0` separately.
