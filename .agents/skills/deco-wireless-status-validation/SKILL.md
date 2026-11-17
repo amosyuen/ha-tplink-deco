@@ -8,9 +8,9 @@ description: "Use when changing optional Deco WLAN status, firmware parsing, tra
 ## When to use and source of authority
 
 Use this procedure for the read-only Main, Guest and IoT WiFi backport
-(upstream #627, fork PR #41) and its future maintenance. SSID exposure
-(upstream #637) is **out of scope** and requires separate opt-in/privacy
-review. Start with the repository's `AI_POLICY.md`, `AGENTS.md` and
+(upstream #627, fork PR #41) and its future maintenance. Optional SSID
+exposure (upstream #637) is a **separately scoped, default-disabled**
+addition; apply the privacy-specific steps below when changing it. Start with the repository's `AI_POLICY.md`, `AGENTS.md` and
 `home-assistant.md`. Inspect the current PR and the actual implementations
 in `api.py`, `wireless.py`, `binary_sensor.py`, `__init__.py` and their
 existing tests. Do not adopt upstream code or review suggestions blindly.
@@ -67,6 +67,30 @@ existing tests. Do not adopt upstream code or review suggestions blindly.
    `async_on_remove` during entity removal. When the original master
    returns, its original entity identity may become available again.
 
+## Explicit SSID opt-in (upstream #637)
+
+- The per-entry `expose_wifi_ssids` option defaults to `False`, including
+  migrated/legacy entries. Accept only actual booleans; reject strings,
+  numeric values and missing/invalid consent coercions before credential
+  checking or persistence in setup/options flows.
+- Parse only `ssid` fields in the already known `band*/host`,
+  `band*/guest` and `iot/host` sections. Decode Base64 names with the
+  existing firmware compatibility helper; ignore absent, empty or non-string
+  values and all password, PSK and unknown-section fields. Support one
+  `ssid` attribute for common names, otherwise deterministic per-band keys.
+- Do not store parsed names in `coordinator.data`. Maintain a separate
+  `coordinator.ssids` map **only** when consent is exactly `True`;
+  keep it empty otherwise. On successful polls, replace it rather than
+  merging stale names; omit unsupported networks and avoid exposing names
+  on unavailable former-master entities. Never include names in diagnostics,
+  DEBUG logs or raw responses.
+- Test default-off and explicit-on for both flows, form JSON serialization,
+  rejected non-boolean submissions, setup/option persistence, multi-entry
+  isolation, decoding, per-band grouping, missing/invalid names and
+  coordinator refresh clearing. Document that entity history and exports
+  created while enabled can survive disabling the option. Recheck all
+  language translations and both supported HA CI matrices.
+
 ## Tests and failure investigation
 
 8. In `tests/test_wireless.py`, cover recognized/unknown flags,
@@ -106,8 +130,8 @@ existing tests. Do not adopt upstream code or review suggestions blindly.
     **earlier** coordinator-count, platform/entity and unimplemented-feature
     statements. PR #41's review found that the old two-coordinator and
     "no WiFi status" claims contradicted a later WLAN section. Reconcile
-    both locations in the same PR, while keeping separately unported SSID,
-    syslog and mobile functionality explicitly pending.
+    both locations in the same PR, while keeping separately unported syslog
+    and mobile functionality explicitly pending.
 14. Link partial work as `Part of #2`. Keep issue #2's combined
     WiFi/SSID checklist unchecked until the relevant scope is merged
     and the remaining SSID work is addressed. Update the issue's
