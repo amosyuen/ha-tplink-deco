@@ -14,6 +14,27 @@ description: "Use when comparing, backporting, reviewing, or implementing change
 7. Add focused tests for the change and run the available checks. For test setup and HA form regressions, use the related `deco-config-flow-validation` skill. Report test limitations explicitly; do not say tests passed merely because they are present.
 8. Open or update a **small PR** linked as `Part of #2`, not `Fixes #2`. Address valid review findings and resolve threads only after the corresponding change is committed or an explanation is supplied. Update issue #2's checklist only after the relevant scope has been merged; leave unported items open.
 
+## Upstream regression-test parity audit (issue #2)
+
+- Compare the upstream and fork **test behaviors**, not only test filenames.
+  Mark a scenario as covered only when a fork test exercises the relevant
+  bound production path and asserts the same invariant. Account for
+  fork-specific config-entry ownership, legacy restore behavior and the
+  supported Home Assistant/Python versions before adapting test fixtures.
+- **Combined background-refresh regression (upstream #645):** independent
+  client, WiFi and mobile tests do not by themselves prove they coexist.
+  Exercise the real `async_setup_entry` with **all three coordinators**
+  present: await platform forwarding first, register three entry-owned
+  `async_refresh()` coroutines in client/WiFi/mobile order, and never
+  call a foreground `async_request_refresh()`. A platform-forwarding
+  error must prevent **all** background scheduling. Capture and close
+  unscheduled mock coroutines to avoid false unawaited-coroutine warnings.
+- Keep tests for unimplemented features (S7 outer sessions and syslog
+  forwarding) explicitly **pending**, not failed or silently claimed as
+  ported. This is one focused increment toward test parity; do not check
+  issue #2's full upstream-test-suite parity item until every applicable
+  behavior and both supported CI matrices have been audited and verified.
+
 ## Independent Deco inventory scheduling (upstream #616/#669/#670)
 
 Port this feature as one compatible, independently tested backport.
