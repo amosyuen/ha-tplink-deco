@@ -1188,7 +1188,7 @@ policy for AI-assisted development.
   suppressed context, formatted traceback and DEBUG log redaction; never
   claim that `from None` erases sensitive context. At the mobile
   coordinator boundary, raise fresh `UpdateFailed` and
-  `ConfigEntryAuthFailed` *after leaving* their exception handlers and
+  `ConfigEntryAuthFailed` _after leaving_ their exception handlers and
   verify that **both** `__cause__` and `__context__` are `None`.
   Keep the HTTP 401/403 single-relogin contract and non-mobile error
   behavior intact.

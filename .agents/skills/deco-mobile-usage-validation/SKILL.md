@@ -64,7 +64,7 @@ description: "Use when adding, reviewing or maintaining read-only 4G/5G Deco mob
   HTTP errors other than 401/403 and connector/client transport errors
   must not pass raw aiohttp exceptions or authenticated URLs to direct
   consumers. Preserve the shared truncated-response retry policy and the
-  mobile-specific zero *additional timeout* retries.
+  mobile-specific zero _additional timeout_ retries.
 - **Tracebacks are part of the privacy boundary:** `raise ... from None`
   suppresses automatic display of `__context__` but does **not** clear
   that attribute. At `TplinkDecoApi` boundaries check
