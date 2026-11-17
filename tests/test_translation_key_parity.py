@@ -36,7 +36,7 @@ def _leaf_paths(
     return paths
 
 
-@pytest.mark.parametrize("locale", ["en", "nl", "sk", "sv"])
+@pytest.mark.parametrize("locale", ["en", "nl", "sk", "sv", "fr"])
 def test_canonical_translation_keys_are_present_in_locale(locale: str) -> None:
     """Avoid silently falling back on missing setup, options or entity labels."""
     source = _load_labels("strings.json")
@@ -64,6 +64,7 @@ def test_scan_interval_translation_matches_real_home_assistant_form_key(
         "translations/nl.json",
         "translations/sk.json",
         "translations/sv.json",
+        "translations/fr.json",
     ):
         labels = _load_labels(file_name)
         form_labels = labels[section_name]["step"][form_step]["data"]
@@ -84,3 +85,23 @@ def test_dutch_legacy_labels_and_validation_messages_remain_available() -> None:
         assert "invalid_scan_interval" in dutch[section_name]["error"]
         assert "invalid_device_list_interval" in dutch[section_name]["error"]
         assert "invalid_expose_wifi_ssids" in dutch[section_name]["error"]
+
+
+def test_french_existing_labels_and_metadata_are_retained() -> None:
+    """Preserve existing French consent labels, titles and sensor names."""
+    french = _load_labels("translations/fr.json")
+
+    assert french["config"]["step"]["user"]["title"] == "TP-Link Deco"
+    assert french["options"]["step"]["init"]["title"] == "TP-Link Deco"
+    assert french["config"]["step"]["reauth_confirm"]["title"] == "TP-Link Deco"
+    assert french["entity"]["sensor"]["mobile_data_usage"]["name"] == (
+        "Consommation de données mobiles"
+    )
+    for section_name, step_name in (("config", "user"), ("options", "init")):
+        labels = french[section_name]["step"][step_name]["data"]
+        assert labels["link_client_devices"] == (
+            "Associer les traceurs clients aux appareils par adresse MAC"
+        )
+        assert labels["expose_wifi_ssids"] == (
+            "Afficher les noms des réseaux Wi-Fi sur les capteurs d’état Wi-Fi"
+        )
