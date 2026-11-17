@@ -194,3 +194,37 @@ async def test_successful_options_verification_commits_staged_settings() -> None
         data=flow.data,
         options={},
     )
+
+
+@pytest.mark.asyncio
+async def test_reauth_unexpected_firmware_error_returns_safe_form(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Do not expose a router error or persist credentials after failed reauth."""
+    entry = SimpleNamespace(entry_id="mesh-reauth", data=deepcopy(CONFIG_DATA))
+    flow = config_flow.TplinkDecoFlowHandler()
+    flow.reauth_entry = entry
+    flow.hass = MagicMock()
+    flow.hass.config_entries.async_reload = AsyncMock()
+    flow.async_show_form = MagicMock(return_value={"type": "form"})
+    original = deepcopy(entry.data)
+
+    with (
+        patch.object(
+            config_flow,
+            "async_create_and_refresh_coordinators",
+            new=AsyncMock(side_effect=RuntimeError(SECRET)),
+        ),
+        caplog.at_level(logging.DEBUG, logger=config_flow.__name__),
+    ):
+        result = await flow.async_step_reauth_confirm(
+            {CONF_USERNAME: "replacement", CONF_PASSWORD: "replacement-password"}
+        )
+
+    assert result == {"type": "form"}
+    assert flow._errors == {"base": "unknown"}
+    assert flow.async_show_form.call_args.kwargs["errors"] == {"base": "unknown"}
+    assert entry.data == original
+    flow.hass.config_entries.async_update_entry.assert_not_called()
+    flow.hass.config_entries.async_reload.assert_not_awaited()
+    assert SECRET not in caplog.text
