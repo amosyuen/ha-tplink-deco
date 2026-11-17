@@ -45,6 +45,7 @@ from .const import CONF_TIMEOUT_SECONDS
 from .const import CONF_VERIFY_SSL
 from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
+from .const import COORDINATOR_WIRELESS_KEY
 from .const import DEFAULT_CONSIDER_HOME
 from .const import DEFAULT_DECO_POSTFIX
 from .const import DEFAULT_LINK_CLIENT_DEVICES
@@ -63,6 +64,7 @@ from .coordinator import TpLinkDecoClient
 from .coordinator import TpLinkDecoData
 from .coordinator import TplinkDecoClientUpdateCoordinator
 from .coordinator import TplinkDecoUpdateCoordinator
+from .wireless import TplinkDecoWirelessUpdateCoordinator
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -163,9 +165,13 @@ async def async_create_and_refresh_coordinators(
     # A configured entry starts its first client refresh in the background
     # after platforms have loaded, rather than blocking coordinator creation.
 
+    wireless_coordinator = TplinkDecoWirelessUpdateCoordinator(
+        hass, api, config_entry, deco_coordinator, update_interval
+    )
     return {
         COORDINATOR_DECOS_KEY: deco_coordinator,
         COORDINATOR_CLIENTS_KEY: clients_coordinator,
+        COORDINATOR_WIRELESS_KEY: wireless_coordinator,
     }
 
 
@@ -273,6 +279,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     data = await async_create_config_data(hass, config_entry)
     hass.data[DOMAIN][config_entry.entry_id] = data
     deco_coordinator = data[COORDINATOR_DECOS_KEY]
+    wireless_coordinator = data.get(COORDINATOR_WIRELESS_KEY)
 
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
 
@@ -332,6 +339,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         data[COORDINATOR_CLIENTS_KEY].async_refresh(),
         name="tplink_deco initial client refresh",
     )
+    if wireless_coordinator is not None:
+        config_entry.async_create_background_task(
+            hass,
+            wireless_coordinator.async_refresh(),
+            name="tplink_deco initial wireless refresh",
+        )
 
     return True
 
@@ -352,6 +365,7 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
 
     deco_coordinator = data.get(COORDINATOR_DECOS_KEY)
     clients_coordinator = data.get(COORDINATOR_CLIENTS_KEY)
+    wireless_coordinator = data.get(COORDINATOR_WIRELESS_KEY)
 
     unloaded = all(
         await asyncio.gather(
@@ -365,11 +379,11 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
         return False
 
     # Platform unload must succeed before stopping polling or releasing callbacks.
-    for coordinator in (deco_coordinator, clients_coordinator):
+    for coordinator in (deco_coordinator, clients_coordinator, wireless_coordinator):
         if coordinator is not None:
             await coordinator.async_shutdown()
 
-    for coordinator in (deco_coordinator, clients_coordinator):
+    for coordinator in (deco_coordinator, clients_coordinator, wireless_coordinator):
         if coordinator is not None:
             await coordinator.async_close()
 
