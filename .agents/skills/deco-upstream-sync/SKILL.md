@@ -74,6 +74,19 @@ description: "Use when comparing, backporting, reviewing, or implementing change
   in DEBUG logs for each row. Formatter failures are independent:
   apply only Black/Prettier's reported diff and run all five CI jobs
   again on the final branch SHA.
+- **Decoded LuCI payload error safety (fork PR #51):** run
+  `tests/test_api_sensitive_payload_errors.py` against the real
+  `_async_post` and decrypt/parser methods. Inject synthetic
+  names, MACs, token-like strings and invalid error codes into
+  malformed device/client lists, login key/auth responses, failed
+  decryptions and top-level LuCI JSON errors. Assert DEBUG logs
+  omit raw `response_json`, `data`, cryptographic values and
+  caller context, and preserve the expected exception classes.
+  Keep integer error codes useful for diagnosis; never interpolate
+  arbitrary string error codes or full decrypted login responses
+  into outward exceptions. A log-only fix must not be presented as
+  sanitizing propagated original exceptions.
+- Keep tests for unimplemented features (S7 outer sessions and syslog
 - Keep tests for unimplemented features (S7 outer sessions and syslog
   forwarding) explicitly **pending**, not failed or silently claimed as
   ported. This is one focused increment toward test parity; do not check
