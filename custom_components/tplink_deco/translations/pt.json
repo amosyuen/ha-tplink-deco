@@ -10,7 +10,8 @@
           "password": "Senha",
           "interval_seconds": "Segundos entre atualizações",
           "consider_home": "Segundos de espera até marcar um scan de dispositivo reconhecer como fora de casa depois de não ser visto.",
-          "link_client_devices": "Associar rastreadores de clientes a dispositivos pelo endereço MAC"
+          "link_client_devices": "Associar rastreadores de clientes a dispositivos pelo endereço MAC",
+          "expose_wifi_ssids": "Mostrar nomes das redes Wi-Fi nos sensores de estado Wi-Fi"
         }
       },
       "reauth_confirm": {
@@ -24,7 +25,8 @@
     "error": {
       "invalid_auth": "Autenticação inválida",
       "timeout_connect": "Tempo limite estabelecendo ligação",
-      "unknown": "Erro inesperado"
+      "unknown": "Erro inesperado",
+      "invalid_expose_wifi_ssids": "Selecione ativado ou desativado para mostrar os nomes das redes Wi-Fi."
     }
   },
   "options": {
@@ -43,14 +45,16 @@
       },
       "init": {
         "data": {
-          "link_client_devices": "Associar rastreadores de clientes a dispositivos pelo endereço MAC"
+          "link_client_devices": "Associar rastreadores de clientes a dispositivos pelo endereço MAC",
+          "expose_wifi_ssids": "Mostrar nomes das redes Wi-Fi nos sensores de estado Wi-Fi"
         }
       }
     },
     "error": {
       "invalid_auth": "Autenticação inválida",
       "timeout_connect": "Tempo limite estabelecendo conexão",
-      "unknown": "Erro inesperado"
+      "unknown": "Erro inesperado",
+      "invalid_expose_wifi_ssids": "Selecione ativado ou desativado para mostrar os nomes das redes Wi-Fi."
     }
   }
 }
