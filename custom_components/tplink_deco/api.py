@@ -268,6 +268,53 @@ class TplinkDecoApi:
             raise UnexpectedApiException("Wireless status response is malformed")
         return result
 
+    async def async_get_mobile_data_usage(self) -> int | None:
+        """Read optional mobile WAN usage in KiB without extra timeout retries."""
+        return await self._async_call_with_retry(
+            self._async_get_mobile_data_usage, timeout_error_retries=0
+        )
+
+    async def _async_get_mobile_data_usage(self) -> int | None:
+        """Parse a supported firmware's read-only encrypted usage response."""
+        await self.async_login_if_needed()
+        context = "Get mobile data usage"
+        response = await self._async_post(
+            context,
+            f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/network",
+            params={"form": "internet"},
+            data=self._encode_payload({"operation": "read"}),
+        )
+        if not isinstance(response, dict) or not isinstance(response.get("data"), str):
+            raise UnexpectedApiException("Mobile data response is malformed")
+
+        payload = self._decrypt_data(context, response["data"])
+        if not isinstance(payload, dict):
+            raise UnexpectedApiException("Mobile data response is malformed")
+        error_code = payload.get("error_code") or payload.get("errorcode")
+        if error_code in (-5002, "-5002"):
+            self.clear_auth()
+            raise EmptyDataException("Mobile data authentication expired")
+        if error_code == "timeout":
+            raise TimeoutException("Mobile data request timed out")
+        if error_code not in (0, None, ""):
+            raise UnexpectedApiException("Mobile data request was rejected")
+
+        result = payload.get("result")
+        if not isinstance(result, dict):
+            raise UnexpectedApiException("Mobile data response is malformed")
+        mobile = result.get("mobile_cpe")
+        if not isinstance(mobile, dict):
+            return None
+        value = mobile.get("data_usage")
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, int):
+            return value if 0 <= value <= 2**63 - 1 else None
+        if isinstance(value, str) and value.isascii() and value.isdecimal():
+            parsed = int(value) if len(value) <= 19 else None
+            return parsed if parsed is not None and parsed <= 2**63 - 1 else None
+        return None
+
     # Return performance data (CPU / memory)
     async def async_get_performance(self) -> dict:
         return await self._async_call_with_retry(self._async_get_performance)
