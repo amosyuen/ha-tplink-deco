@@ -1152,13 +1152,25 @@ policy for AI-assisted development.
   transitions. Verify both Python/HA matrices, pre-commit, HACS and
   Hassfest on the same final commit; do not treat skipped reviewers or
   untested physical hardware as passes.
-- **SSID privacy (upstream #637):** never infer consent from truthy config
-  values; use an explicit boolean defaulting to `False` per entry, and
-  reject non-boolean form submissions. Keep SSIDs out of status data, logs,
-  diagnostics and entities when consent is off; when enabled, expose names
-  only on verified, currently available networks and clear them on a
-  subsequent successful response without names. Document that opting out
-  does not remove Home Assistant Recorder history or third-party exports.
+- **SSID privacy (upstream #637, PR #42):** never infer consent from
+  truthy config values; use an explicit boolean defaulting to `False`
+  per entry, and reject non-boolean form submissions. Keep SSIDs out of
+  coordinator status data, logs, diagnostics and entities when consent
+  is off; when enabled, expose names only on verified, available networks
+  owned by the current master. Replace (do not merge) cached names on a
+  successful poll. Opting out does **not** erase Home Assistant Recorder
+  history, backups or third-party exports.
+- **Atomic WLAN failure handling (PR #42):** parse both boolean flags and
+  optional SSID names within the same guarded refresh; do not replace the
+  cached names, declare a successful poll or reset retry backoff until
+  both parsers succeed. For optional decode errors, preserve cached
+  status/names and use the established sanitized `UpdateFailed` and
+  two-failure/five-minute retry budget. Raise the fixed error **after**
+  leaving `except` so its `__context__` cannot retain a private upstream
+  exception; verify `__cause__` and `__context__` are `None`. Keep
+  authentication failures and cancellation distinct. Constrain
+  firmware-derived SSID attribute suffixes to compact numeric band keys,
+  never arbitrary or oversized firmware input.
 - **Use the dedicated procedure:** follow
   [Deco wireless-status validation](.agents/skills/deco-wireless-status-validation/SKILL.md)
   for API contracts, deterministic mocks, exact failure cases, entity
