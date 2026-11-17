@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from datetime import timedelta
 import logging
+import re
 from math import ceil
 from time import monotonic
 from typing import Any
@@ -24,6 +25,8 @@ from .coordinator import async_call_and_propagate_config_error
 _LOGGER = logging.getLogger(__name__)
 WIRELESS_RETRY_INTERVAL_SECONDS = 300
 WIRELESS_FAILURES_BEFORE_RETRY_DELAY = 2
+SSID_BAND_KEY_PATTERN = re.compile(r"band[0-9]+(?:_[0-9]+)*\Z")
+MAX_SSID_BAND_KEY_LENGTH = 32
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -124,10 +127,18 @@ def _resolve_band_sections(
         if not path:
             continue
         for key, value in config.items():
-            if _key_matches(path[0], key):
-                sections.extend(
-                    (key, section) for section in _resolve_sections(value, (path[1:],))
-                )
+            if not _key_matches(path[0], key):
+                continue
+            # The firmware band key becomes a Home Assistant attribute suffix.
+            # Never use an arbitrary or excessively long key from router data.
+            if path[0] == "band*" and (
+                len(key) > MAX_SSID_BAND_KEY_LENGTH
+                or SSID_BAND_KEY_PATTERN.fullmatch(key) is None
+            ):
+                continue
+            sections.extend(
+                (key, section) for section in _resolve_sections(value, (path[1:],))
+            )
     return sections
 
 
@@ -150,6 +161,8 @@ def parse_wireless_ssids(config: object) -> dict[str, dict[str, str]]:
 
 def wireless_ssid_attributes(names: dict[str, str]) -> dict[str, str]:
     """Expose a common name once, or individual names per band."""
+    if not names:
+        return {}
     if len(set(names.values())) == 1:
         return {ATTR_SSID: next(iter(names.values()))}
     return {f"{ATTR_SSID}_{band}": name for band, name in sorted(names.items())}
@@ -209,6 +222,17 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator[dict[str, bool]]
             if not isinstance(response, dict):
                 raise ValueError("Wireless status response must be a mapping")
             states = parse_wireless_states(response)
+            # Parse optional private fields inside the same guarded operation.
+            # Do not publish a partial refresh or reset backoff if it fails.
+            names = (
+                {
+                    key: bands
+                    for key, bands in parse_wireless_ssids(response).items()
+                    if key in states
+                }
+                if self.expose_ssids
+                else {}
+            )
         except ConfigEntryAuthFailed:
             # Authentication is handled by the config-entry flow, not by
             # optional endpoint retry/backoff.
@@ -223,16 +247,8 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator[dict[str, bool]]
             _LOGGER.debug("Optional wireless request failed (%s)", type(error).__name__)
             raise UpdateFailed("Unable to read optional wireless status") from None
 
+        # Commit status and optional names only after both parsers succeed.
+        self.ssids = names
         self.reset_retry()
-        # Never retain names without explicit consent; ignore unsupported networks.
-        self.ssids = (
-            {
-                key: names
-                for key, names in parse_wireless_ssids(response).items()
-                if key in states
-            }
-            if self.expose_ssids
-            else {}
-        )
         _LOGGER.debug("Wireless network keys=%s", sorted(states))
         return states
