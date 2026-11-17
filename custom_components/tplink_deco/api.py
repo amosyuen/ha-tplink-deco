@@ -903,7 +903,7 @@ class TplinkDecoApi:
             raise
 
         if forbidden_message is not None:
-            raise ForbiddenException(forbidden_message)
+            raise ForbiddenException(forbidden_message) from None
 
     def _encode_payload(self, payload: Any):
         data = self._encode_data(payload)
