@@ -62,6 +62,8 @@ reading these instructions:
   validate entry setup/unload, coordinator shutdown, callbacks and safe logout.
 - [Deco wireless-status validation](.agents/skills/deco-wireless-status-validation/SKILL.md):
   validate optional WLAN error boundaries, privacy, master changes and teardown.
+- [Deco mobile WAN usage validation](.agents/skills/deco-mobile-usage-validation/SKILL.md):
+  validate optional 4G/5G data usage, parser privacy, master ownership, sensor discovery and entry lifecycle.
 
 These skills are task-specific procedures. This file remains the source of
 repository-wide implementation rules; `AI_POLICY.md` remains the governing
@@ -1136,6 +1138,34 @@ policy for AI-assisted development.
   functions and methods; keep asynchronous operations and errors explicit.
 - Make the smallest change that meets the issue's acceptance criteria,
   document user-visible behavior, and explain regression coverage in the PR.
+
+## Optional mobile WAN usage (upstream #631, issue #2)
+
+- Poll `admin/network?form=internet` with an encrypted read-only request
+  only for a current master whose model explicitly indicates 4G/5G support.
+  Treat missing `mobile_cpe.data_usage` as unsupported; accept only bounded,
+  nonnegative integer KiB counters (including 0), never booleans, floats,
+  arbitrary strings or raw firmware payloads.
+- Keep optional mobile polling on a separate five-minute coordinator with
+  a non-blocking first refresh **after** platform forwarding. Never make
+  unsupported/mobile endpoint failures delay mandatory Deco/client updates
+  or trigger a sensor for non-mobile firmware. Authenticate using the shared
+  API contracts; propagate cancellation/auth failure and sanitize ordinary
+  errors with no upstream exception text or retained context.
+- Associate a successful counter with the master MAC and a generation
+  captured before awaiting the API. Invalidate on any master transition,
+  including A -> B -> A; never transfer an old counter to a new master.
+  Register a stable per-master sensor only after valid data, and make
+  former-master sensors unavailable without changing existing entity IDs.
+  Keep config-entry listener and background task ownership explicit, and
+  unload this plain `DataUpdateCoordinator` with `async_shutdown()`,
+  **never** the fork-only `async_close()`.
+- Mobile diagnostics may report support status, update success and interval,
+  but must not export the numeric usage, router model, API payload, token
+  or credentials. Test parsing, unsupported models, late master discovery,
+  zero/invalid values, in-flight master transitions, entry isolation,
+  setup/unload, privacy, translation keys and both HA CI matrices.
+  Follow the linked mobile usage skill before modifying this feature.
 
 ## Optional WLAN reliability and review lessons (PR #41)
 
