@@ -76,15 +76,16 @@ description: "Use when changing or testing Home Assistant configuration/options 
   unexpected failures. **Do not catch `asyncio.CancelledError`**, which
   must propagate to Home Assistant.
 - **Options submission:** merge submitted values into a staged copy of
-  `self.data`, validate credentials against that copy and commit it only
-  when validation succeeds. A rejected submission or unexpected router
-  error must leave both the in-memory options handler and the saved entry
+  `self.data` and validate credentials against that copy. Write the
+  config entry first; adopt the staged values in `self.data` only after
+  Home Assistant accepts the write. Rejected credentials, unexpected
+  router errors and failed persistence must leave the in-memory handler
   unchanged. Keep the previous setup/reauth contracts and unique IDs.
 - Regress using malicious exception messages containing a synthetic secret;
   assert both fixed form errors and that the secret is absent from DEBUG
   logs. Cover valid, invalid, host-unavailable, timeouts, unexpected
   exceptions, cancellation, successful temporary-coordinator shutdown,
-  cleanup failure, rejected options and reauth persistence.
+  cleanup failure, rejected options, failed persistence and reauth retention.
 - Re-run both supported Python/Home Assistant regression matrices and
   Pre-commit/HACS/Hassfest **on the final commit**, including any
   formatter-only follow-up. A skipped job does not establish compatibility.
