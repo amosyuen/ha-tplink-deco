@@ -56,5 +56,12 @@
       "unknown": "Erro inesperado",
       "invalid_expose_wifi_ssids": "Selecione ativado ou desativado para mostrar os nomes das redes Wi-Fi."
     }
+  },
+  "entity": {
+    "sensor": {
+      "mobile_data_usage": {
+        "name": "Utilização de dados móveis"
+      }
+    }
   }
 }
