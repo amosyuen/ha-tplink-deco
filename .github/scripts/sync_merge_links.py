@@ -431,28 +431,40 @@ def reconcile_recent_merges(
 
     # All eligible merge metadata is validated before the first issue/PR write.
     processed: list[int] = []
+    failed: list[int] = []
     seen: set[int] = set()
     for row in sorted(recent, key=lambda item: _timestamp(item["merged_at"])):
         number = row["number"]
         if number in seen:
             continue
         seen.add(number)
-        marker = f"<!-- deco-merge-sync:summary-pr-{number} -->"
-        comments = client.pages(f"/repos/{repository}/issues/{number}/comments")
-        if any(
-            comment.get("user", {}).get("login") == _BOT_LOGIN
-            and marker in (comment.get("body") or "")
-            for comment in comments
-        ):
-            continue
+        try:
+            marker = f"<!-- deco-merge-sync:summary-pr-{number} -->"
+            comments = client.pages(f"/repos/{repository}/issues/{number}/comments")
+            if any(
+                comment.get("user", {}).get("login") == _BOT_LOGIN
+                and marker in (comment.get("body") or "")
+                for comment in comments
+            ):
+                continue
 
-        event = {
-            "action": "closed",
-            "repository": {"default_branch": default_branch},
-            "pull_request": {**row, "merged": True},
-        }
-        synchronize_merge(client, repository, event)
+            event = {
+                "action": "closed",
+                "repository": {"default_branch": default_branch},
+                "pull_request": {**row, "merged": True},
+            }
+            synchronize_merge(client, repository, event)
+        except Exception:
+            # Isolate per-PR failures without concealing an incomplete run.
+            _LOGGER.warning("Merge reconciliation failed for PR #%d", number)
+            failed.append(number)
+            continue
         processed.append(number)
+
+    if failed:
+        raise RuntimeError(
+            f"Merge reconciliation incomplete for {len(failed)} merged PR(s)"
+        ) from None
     return processed
 
 

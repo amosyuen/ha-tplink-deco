@@ -371,6 +371,61 @@ class MergeReferenceSyncTests(unittest.TestCase):
                     "- [ ] Retry incomplete responses", client.issues[2]["body"]
                 )
 
+    def test_reconciliation_continues_after_candidate_specific_failure(self) -> None:
+        """Retry an invalid PR later without preventing a valid later merge."""
+        api = _FakeGitHub()
+        api.open_prs = []
+        api.issues[2]["body"] = (
+            "- **In progress (not merged):** [PR #20]\n"
+            "- [ ] Port merged fork PR #20\n"
+            "- [ ] Unrelated acceptance criteria\n"
+        )
+        older = {
+            **_event()["pull_request"],
+            "number": 19,
+            "body": "Part of " + ", ".join(f"#{value}" for value in range(1, 27)),
+            "merged_at": "2026-11-17T10:00:00Z",
+            "updated_at": "2026-11-17T10:00:00Z",
+        }
+        later = {
+            **_event()["pull_request"],
+            "number": 20,
+            "body": "Part of #2",
+            "merged_at": "2026-11-17T11:00:00Z",
+            "updated_at": "2026-11-17T11:00:00Z",
+        }
+        api.closed_pages[1] = [later, older]
+        current_time = datetime(2026, 11, 17, 12, tzinfo=timezone.utc)
+
+        with self.assertLogs(sync._LOGGER, level="WARNING") as captured:
+            with self.assertRaisesRegex(
+                RuntimeError, "incomplete for 1 merged PR"
+            ):
+                sync.reconcile_recent_merges(
+                    api, REPOSITORY, "main", current_time=current_time
+                )
+
+        self.assertEqual(api.patches, 1)
+        self.assertIn("- [x] Port merged fork PR #20", api.issues[2]["body"])
+        self.assertIn("- [ ] Unrelated acceptance criteria", api.issues[2]["body"])
+        self.assertIn(20, api.posted)
+        self.assertNotIn(19, api.posted)
+        self.assertTrue(
+            any(
+                "<!-- deco-merge-sync:summary-pr-20 -->" in comment["body"]
+                for comment in api.comments[20]
+            )
+        )
+        self.assertFalse(api.comments.get(19))
+        self.assertNotIn("Part of #", " ".join(captured.output))
+
+        with self.assertRaisesRegex(RuntimeError, "incomplete for 1 merged PR"):
+            sync.reconcile_recent_merges(
+                api, REPOSITORY, "main", current_time=current_time
+            )
+        self.assertEqual(api.patches, 1)
+        self.assertEqual(api.posted.count(20), 1)
+
     def test_reconciliation_deduplicates_pull_request_pages(self) -> None:
         """Process duplicate GitHub list entries only once."""
         client = _FakeGitHub()

@@ -125,9 +125,15 @@ PR's successful Python/HA and linting checks.
   privacy-safe errors without raw response bodies, endpoint data or
   token-bearing exception messages. Test with synthetic sensitive
   payloads and verify both unsupported-data and recovery paths.
-- Preflight protects against corrupt _merge metadata_. An unexpected
-  failure while writing still requires a retry/reconciliation; GitHub
-  issue updates are not an atomic transaction across multiple objects.
+- Preflight protects against corrupt _merge metadata_. Process each
+  candidate independently after preflight: one PR-specific exception
+  must not starve later valid merges. Leave failed candidates without
+  completion markers, log only their public PR numbers, continue
+  processing other merges, then return a nonzero job status with an
+  aggregate count of failures. Test an invalid first PR followed by a
+  valid second one, and verify that the next run retries only the
+  failed candidate. GitHub issue updates are not an atomic transaction
+  across multiple objects.
 
 ## Deployment and limitations
 

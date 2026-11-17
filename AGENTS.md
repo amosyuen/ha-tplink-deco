@@ -149,6 +149,16 @@ policy for AI-assisted development.
   cannot leave an earlier issue partially updated, that duplicate
   list entries do not repeat writes, and that naive or malformed
   event timestamps are rejected.
+- **Per-candidate recovery fault isolation (PR #38 review):** after
+  validating the entire merge metadata set, isolate failures from
+  processing one specific merged PR (such as excessive issue references
+  or GitHub write errors). Continue with other eligible PRs, leave the
+  failing PR without a completion marker and report the total number
+  of failed candidates using a nonzero final job status. Log only the
+  PR number, never the exception body or API response. The next
+  scheduled run must retry failed PRs without duplicating successful
+  issue or PR updates. Test the first candidate failing followed by
+  a successful second candidate, including a repeated run.
 - **Workflow-policy scope (PR #38 review):** audit **all**
   `.github/workflows/*.yml` and `*.yaml` action references rather
   than treating action pinning as specific to merge-sync. Resolve
