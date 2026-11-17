@@ -531,9 +531,7 @@ class MergeReferenceSyncTests(unittest.TestCase):
             f"https://github.com/{REPOSITORY}/pull/10\n"
             f"https://github.com/{REPOSITORY}/actions/runs/11\n"
         )
-        self.assertEqual(
-            sync.issue_references(body, REPOSITORY), set(range(2, 10))
-        )
+        self.assertEqual(sync.issue_references(body, REPOSITORY), set(range(2, 10)))
 
     def test_scheduled_reconciliation_handles_pr_and_run_links(self) -> None:
         """Recover a merge from a PR description without spurious issue reads."""

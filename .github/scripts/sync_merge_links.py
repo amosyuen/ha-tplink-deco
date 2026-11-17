@@ -81,8 +81,7 @@ def issue_references(text: str, repository: str) -> set[int]:
             prefix = _DIRECTIVE_ISSUE_PREFIX.match(match.group(1))
             if prefix:
                 found.update(
-                    int(value)
-                    for value in re.findall(r"#(\d+)\b", prefix.group())
+                    int(value) for value in re.findall(r"#(\d+)\b", prefix.group())
                 )
     found.discard(0)
     if len(found) > _MAX_ISSUES:
