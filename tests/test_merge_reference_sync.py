@@ -398,9 +398,7 @@ class MergeReferenceSyncTests(unittest.TestCase):
         current_time = datetime(2026, 11, 17, 12, tzinfo=timezone.utc)
 
         with self.assertLogs(sync._LOGGER, level="WARNING") as captured:
-            with self.assertRaisesRegex(
-                RuntimeError, "incomplete for 1 merged PR"
-            ):
+            with self.assertRaisesRegex(RuntimeError, "incomplete for 1 merged PR"):
                 sync.reconcile_recent_merges(
                     api, REPOSITORY, "main", current_time=current_time
                 )
