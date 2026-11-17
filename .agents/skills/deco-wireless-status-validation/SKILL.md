@@ -7,20 +7,23 @@ description: "Use when changing optional Deco WLAN status, firmware parsing, tra
 
 ## When to use and source of authority
 
-Use this procedure for the read-only Main, Guest and IoT WiFi backport
-(upstream #627, fork PR #41) and its future maintenance. Optional SSID
-exposure (upstream #637) is a **separately scoped, default-disabled**
-addition; apply the privacy-specific steps below when changing it. Start with the repository's `AI_POLICY.md`, `AGENTS.md` and
-`home-assistant.md`. Inspect the current PR and the actual implementations
-in `api.py`, `wireless.py`, `binary_sensor.py`, `__init__.py` and their
-existing tests. Do not adopt upstream code or review suggestions blindly.
+Use this procedure for read-only Main, Guest and IoT WiFi status
+(upstream #627, merged fork PR #41) and the separately scoped,
+**default-disabled** SSID option (upstream #637, open fork PR #42).
+Start with `AI_POLICY.md`, `AGENTS.md` and `home-assistant.md`.
+Inspect the current branch's `api.py`, `wireless.py`,
+`binary_sensor.py`, `config_flow.py`, `__init__.py` and tests.
+Do not adopt upstream code or review suggestions blindly. A feature
+present on an open PR is not yet present on deployed `main`.
 
 ## API boundary and privacy
 
 1. Keep the local request read-only: the fixed
    `admin/wireless?form=wlan` endpoint with `{"operation": "read"}`.
-   Preserve the normal encryption/session machinery without introducing
-   wireless-setting writes or exposing SSIDs, PSKs or passwords.
+   Preserve encryption/session handling without introducing WiFi-setting
+   writes. Never expose PSKs, passwords or raw WLAN payloads. SSID names
+   may be published **only** as explicitly consented existing sensor
+   attributes; keep the option disabled by default.
 2. Validate the outer HTTP JSON mapping, its encrypted `data` string, the
    decrypted mapping and the `result` mapping **before** indexing or
    interpreting fields. Missing, malformed or unsupported fields are not
@@ -95,12 +98,13 @@ existing tests. Do not adopt upstream code or review suggestions blindly.
   fixed `UpdateFailed` **after** leaving the `except` block: `from None`
   hides a traceback context but still retains the original private exception
   in `__context__`. Assert both `__cause__` and `__context__` are `None`.
-- **Constrain firmware-derived attribute keys:** only compact numeric
-  `band...` identifiers (e.g. `band2_4`, `band5_1`, `band6`) and
-  the explicit `iot` segment can become SSID attribute suffixes. Reject
-  malformed/oversized top-level keys rather than publishing arbitrary or
-  unbounded Home Assistant attribute identifiers. An empty name mapping
-  produces no attributes.
+- **Constrain firmware-derived attribute keys:** allow only the explicit
+  `iot` key or numeric band identifiers matching
+  `band[0-9]+(?:_[0-9]+)*` (for example `band2_4`, `band5_1`,
+  `band6`) with a 32-character maximum. Reject malformed or oversized
+  keys before creating `ssid_<band>` attributes; never let arbitrary
+  firmware paths become Home Assistant attribute names. Empty mappings
+  produce no attributes.
 - Test default-off and explicit-on for both flows, form JSON serialization,
   rejected non-boolean submissions, setup/option persistence, multi-entry
   isolation, decoding, per-band grouping, missing/invalid names and
@@ -149,8 +153,10 @@ existing tests. Do not adopt upstream code or review suggestions blindly.
     "no WiFi status" claims contradicted a later WLAN section. Reconcile
     both locations in the same PR, while keeping separately unported syslog
     and mobile functionality explicitly pending.
-14. Link partial work as `Part of #2`. Keep issue #2's combined
-    WiFi/SSID checklist unchecked until the relevant scope is merged
-    and the remaining SSID work is addressed. Update the issue's
-    existing in-progress record with the **actual** final head, test
-    results and live-hardware limitations; do not close issue #2.
+14. Link partial work as `Part of #2`, never `Fixes #2`. Issue #2
+    has **separate** checklist items: read-only WiFi status (#627) was
+    checked after PR #41 merged; SSID exposure (#637) stays unchecked
+    until PR #42 is actually merged and verified. Update the existing
+    in-progress issue record with the **actual** final head, CI results,
+    review status and hardware limitations. Keep issue #2 open for
+    unrelated upstream work.
