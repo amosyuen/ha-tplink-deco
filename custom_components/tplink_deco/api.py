@@ -873,9 +873,7 @@ class TplinkDecoApi:
                     "%s connection failed (%s)", private_label, type(err).__name__
                 )
             else:
-                _LOGGER.error(
-                    "Deco API connection failed (%s)", type(err).__name__
-                )
+                _LOGGER.error("Deco API connection failed (%s)", type(err).__name__)
             if mobile_usage_request or system_log_build_request:
                 raise UnexpectedApiException(
                     f"{private_label} connection failed"
@@ -887,9 +885,7 @@ class TplinkDecoApi:
                     "%s transport failed (%s)", private_label, type(err).__name__
                 )
             else:
-                _LOGGER.error(
-                    "Deco API transport failed (%s)", type(err).__name__
-                )
+                _LOGGER.error("Deco API transport failed (%s)", type(err).__name__)
             if mobile_usage_request or system_log_build_request:
                 raise UnexpectedApiException(
                     f"{private_label} transport failed"
