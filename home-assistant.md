@@ -278,6 +278,13 @@ Their physical-firmware validation remains a separate limitation.
   existing propagated response-error type. Authentication failures
   are logged by controlled status only, not the original request URL
   or router message. Real firmware behavior remains unverified.
+- Generic HTTP 4xx/5xx errors, connector failures, other transport
+  exceptions and timeouts use fixed status/type labels for integration
+  logs rather than interpolating upstream exception messages or
+  call-site context that may contain private device identifiers.
+  Their previously established error types and authentication/retry
+  behavior remain unchanged; exceptions propagated by non-private
+  endpoints are not themselves redacted by this logging change.
 - A same-host HTTP **307 → HTTPS** redirect may update the **runtime**
   API origin, including its port, to preserve subsequent authenticated
   requests. A cross-host redirect must not rewrite the configured router
