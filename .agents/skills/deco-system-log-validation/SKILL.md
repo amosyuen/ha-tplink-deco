@@ -97,14 +97,14 @@ shared retry helper, forward a unique sentinel and assert both invocations
 received that same object. Use synthetic values; do not print credentials
 or raw firmware bodies in CI output.
 
-| Injected response or failure | Expected behavior | Required independent evidence |
-| --- | --- | --- |
-| Standalone top-level auth error (including mislabeled JSON) | One re-login at most | Refreshed build/save URL and cookie; second failure stops |
-| Standalone non-auth or malformed firmware error | Sanitized failure, no export or transient retry | Exact single-attempt requests, fixed error, no sensitive logs/tracebacks |
-| Valid JSON Lines with nested error key | Preserve all log records | Exact returned text, no relogin and no false firmware-error classification |
-| Partial read, reset, broken pipe or socket error | Sanitized transport failure, no automatic manual retry | Request arguments, one attempt, `response.release()` when allocated, private sentinel absent from logs and traceback |
-| Pathological JSON decoder recursion | Sanitized malformed-response failure | No export, response release, no exposed payload, no retry |
-| Ordinary non-log API transient error | Preserve shared default retry budget | Both invocations retain the sentinel and previous return behavior |
+| Injected response or failure                                | Expected behavior                                      | Required independent evidence                                                                                        |
+| ----------------------------------------------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| Standalone top-level auth error (including mislabeled JSON) | One re-login at most                                   | Refreshed build/save URL and cookie; second failure stops                                                            |
+| Standalone non-auth or malformed firmware error             | Sanitized failure, no export or transient retry        | Exact single-attempt requests, fixed error, no sensitive logs/tracebacks                                             |
+| Valid JSON Lines with nested error key                      | Preserve all log records                               | Exact returned text, no relogin and no false firmware-error classification                                           |
+| Partial read, reset, broken pipe or socket error            | Sanitized transport failure, no automatic manual retry | Request arguments, one attempt, `response.release()` when allocated, private sentinel absent from logs and traceback |
+| Pathological JSON decoder recursion                         | Sanitized malformed-response failure                   | No export, response release, no exposed payload, no retry                                                            |
+| Ordinary non-log API transient error                        | Preserve shared default retry budget                   | Both invocations retain the sentinel and previous return behavior                                                    |
 
 The matrix is a minimum **test-evidence checklist**, not a new firmware
 contract. Retain the more specific boundary cases above and below, preserve
