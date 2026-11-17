@@ -113,10 +113,18 @@ Configurable:
 
 ### Unreleased — upstream sync (issue #2)
 
+- Recover client tracking on firmware where a per-node query returns
+  HTTP 5xx by trying one global client-list query. Live clients from
+  that response are temporarily assigned to the master because the
+  global response does not identify individual Deco nodes. Keep global
+  polling available during the capped per-node backoff, and restore
+  actual node associations after per-node requests recover. Failed
+  global queries retain cached clients and healthy peer results.
+
 - Limit simultaneous per-Deco client-list requests to two per mesh and
   avoid repeated timeouts for each node. A timeout on one node keeps its
   last-known client state while successful peers continue updating.
-  This does **not** implement fallback to the global client list.
+  The global fallback above is a separate subsequent addition.
 
 - Add an independent Deco status polling interval. Choose 0 to fetch
   the mesh inventory only at startup, or an interval of at least ten
