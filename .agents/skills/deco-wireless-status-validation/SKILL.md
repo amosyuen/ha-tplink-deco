@@ -136,10 +136,19 @@ present on an open PR is not yet present on deployed `main`.
     listener notifications, including listener cleanup.
 11. After any commit, verify the **new final head** with both supported
     Python/Home Assistant pytest matrices (3.13/2025.12 and
-    3.14/2026.11), pre-commit, HACS and Hassfest. When Black, isort or
-    Prettier rewrites files, apply the reported diff and rerun checks.
-    Distinguish passing, failing, pending and skipped checks. Mocked
-    tests do not prove hardware/firmware compatibility.
+    3.14/2026.11), pre-commit, HACS and Hassfest. The repository's
+    `.github/workflows/pytest.yaml` runs
+    `python -m pytest --no-cov -ra tests/` against each pinned environment;
+    `.github/workflows/tests.yaml` runs
+    `pre-commit run --all-files --show-diff-on-failure --color=always`.
+    For focused WLAN work, first exercise the real coordinator paths in
+    `tests/test_wireless.py` and `tests/test_wifi_ssid_opt_in.py`, then
+    require the **full** CI matrix. Verify synthetic decoder secrets do
+    not survive in logged text or `UpdateFailed.__context__`; assert
+    retained states, two-failure cooldown, recovery and malformed-band
+    rejection. When Black/isort/Prettier rewrites files, apply the exact
+    diff and rerun checks. Distinguish passing, failing, pending and
+    skipped checks. Mocked tests do not prove hardware compatibility.
 
 ## PR and issue completion
 
@@ -148,11 +157,17 @@ present on an open PR is not yet present on deployed `main`.
     evidence and resolve the thread after its fix is verified. Re-read
     the PR and review threads after bots have updated them.
 13. Before appending feature notes to `home-assistant.md`, inspect
-    **earlier** coordinator-count, platform/entity and unimplemented-feature
-    statements. PR #41's review found that the old two-coordinator and
-    "no WiFi status" claims contradicted a later WLAN section. Reconcile
-    both locations in the same PR, while keeping separately unported syslog
-    and mobile functionality explicitly pending.
+    **earlier** coordinator-count, platform/entity, privacy and
+    unimplemented-feature statements **and** the later WLAN appendix.
+    PR #41 left older "two coordinators/no WiFi status" claims; PR #42
+    uncovered a stale "five platforms" count, an old baseline described
+    as current and an obsolete "SSID still out of scope" disclaimer.
+    Derive the six platforms from `const.py:PLATFORMS`; confirm the two
+    mandatory plus optional WLAN coordinators in `__init__.py` and
+    the strict consent flag in `config_flow.py` and `binary_sensor.py`.
+    Distinguish merged #627 status from **unmerged** #637 SSID work and
+    preserve separate syslog/mobile pending scope. Update conflicting
+    statements wherever they occur before considering docs complete.
 14. Link partial work as `Part of #2`, never `Fixes #2`. Issue #2
     has **separate** checklist items: read-only WiFi status (#627) was
     checked after PR #41 merged; SSID exposure (#637) stays unchecked
