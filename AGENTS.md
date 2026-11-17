@@ -40,6 +40,8 @@ reading these instructions:
   validate secure merge-triggered updates to linked issues and related open PRs.
 - [GitHub PR branch maintenance](.agents/skills/github-pr-branch-maintenance/SKILL.md):
   distinguish rebaseability from mergeability and rewrite branches with lease protection.
+- [Repository guidance consistency](.agents/skills/deco-guidance-consistency-validation/SKILL.md):
+  verify instruction changes against live code, current PRs, formatting and final-head CI.
 - [Config flow and test validation](.agents/skills/deco-config-flow-validation/SKILL.md):
   validate Home Assistant forms, polling interval storage and CI regressions.
 - [Device-registry service validation](.agents/skills/deco-service-registry-validation/SKILL.md):
@@ -96,6 +98,16 @@ policy for AI-assisted development.
 - Report unverified tests and incomplete work accurately. Do not mark a
   review thread resolved or a tracking-issue task complete merely because
   its lesson has been documented.
+- **Guidance maintenance lesson (PR #43, 2026-11-17):** a documentation-only
+  correction exposed a stale `#637 remains open during PR #42` statement
+  after PR #42 had merged. Check references in **all applicable skills**,
+  the integration guide and tracking issue against the live PR merge state;
+  label historical snapshots and preserve unmerged scope accurately.
+  A Prettier hook also rewrote Markdown emphasis in `AGENTS.md` and the
+  mobile skill. Apply the hook's exact diff, commit formatting and require
+  all five CI jobs on that **new** head. Follow the linked
+  [guidance consistency skill](.agents/skills/deco-guidance-consistency-validation/SKILL.md);
+  do not count queued, skipped or superseded results as passing.
 
 ## Keep linked and related GitHub issues synchronized
 

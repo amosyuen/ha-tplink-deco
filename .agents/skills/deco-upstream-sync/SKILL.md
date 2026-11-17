@@ -570,7 +570,11 @@ and focused regressions use
 [Deco wireless-status validation](../deco-wireless-status-validation/SKILL.md).
 Keep upstream #637 SSID exposure explicitly opt-in and separately scoped
 from read-only WiFi status (#627). Issue #2 tracks them in **separate**
-checklist items: #627 was completed in merged fork PR #41; #637 remains
-open during PR #42 until a verified merge. Never check an unrelated
-item merely because one PR has green CI. All required CI checks must
-pass on the final head after any code **or documentation** commit.
+checklist items: #627 was completed in merged fork PR #41, and #637
+was completed in merged fork PR #42 (merge commit `1c40ed954a61e9d78bb2a8766be45a9e655a17b3`,
+verified 2026-11-17). PR #43 mobile usage (#631) and its initial mobile
+refresh (#645) remain **open** until that PR merges. Never check an
+unrelated item merely because another PR has green CI. All required CI
+checks must pass on the final head after any code **or documentation** commit.
+Use the [guidance consistency skill](../deco-guidance-consistency-validation/SKILL.md)
+when revising status claims across documentation and skills.
