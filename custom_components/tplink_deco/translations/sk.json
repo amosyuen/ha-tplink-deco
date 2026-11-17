@@ -8,6 +8,7 @@
           "username": "užívateľské meno",
           "password": "Heslo",
           "interval_seconds": "Sekúnd medzi aktualizáciami",
+          "device_list_interval": "Sekundy medzi aktualizáciami stavu Deco (0 = iba pri spustení)",
           "consider_home": "Sekundy čakania, kým sa sledovač zariadenia označí ako neprítomný po tom, čo ho nikto nevidel.",
           "timeout_seconds": "Timeout sekundy",
           "timeout_error_retries": "Timeout error počet opakovaní",
@@ -36,6 +37,8 @@
       "invalid_host": "Nedá sa pripojiť k hostiteľovi.",
       "timeout_connect": "Časový limit nadväzovania spojenia",
       "unknown": "Neočakávaná chyba",
+      "invalid_scan_interval": "Zvoľte interval aktualizácie 10, 30, 60 alebo 120 sekúnd.",
+      "invalid_device_list_interval": "Zvoľte 0 pre aktualizáciu iba pri spustení alebo aspoň 10 sekúnd pre stav Deco.",
       "invalid_expose_wifi_ssids": "Vyberte zapnuté alebo vypnuté pre zobrazovanie názvov Wi-Fi sietí."
     }
   },
@@ -48,6 +51,7 @@
           "username": "Užívateľské meno",
           "password": "Heslo",
           "interval_seconds": "Sekúnd medzi aktualizáciami",
+          "device_list_interval": "Sekundy medzi aktualizáciami stavu Deco (0 = iba pri spustení)",
           "consider_home": "Sekundy čakania, kým sa sledovač zariadenia označí ako neprítomný po tom, čo ho nikto nevidel.",
           "timeout_seconds": "Timeout sekundy",
           "timeout_error_retries": "Timeout error počet opakovaní",
@@ -61,11 +65,16 @@
         }
       }
     },
+    "abort": {
+      "reauth_successful": "Reauth bolo úspešné"
+    },
     "error": {
       "invalid_auth": "Neplatné overenie",
       "invalid_host": "Nedá sa pripojiť k hostiteľovi.",
       "timeout_connect": "Časový limit nadväzovania spojenia",
       "unknown": "Neočakávaná chyba",
+      "invalid_scan_interval": "Zvoľte interval aktualizácie 10, 30, 60 alebo 120 sekúnd.",
+      "invalid_device_list_interval": "Zvoľte 0 pre aktualizáciu iba pri spustení alebo aspoň 10 sekúnd pre stav Deco.",
       "invalid_expose_wifi_ssids": "Vyberte zapnuté alebo vypnuté pre zobrazovanie názvov Wi-Fi sietí."
     }
   },
