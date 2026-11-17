@@ -30,13 +30,17 @@ hardening/test parity (PR #36) are merged.
 - The integration exposes exactly these platforms at this baseline:
   `device_tracker`, `sensor`, `binary_sensor`, `switch` and `select`.
   Relevant sources: `const.py` and `manifest.json`.
-- Each configuration entry stores its own pair of coordinators under
-  `hass.data[DOMAIN][entry_id]`:
+- Each configuration entry stores three independent coordinators under
+  `hass.data[DOMAIN][entry_id]`: **two required** for mesh/client data
+  and **one optional** for read-only WiFi status:
   - `COORDINATOR_DECOS_KEY` / `TplinkDecoUpdateCoordinator` discovers mesh
     nodes, identifies the master and obtains optional performance readings.
   - `COORDINATOR_CLIENTS_KEY` / `TplinkDecoClientUpdateCoordinator` polls
     client lists **per known Deco node**, retains known clients and determines
     connection state.
+  - `COORDINATOR_WIRELESS_KEY` / `TplinkDecoWirelessUpdateCoordinator` polls
+    Main, Guest and IoT network enabled flags independently; unsupported
+    firmware does not prevent the required coordinator refreshes.
 - The client coordinator uses its paired Deco coordinator's device inventory
   and pause flag. It must not treat a peer configuration entry's data or API
   session as its own.
@@ -281,9 +285,12 @@ hardening/test parity (PR #36) are merged.
   `mac` in the client's state attributes. Physical Deco MAC addresses
   and master/satellite device identities are unaffected. Existing
   cross-integration device matches are not automatically detached.
-- `binary_sensor` currently exposes per-node `Internet online` and
-  `Deco online` diagnostic states. It does **not** yet expose upstream
-  Main/Guest/IoT Wi-Fi network status sensors.
+- `binary_sensor` retains per-node `Internet online` and `Deco online`
+  diagnostic states, and also provides read-only Main/Guest/IoT WiFi
+  enabled-state sensors **when supported by the router firmware**. Main
+  WiFi is disabled by default in the entity registry; missing/unknown
+  network states do not produce new entities. These wireless entities
+  are linked to the active master Deco, independently of per-node status.
 - `sensor` exposes Down/Up totals per node and across the network,
   per-node `Connected clients` diagnostics and optional diagnostic
   readings (IP address, BSSIDs, backhaul type/rate and CPU/memory).
@@ -331,9 +338,11 @@ hardening/test parity (PR #36) are merged.
   selection **before** sending any reboot command. Device-registry
   records may carry additional unrelated identifiers.
 - Do not silently add upstream syslog forwarding, log-download actions,
-  mobile-usage sensors or new wireless coordinators as side effects of
-  maintaining the current entities. These are separate features tracked
-  in [issue #2](https://github.com/HiDiHo01/ha-tplink-deco/issues/2).
+  mobile-usage sensors or **other wireless features**, including opt-in
+  SSID exposure, as side effects of maintaining existing entities.
+  The optional read-only WiFi coordinator is specifically scoped to PR #41;
+  remaining features are tracked in
+  [issue #2](https://github.com/HiDiHo01/ha-tplink-deco/issues/2).
 
 ## 8. Config flow, setup, reload and unload
 
