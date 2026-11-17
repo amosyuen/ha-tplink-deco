@@ -816,10 +816,7 @@ class TplinkDecoApi:
 
                 return response_json
         except asyncio.TimeoutError as err:
-            _LOGGER.debug(
-                "%s timed out",
-                context,
-            )
+            _LOGGER.debug("Deco API request timed out")
             if mobile_usage_request or system_log_build_request:
                 raise TimeoutException from None
             raise TimeoutException from err
@@ -835,11 +832,8 @@ class TplinkDecoApi:
                 # request_info.real_url. Never interpolate these exceptions.
                 _LOGGER.debug("Deco client-list server error: HTTP %d", err.status)
             else:
-                _LOGGER.error(
-                    "%s client response error: %s",
-                    context,
-                    err,
-                )
+                # An aiohttp error may embed its URL and credentials.
+                _LOGGER.error("Deco API HTTP error: %d", err.status)
             if err.status == 401:
                 self.clear_auth()
                 if mobile_usage_request or system_log_build_request:
@@ -879,7 +873,9 @@ class TplinkDecoApi:
                     "%s connection failed (%s)", private_label, type(err).__name__
                 )
             else:
-                _LOGGER.error("%s connection error: %s", context, err)
+                _LOGGER.error(
+                    "Deco API connection failed (%s)", type(err).__name__
+                )
             if mobile_usage_request or system_log_build_request:
                 raise UnexpectedApiException(
                     f"{private_label} connection failed"
@@ -892,9 +888,7 @@ class TplinkDecoApi:
                 )
             else:
                 _LOGGER.error(
-                    "%s client error: %s",
-                    context,
-                    err,
+                    "Deco API transport failed (%s)", type(err).__name__
                 )
             if mobile_usage_request or system_log_build_request:
                 raise UnexpectedApiException(
