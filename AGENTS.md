@@ -692,10 +692,17 @@ policy for AI-assisted development.
   `interval_seconds`, **not** `scan_interval`; a label attached to the
   obsolete key does not cover the real setup/options selector. The initial
   Dutch catalog omitted 19 other canonical fields/errors, even though
-  English had them. Check nested leaf-key coverage in both setup and options
-  plus reauth and abort paths. Retain existing valid locale-specific keys
-  and errors rather than bulk-replacing translation files; defer unrelated
-  upstream syslog options until that feature actually exists in the fork.
+  English had them. The subsequent Slovak/Swedish audit (issue #2) found
+  seven missing canonical paths in each locale: `device_list_interval` for
+  setup/options, both polling-interval form errors in each flow and the
+  options reauthentication-success abort message. Require full canonical
+  leaf-key parity for `en`, `nl`, `sk` and `sv`, including real
+  `interval_seconds` form labels, setup/options, reauth and abort paths.
+  Other shipped locales still have incomplete catalogs: do **not** claim
+  full-language coverage until their missing paths are localized and tested.
+  Retain existing valid locale-specific keys and errors rather than
+  bulk-replacing translation files; defer unrelated upstream syslog
+  options until that feature actually exists in the fork.
 - Regression coverage should include form serialization, supported and
   invalid values, defaults from older config entries, string-to-int
   conversion, initial setup, options updates and preservation of other
