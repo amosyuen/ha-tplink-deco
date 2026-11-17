@@ -1170,7 +1170,13 @@ policy for AI-assisted development.
   malformed or unsupported responses. Validate ASCII `.log`
   basenames, traversal, Windows reserved names and file collisions.
   Use an executor and exclusive creation with private permissions
-  where supported. Never log exported content or destination paths.
+  where supported. **PR #44 review lesson:** a private export path can
+  still be redirected through a symbolic-link parent even with
+  `O_NOFOLLOW` on the final filename; reject symlinked export directories.
+  A write or buffered-close exception after file creation must remove
+  the new partial file without touching a pre-existing collision.
+  Regression-test symlink rejection and same-name retry after both
+  failures. Never log exported content or destination paths.
   Document user responsibility for securely storing and removing logs.
 - **Scoped upstream work:** the manual plain-text export (#650)
   does not implement gzip/tar decoding (#673), syslog forwarding

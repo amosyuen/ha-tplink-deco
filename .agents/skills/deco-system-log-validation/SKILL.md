@@ -40,7 +40,12 @@ description: "Use when changing authenticated manual Deco system-log downloads, 
    malformed or excessive filenames and non-`.log` extensions.
    Use an executor and exclusive-open file creation in the
    `tplink_deco_logs` configuration subdirectory; never overwrite
-   an existing export. Avoid logging paths or raw system-log content.
+   an existing export. Reject symlinked export directories (a final-file
+   `O_NOFOLLOW` alone does not protect a linked parent). If write or
+   buffered close fails after exclusive creation, close the descriptor
+   and unlink **only the newly created file**; a same-name retry must
+   succeed. Test both failure points and preserve pre-existing files.
+   Avoid logging paths or raw system-log content.
 8. Return path and line count only to the explicit caller; document
    the privacy sensitivity and retention responsibility of saved logs.
    Verify that diagnostics, entities and polling are unaffected.

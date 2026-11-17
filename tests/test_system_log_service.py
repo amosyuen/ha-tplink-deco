@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from types import SimpleNamespace
+from types import TracebackType
 from typing import Any
+from typing import TextIO
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 
@@ -14,6 +17,7 @@ import pytest
 import voluptuous as vol
 
 from custom_components.tplink_deco import async_setup
+from custom_components.tplink_deco import services as log_services
 from custom_components.tplink_deco.const import COORDINATOR_DECOS_KEY
 from custom_components.tplink_deco.const import DOMAIN
 from custom_components.tplink_deco.const import SERVICE_DOWNLOAD_SYSTEM_LOG
@@ -220,3 +224,89 @@ async def test_rejects_invalid_log_level_before_router_request(
     hass.data[DOMAIN]["first"][
         COORDINATOR_DECOS_KEY
     ].api.async_get_system_log.assert_not_awaited()
+
+class _FailingLogWriter:
+    """Simulate failure after a new file has already been created."""
+
+    def __init__(self, stream: TextIO, failure_point: str) -> None:
+        """Wrap a real file and preserve its close behavior."""
+        self._stream = stream
+        self._failure_point = failure_point
+
+    def __enter__(self) -> "_FailingLogWriter":
+        """Enter the underlying file context."""
+        self._stream.__enter__()
+        return self
+
+    def write(self, data: str) -> None:
+        """Write some data, then fail when testing a partial write."""
+        self._stream.write(data[:7])
+        if self._failure_point == "write":
+            raise OSError("synthetic private write error")
+
+    def __exit__(
+        self,
+        exception_type: type[BaseException] | None,
+        exception: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> bool | None:
+        """Close the underlying stream, optionally simulating close failure."""
+        result = self._stream.__exit__(exception_type, exception, traceback)
+        if self._failure_point == "close":
+            raise OSError("synthetic private close error")
+        return result
+
+
+@pytest.mark.asyncio
+async def test_rejects_symbolic_link_export_directory(tmp_path: Path) -> None:
+    """Do not leak sensitive router logs into a web-served symlink target."""
+    hass = _hass(tmp_path)
+    await async_setup(hass, {})
+    public_folder = tmp_path / "www"
+    public_folder.mkdir()
+    export_directory = tmp_path / "tplink_deco_logs"
+    try:
+        export_directory.symlink_to(public_folder, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("Symbolic links unavailable on this test platform")
+
+    with pytest.raises(ServiceValidationError, match="storage is inaccessible"):
+        await _download(hass, config_entry_id="first", filename="secret.log")
+
+    assert export_directory.is_symlink()
+    assert not (public_folder / "secret.log").exists()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure_point", ["write", "close"])
+async def test_write_failure_removes_partial_file_and_allows_retry(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure_point: str,
+) -> None:
+    """Remove only this attempt's incomplete export on write/close errors."""
+    hass = _hass(tmp_path)
+    await async_setup(hass, {})
+    export = tmp_path / "tplink_deco_logs" / "retry.log"
+    original_fdopen = os.fdopen
+
+    def _failing_fdopen(
+        descriptor: int, *args: Any, **kwargs: Any
+    ) -> _FailingLogWriter:
+        """Wrap a real file so a write or close fails after file creation."""
+        stream = original_fdopen(descriptor, *args, **kwargs)
+        return _FailingLogWriter(stream, failure_point)
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(log_services.os, "fdopen", _failing_fdopen)
+        with pytest.raises(
+            ServiceValidationError, match="storage is inaccessible"
+        ) as failure:
+            await _download(hass, config_entry_id="first", filename="retry.log")
+        assert failure.value.__cause__ is None
+        assert failure.value.__context__ is None
+
+    assert not export.exists()
+    response = await _download(hass, config_entry_id="first", filename="retry.log")
+    assert response["path"] == str(export)
+    assert export.read_text(encoding="utf-8") == "first\n"

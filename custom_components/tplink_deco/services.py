@@ -76,13 +76,30 @@ def _log_filename(value: str | None) -> str:
 
 def _write_log_file(path: str, log_text: str) -> None:
     """Create a private log file atomically without overwriting existing data."""
-    os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
+    output_directory = os.path.dirname(path)
+    os.makedirs(output_directory, mode=0o700, exist_ok=True)
+    if os.path.islink(output_directory):
+        raise OSError("System log directory must not be a symbolic link")
+
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
     descriptor = os.open(path, flags, 0o600)
-    with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as log_file:
-        log_file.write(log_text)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as log_file:
+            log_file.write(log_text)
+    except BaseException:
+        # fdopen can fail before taking ownership of descriptor, while a
+        # failed write or buffered close can leave an incomplete export.
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+        raise
 
 
 def async_setup_services(hass: HomeAssistant) -> None:
