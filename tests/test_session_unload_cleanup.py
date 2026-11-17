@@ -113,9 +113,7 @@ async def test_wireless_unload_requires_shutdown_but_not_custom_close() -> None:
     events: list[str] = []
     hass, entry, deco, client = _unload_context(events)
     wireless = SimpleNamespace(
-        async_shutdown=AsyncMock(
-            side_effect=lambda: events.append("wireless_shutdown")
-        )
+        async_shutdown=AsyncMock(side_effect=lambda: events.append("wireless_shutdown"))
     )
     hass.data[DOMAIN][entry.entry_id][COORDINATOR_WIRELESS_KEY] = wireless
 
