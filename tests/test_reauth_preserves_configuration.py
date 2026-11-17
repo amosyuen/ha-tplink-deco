@@ -132,9 +132,7 @@ async def test_invalid_reauth_does_not_change_saved_options_or_reload() -> None:
         flow.hass, previous_data | proposed_credentials
     )
     flow.async_show_form.assert_called_once()
-    assert flow.async_show_form.call_args.kwargs["errors"] == {
-        "base": "invalid_auth"
-    }
+    assert flow.async_show_form.call_args.kwargs["errors"] == {"base": "invalid_auth"}
     flow.hass.config_entries.async_update_entry.assert_not_called()
     flow.hass.config_entries.async_reload.assert_not_awaited()
     flow.async_abort.assert_not_called()
