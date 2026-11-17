@@ -11,6 +11,7 @@ from unittest.mock import patch
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.helpers.update_coordinator import UpdateFailed
+import aiohttp
 import pytest
 
 from custom_components.tplink_deco import async_setup_entry
@@ -23,6 +24,7 @@ from custom_components.tplink_deco.const import DOMAIN
 from custom_components.tplink_deco.const import PLATFORMS
 from custom_components.tplink_deco.coordinator import TpLinkDeco
 from custom_components.tplink_deco.coordinator import TpLinkDecoData
+from custom_components.tplink_deco.exceptions import ForbiddenException
 from custom_components.tplink_deco.exceptions import LoginInvalidException
 from custom_components.tplink_deco.exceptions import UnexpectedApiException
 from custom_components.tplink_deco.mobile import TplinkDecoMobileDataUpdateCoordinator
@@ -482,3 +484,114 @@ async def test_mobile_coordinator_shutdown_does_not_call_custom_close() -> None:
     clients.async_close.assert_awaited_once()
     deco.api.async_logout.assert_awaited_once()
     assert entry.entry_id not in hass.data[DOMAIN]
+
+@pytest.mark.parametrize("status", [403, 502])
+@pytest.mark.asyncio
+async def test_real_mobile_http_failure_redacts_authenticated_request(
+    status: int, caplog: pytest.LogCaptureFixture
+) -> None:
+    """HTTP failures cannot leak a LuCI token from aiohttp request_info."""
+    api = _api({})
+    api._async_post = TplinkDecoApi._async_post.__get__(api, TplinkDecoApi)
+    response = MagicMock()
+    response.history = []
+    request_info = MagicMock()
+    request_info.real_url = "http://192.0.2.1/cgi-bin/luci/;stok=" + PRIVATE_VALUE
+    response.raise_for_status.side_effect = aiohttp.ClientResponseError(
+        request_info=request_info,
+        history=(),
+        status=status,
+        message=PRIVATE_VALUE,
+    )
+    api._session.post = AsyncMock(return_value=response)
+    caplog.set_level(logging.DEBUG)
+
+    if status == 403:
+        with pytest.raises(ForbiddenException) as error:
+            await api._async_post(
+                "Get mobile data usage",
+                "http://192.0.2.1/cgi-bin/luci/;stok=synthetic-token/admin/network",
+                {"form": "internet"},
+                "encoded",
+            )
+        assert PRIVATE_VALUE not in str(error.value)
+        assert api._stok is None
+    else:
+        with pytest.raises(aiohttp.ClientResponseError) as error:
+            await api._async_post(
+                "Get mobile data usage",
+                "http://192.0.2.1/cgi-bin/luci/;stok=synthetic-token/admin/network",
+                {"form": "internet"},
+                "encoded",
+            )
+        assert error.value.status == 502
+    assert PRIVATE_VALUE not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_real_mobile_http_api_error_never_logs_private_json(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Firmware API errors must not log any raw mobile WAN response."""
+    api = _api({})
+    api._async_post = TplinkDecoApi._async_post.__get__(api, TplinkDecoApi)
+    response = MagicMock()
+    response.history = []
+    response.raise_for_status = MagicMock()
+    response.headers.getall.return_value = []
+    response.json = AsyncMock(
+        return_value={"error_code": PRIVATE_VALUE, "password": PRIVATE_VALUE}
+    )
+    api._session.post = AsyncMock(return_value=response)
+    caplog.set_level(logging.DEBUG)
+
+    with pytest.raises(
+        UnexpectedApiException, match="Mobile data request was rejected"
+    ) as error:
+        await api._async_post(
+            "Get mobile data usage",
+            "http://192.0.2.1/cgi-bin/luci/;stok=synthetic-token/admin/network",
+            {"form": "internet"},
+            "encoded",
+        )
+    assert PRIVATE_VALUE not in str(error.value)
+    assert PRIVATE_VALUE not in caplog.text
+
+
+def test_real_mobile_decrypt_failure_never_logs_raw_payload(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Execute the bound decrypt helper instead of trusting a mocked parser."""
+    api = _api({})
+    api._decrypt_data = TplinkDecoApi._decrypt_data.__get__(api, TplinkDecoApi)
+    caplog.set_level(logging.DEBUG)
+    with pytest.raises(
+        UnexpectedApiException, match="Mobile data response could not be decoded"
+    ) as error:
+        api._decrypt_data("Get mobile data usage", PRIVATE_VALUE + "!")
+    assert PRIVATE_VALUE not in str(error.value)
+    assert PRIVATE_VALUE not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_real_mobile_connection_error_never_logs_private_host(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Do not format mobile request or connection errors containing private URLs."""
+    api = _api({})
+    api._async_post = TplinkDecoApi._async_post.__get__(api, TplinkDecoApi)
+    connection_key = SimpleNamespace(host=PRIVATE_VALUE, port=80, ssl=False)
+    api._session.post = AsyncMock(
+        side_effect=aiohttp.ClientConnectorError(
+            connection_key, OSError(PRIVATE_VALUE)
+        )
+    )
+    caplog.set_level(logging.DEBUG)
+    with pytest.raises(aiohttp.ClientConnectorError):
+        await api._async_post(
+            "Get mobile data usage",
+            "http://192.0.2.1/cgi-bin/luci/;stok=synthetic-token/admin/network",
+            {"form": "internet"},
+            "encoded",
+        )
+    assert PRIVATE_VALUE not in caplog.text
