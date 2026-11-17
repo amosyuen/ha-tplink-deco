@@ -416,6 +416,14 @@ Their physical-firmware validation remains a separate limitation.
   reauthentication and host-error labels while retaining legacy
   translated titles and validation messages. This affects only displayed
   form text, not persisted config-entry keys or migration behavior.
+- **Proposed in the current issue #2 Slovak/Swedish parity PR:** add
+  the already-supported `device_list_interval` labels, both interval
+  validation errors in setup and options, and the options reauthentication
+  success message to `sk` and `sv`. A canonical nested-key parity
+  regression covers these four locales (`en`, `nl`, `sk`, `sv`)
+  without adding runtime settings or changing previously translated
+  labels. French, Norwegian and Portuguese catalog completion remains
+  outside this focused PR; do not claim full parity for those locales.
 - Existing config-entry fields include host, username/password,
   connection timeout, bounded timeout retry count, TLS verification,
   `consider_home`, optional Deco/client name prefixes/postfixes and
