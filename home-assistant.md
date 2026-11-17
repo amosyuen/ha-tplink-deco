@@ -291,6 +291,9 @@ hardening/test parity (PR #36) are merged.
   WiFi is disabled by default in the entity registry; missing/unknown
   network states do not produce new entities. These wireless entities
   are linked to the active master Deco, independently of per-node status.
+  Optional SSID state attributes appear **only** when the per-entry consent
+  setting `expose_wifi_ssids` is explicitly `true`; that setting defaults
+  to `false` on new and existing installations.
 - `sensor` exposes Down/Up totals per node and across the network,
   per-node `Connected clients` diagnostics and optional diagnostic
   readings (IP address, BSSIDs, backhaul type/rate and CPU/memory).
@@ -443,10 +446,22 @@ the wireless coordinator receives Home Assistant's `async_shutdown()`;
 only the existing fork-specific Deco/client coordinators receive their
 custom `async_close()` calls.
 
-The coordinator stores only boolean states. SSIDs, passwords, PSKs and raw
-responses must not enter state attributes, diagnostics or logs. Optional
-SSID exposure (upstream #637) is not included. Real hardware compatibility
-remains unverified until independently tested.
+The coordinator's `data` stores only boolean states. With the new, explicit
+`expose_wifi_ssids` opt-in option (default `false`), it also stores a
+**separate**, per-entry `ssids` map containing only recognized network and
+band names. Without consent, names are neither parsed into nor retained in
+coordinator state. The existing Main, Guest and IoT WiFi binary sensors expose
+a common `ssid` attribute for matching bands or individual `ssid_<band>`
+attributes for differing names; missing or invalid names are omitted. The
+attribute is also hidden if its previous master is no longer current.
+
+SSID values are potentially sensitive Home Assistant state attributes, and
+may be captured by Recorder/history, user dashboards, automations and
+backups; disabling exposure does not erase previously stored history.
+Never log or export SSIDs, passwords, PSKs, router tokens, or raw WLAN
+responses through diagnostics. SSID exposure does not enable changing WiFi
+configuration. Real hardware compatibility remains unverified until
+independently tested.
 
 The wireless API validates the outer encrypted-response envelope and inner
 `result` mapping before reading network status. An authenticated `-5002`
