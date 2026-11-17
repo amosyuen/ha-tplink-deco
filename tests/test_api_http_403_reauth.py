@@ -2,6 +2,7 @@
 
 import logging
 import traceback
+from typing import Any
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 
@@ -71,8 +72,18 @@ async def _relogin(api: TplinkDecoApi) -> None:
     api._seq = 11
 
 
+def _mock_relogin(api: TplinkDecoApi) -> AsyncMock:
+    """Build an awaited login mock that rotates the synthetic credentials."""
+
+    async def _perform_login() -> None:
+        """Complete the mocked authentication before the retry starts."""
+        await _relogin(api)
+
+    return AsyncMock(side_effect=_perform_login)
+
+
 def _assert_device_request(
-    request: object, *, token: str, cookie: str
+    request: Any, *, token: str, cookie: str
 ) -> None:
     """Verify the exact token-bearing URL, form, payload and request cookie."""
     assert request.args == (
@@ -123,7 +134,7 @@ async def test_device_list_403_relogs_in_with_fresh_token_and_cookie(
         _response(OLD_TOKEN, forbidden=True),
         _response(NEW_TOKEN, forbidden=False),
     ]
-    api.async_login = AsyncMock(side_effect=lambda: _relogin(api))
+    api.async_login = _mock_relogin(api)
 
     with caplog.at_level(logging.DEBUG):
         result = await api.async_list_devices()
@@ -152,7 +163,7 @@ async def test_repeated_device_list_403_stops_after_one_reauthentication(
         _response(OLD_TOKEN, forbidden=True),
         _response(NEW_TOKEN, forbidden=True),
     ]
-    api.async_login = AsyncMock(side_effect=lambda: _relogin(api))
+    api.async_login = _mock_relogin(api)
 
     with caplog.at_level(logging.DEBUG):
         with pytest.raises(ForbiddenException) as error:
