@@ -39,6 +39,7 @@ from .const import CONF_CLIENT_PREFIX
 from .const import CONF_DECO_POSTFIX
 from .const import CONF_DECO_PREFIX
 from .const import CONF_DEVICE_LIST_INTERVAL
+from .const import CONF_EXPOSE_WIFI_SSIDS
 from .const import CONF_LINK_CLIENT_DEVICES
 from .const import CONF_TIMEOUT_ERROR_RETRIES
 from .const import CONF_TIMEOUT_SECONDS
@@ -166,7 +167,12 @@ async def async_create_and_refresh_coordinators(
     # after platforms have loaded, rather than blocking coordinator creation.
 
     wireless_coordinator = TplinkDecoWirelessUpdateCoordinator(
-        hass, api, config_entry, deco_coordinator, update_interval
+        hass,
+        api,
+        config_entry,
+        deco_coordinator,
+        update_interval,
+        expose_ssids=config_data.get(CONF_EXPOSE_WIFI_SSIDS) is True,
     )
     return {
         COORDINATOR_DECOS_KEY: deco_coordinator,
