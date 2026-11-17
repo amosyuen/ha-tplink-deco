@@ -100,7 +100,10 @@ def _normalize_device_list_interval(data: dict[str, Any]) -> bool:
 
 def _valid_ssid_choice(data: dict[str, Any]) -> bool:
     """Reject non-boolean SSID consent before network access or persistence."""
-    return CONF_EXPOSE_WIFI_SSIDS not in data or type(data[CONF_EXPOSE_WIFI_SSIDS]) is bool
+    return (
+        CONF_EXPOSE_WIFI_SSIDS not in data
+        or isinstance(data[CONF_EXPOSE_WIFI_SSIDS], bool)
+    )
 
 
 def _get_auth_schema(data: dict[str:Any]):
@@ -165,7 +168,8 @@ def _get_schema(data: dict[str:Any]):
             ): bool,
             vol.Required(
                 CONF_EXPOSE_WIFI_SSIDS,
-                default=data.get(CONF_EXPOSE_WIFI_SSIDS, DEFAULT_EXPOSE_WIFI_SSIDS) is True,
+                default=data.get(CONF_EXPOSE_WIFI_SSIDS, DEFAULT_EXPOSE_WIFI_SSIDS)
+                is True,
             ): bool,
             vol.Optional(
                 CONF_CLIENT_PREFIX,
