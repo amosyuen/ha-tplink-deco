@@ -547,10 +547,10 @@ class TplinkDecoApi:
 
                 # Soms antwoordt de server met de verkeerde content-type
                 response_json = await response.json(content_type=None)
-                if params.get("form") == "wlan" and not isinstance(
-                    response_json, dict
-                ):
-                    raise UnexpectedApiException("Wireless status response is malformed")
+                if params.get("form") == "wlan" and not isinstance(response_json, dict):
+                    raise UnexpectedApiException(
+                        "Wireless status response is malformed"
+                    )
                 if "error_code" in response_json:
                     error_code = response_json.get("error_code")
                     if error_code == -5002 and authenticated_request:
