@@ -1214,14 +1214,24 @@ policy for AI-assisted development.
   before log decoding, apply the existing one-relogin budget for
   expiry, reject malformed/error payloads with fixed messages,
   and preserve JSON-formatted log entries without error fields.
-  Test all cases with synthetic secrets in DEBUG logs/tracebacks.
+  Classify a declared `application/json` response as a firmware
+  error; for misleading `text/plain`/`application/octet-stream`,
+  inspect only a JSON-object-shaped response containing a firmware
+  error key. A malformed error-looking object must not become
+  exported text. Test valid non-error JSON log lines and both
+  malformed and recognized error payloads with synthetic secrets
+  in DEBUG logs, rendered tracebacks and service responses.
 - **Per-call transport retry lesson (PR #46):** disabling timeout
   retries does not necessarily disable the shared helper's transient
   retries. Set both timeout and transient retries to **zero for
   explicit manual log downloads**, while retaining **one auth
   re-login** and preserving default retry settings for other APIs.
-  Test a truncated `aiohttp` response against the actual helper
-  and assert one log build/save attempt.
+  Test the actual shared wrapper with a truncated `aiohttp`
+  response: one build/save attempt for a transport failure, but up
+  to two when the **one permitted authentication re-login** occurs.
+  Check `response.release()`, cancellation propagation and that
+  an API retry-budget override never changes unrelated operations.
+  PR #46 remains unmerged until independently verified on `main`.
 - **Remaining scope:** manual plain-text (#650) and bounded gzip/tar
   (#673) merged in PRs #44/#45 and are present on `main`.
   Syslog forwarding (#666), legacy S7 sessions, physical router

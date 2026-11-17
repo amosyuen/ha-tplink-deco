@@ -41,6 +41,15 @@ Keep `AI_POLICY.md` unchanged unless governing policy itself changes.
 
 ## Failures observed and deterministic validation
 
+- **PR #46 cross-section drift (2026-11-17):** even after
+  system-log PRs #44/#45 merged, earlier `home-assistant.md`
+  sections still called PR #44 a proposed/open service; the
+  historical introduction also described merged PR #43 as pending.
+  Inspect the **entire guide**, including the introduction,
+  diagnostics section, service inventory, scope caveats and feature
+  appendix, before stating deployed behavior. Verify against
+  merged `main` and PR metadata; do not copy pending status
+  from older prose.
 - **PR #43 guide drift:** the integration guide described five platforms
   although the current `PLATFORMS` contains six; the lifecycle skill
   still described a pre-mobile three-coordinator snapshot. Reconcile
