@@ -399,13 +399,19 @@ async def test_wireless_authentication_failure_skips_backoff() -> None:
 
 
 @pytest.mark.asyncio
-async def test_wireless_unexpected_programming_failure_is_not_hidden() -> None:
-    """Do not mask unexpected code defects as routine wireless API failures."""
-    coordinator = _coordinator(RuntimeError("unexpected internal failure"))
-    with pytest.raises(RuntimeError, match="unexpected internal failure"):
+async def test_unexpected_wireless_failure_is_sanitized(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Unclassified upstream errors must not expose raw router data."""
+    coordinator = _coordinator(RuntimeError(SECRET))
+    caplog.set_level(logging.DEBUG)
+
+    with pytest.raises(UpdateFailed, match="Unable to read optional wireless") as error:
         await coordinator._async_update_data()
 
-    assert coordinator._consecutive_failures == 0
+    assert SECRET not in str(error.value)
+    assert SECRET not in caplog.text
+    assert coordinator._consecutive_failures == 1
     assert coordinator._next_retry == 0.0
 
 
