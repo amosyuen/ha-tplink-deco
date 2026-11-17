@@ -509,6 +509,7 @@ async def test_mislabeled_firmware_auth_error_reauthenticates_once(
         ((SECRET, "PRIVATE_COOKIE"), ("fresh-session", "fresh-cookie")),
     )
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("content_type", ["text/plain", "application/octet-stream"])
 async def test_mislabeled_firmware_non_auth_error_is_rejected(
@@ -533,6 +534,7 @@ async def test_mislabeled_firmware_non_auth_error_is_rejected(
 
     _assert_log_export_requests(api, session, ((SECRET, "PRIVATE_COOKIE"),))
 
+
 @pytest.mark.asyncio
 async def test_malformed_mislabeled_firmware_error_is_not_written() -> None:
     """A truncated firmware error object is malformed, not valid log text."""
@@ -547,6 +549,7 @@ async def test_malformed_mislabeled_firmware_error_is_not_written() -> None:
 
     _assert_log_export_requests(api, session, ((SECRET, "PRIVATE_COOKIE"),))
 
+
 @pytest.mark.asyncio
 async def test_valid_json_log_line_without_errorcode_is_preserved() -> None:
     """Normal JSON-formatted log text remains available as a system log."""
@@ -556,6 +559,7 @@ async def test_valid_json_log_line_without_errorcode_is_preserved() -> None:
     assert await api.async_get_system_log() == source.decode("utf-8")
 
     _assert_log_export_requests(api, session, ((SECRET, "PRIVATE_COOKIE"),))
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
@@ -585,6 +589,7 @@ async def test_nested_error_keys_in_json_log_records_are_preserved(
 
     _assert_log_export_requests(api, session, ((SECRET, "PRIVATE_COOKIE"),))
 
+
 @pytest.mark.asyncio
 async def test_truncated_firmware_error_with_preceding_field_is_rejected() -> None:
     """Reject an incomplete standalone error envelope without a raw-data leak."""
@@ -604,6 +609,7 @@ async def test_truncated_firmware_error_with_preceding_field_is_rejected() -> No
 
     _assert_log_export_requests(api, session, ((SECRET, "PRIVATE_COOKIE"),))
 
+
 @pytest.mark.asyncio
 async def test_manual_system_log_incomplete_response_does_not_retry() -> None:
     """Avoid rebuilding the expensive manual snapshot after truncated transport."""
@@ -622,6 +628,7 @@ async def test_manual_system_log_incomplete_response_does_not_retry() -> None:
     response.release.assert_called_once()
 
     _assert_log_export_requests(api, session, ((SECRET, "PRIVATE_COOKIE"),))
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
@@ -676,6 +683,7 @@ async def test_log_stream_failures_are_sanitized_without_extra_retry(
 
     _assert_log_export_requests(api, session, ((SECRET, "PRIVATE_COOKIE"),))
 
+
 @pytest.mark.asyncio
 async def test_log_request_socket_failure_does_not_leak_or_retry(
     caplog: pytest.LogCaptureFixture,
@@ -697,6 +705,7 @@ async def test_log_request_socket_failure_does_not_leak_or_retry(
     session.post.assert_awaited_once()
 
     _assert_log_export_requests(api, session, ((SECRET, "PRIVATE_COOKIE"),))
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("content_type", ["text/plain", "application/json"])
@@ -729,6 +738,7 @@ async def test_deep_firmware_json_parser_failures_are_sanitized(
     session.post.return_value.release.assert_called_once()
 
     _assert_log_export_requests(api, session, ((SECRET, "PRIVATE_COOKIE"),))
+
 
 @pytest.mark.asyncio
 async def test_normal_api_transient_retries_remain_backward_compatible() -> None:
