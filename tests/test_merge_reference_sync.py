@@ -1,9 +1,14 @@
 """Regression tests for post-merge issue and related-PR synchronization."""
 
+from copy import deepcopy
+from datetime import datetime
+from datetime import timezone
 import importlib.util
 from pathlib import Path
 import re
 import unittest
+
+import yaml
 
 _MODULE_PATH = (
     Path(__file__).resolve().parents[1] / ".github" / "scripts" / "sync_merge_links.py"
@@ -68,12 +73,12 @@ class _FakeGitHub:
         self.posted: list[int] = []
         self.patches = 0
         self.closing_refs: set[int] = set()
+        self.closed_pages: dict[int, list[dict[str, object]]] = {}
 
     def closing_issues(self, repository: str, number: int) -> set[int]:
         """Return simulated GitHub Development UI closing references."""
         assert repository == REPOSITORY
-        assert number == 19
-        return self.closing_refs.copy()
+        return self.closing_refs.copy() if number == 19 else set()
 
     def pages(self, path: str) -> list[dict[str, object]]:
         """List open PRs or existing bot comments."""
@@ -90,6 +95,11 @@ class _FakeGitHub:
         payload: dict[str, object] | None = None,
     ) -> dict[str, object]:
         """Capture the targeted update or bot comment."""
+        if method == "GET" and path.startswith(
+            f"/repos/{REPOSITORY}/pulls?state=closed&"
+        ):
+            page = int(path.split("page=")[-1])
+            return self.closed_pages.get(page, [])
         if path == ISSUE_PATH:
             if method == "GET":
                 return self.issues[2]
@@ -115,38 +125,227 @@ class _FakeGitHub:
 class MergeReferenceSyncTests(unittest.TestCase):
     """Verify link extraction, exact scoping, safe updates and idempotency."""
 
-    def test_merge_workflow_pins_trusted_actions(self) -> None:
-        """Pin action revisions and preserve safe merge-only execution."""
+    def _workflow_config(self) -> dict[str, object]:
+        """Parse workflow YAML without coercing its literal GitHub 'on' key."""
         workflow_path = (
             Path(__file__).resolve().parents[1]
             / ".github"
             / "workflows"
             / "sync-merged-references.yml"
         )
-        workflow = workflow_path.read_text(encoding="utf-8")
-        action_references = re.findall(
-            r"^\s*uses:\s+([^\s#]+)", workflow, flags=re.MULTILINE
+        with workflow_path.open(encoding="utf-8") as source:
+            return yaml.load(source, Loader=yaml.BaseLoader)
+
+    def _assert_secure_merge_workflow(self, workflow: dict[str, object]) -> None:
+        """Reject extra privileges, triggers or an untrusted checkout target."""
+        self.assertEqual(
+            set(workflow),
+            {"name", "on", "permissions", "concurrency", "jobs"},
+        )
+        self.assertEqual(
+            workflow["on"],
+            {
+                "pull_request_target": {"types": ["closed"]},
+                "schedule": [{"cron": "17 * * * *"}],
+            },
+        )
+        self.assertEqual(
+            workflow["permissions"],
+            {"contents": "read", "issues": "write", "pull-requests": "write"},
+        )
+        self.assertEqual(
+            workflow["concurrency"],
+            {
+                "group": "merged-reference-sync-${{ github.repository }}",
+                "cancel-in-progress": "false",
+                "queue": "max",
+            },
+        )
+        self.assertEqual(set(workflow["jobs"]), {"synchronize"})
+        job = workflow["jobs"]["synchronize"]
+        self.assertEqual(set(job), {"if", "runs-on", "steps"})
+        self.assertEqual(job["runs-on"], "ubuntu-latest")
+        condition = " ".join(job["if"].split())
+        self.assertEqual(
+            condition,
+            "(github.event_name == 'pull_request_target' && "
+            "github.event.pull_request.merged == true && "
+            "github.event.pull_request.base.ref == "
+            "github.event.repository.default_branch) "
+            "|| github.event_name == 'schedule'",
+        )
+        steps = job["steps"]
+        self.assertEqual(len(steps), 3)
+        self.assertEqual(
+            steps[0],
+            {
+                "name": "Check out trusted default-branch code only",
+                "uses": "actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+                "with": {
+                    "ref": "${{ github.event.repository.default_branch }}",
+                    "persist-credentials": "false",
+                },
+            },
+        )
+        self.assertEqual(
+            steps[1],
+            {
+                "name": "Set up Python 3.14",
+                "uses": (
+                    "actions/setup-python@"
+                    "a309ff8b426b58ec0e2a45f0f869d46889d02405"
+                ),
+                "with": {"python-version": "3.14"},
+            },
+        )
+        self.assertEqual(
+            steps[2],
+            {
+                "name": "Synchronize linked issues and related open PRs",
+                "env": {"GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"},
+                "run": "python .github/scripts/sync_merge_links.py",
+            },
         )
 
+    def test_merge_workflow_pins_trusted_actions(self) -> None:
+        """Validate parsed merge guards, queue and exact permissions."""
+        self._assert_secure_merge_workflow(self._workflow_config())
+
+    def test_merge_workflow_rejects_unsafe_mutations(self) -> None:
+        """Reject additions or moves that string-only tests would miss."""
+        for case in (
+            "extra_trigger",
+            "extra_privilege",
+            "missing_guard",
+            "wrong_checkout",
+            "bracket_checkout",
+            "missing_queue",
+        ):
+            with self.subTest(case=case):
+                workflow = deepcopy(self._workflow_config())
+                job = workflow["jobs"]["synchronize"]
+                if case == "extra_trigger":
+                    workflow["on"]["push"] = {"branches": ["main"]}
+                elif case == "extra_privilege":
+                    workflow["permissions"]["actions"] = "write"
+                elif case == "missing_guard":
+                    job["if"] = "github.event_name == 'pull_request_target'"
+                elif case == "wrong_checkout":
+                    job["steps"][0]["with"]["ref"] = "${{ github.head_ref }}"
+                elif case == "bracket_checkout":
+                    job["steps"][0]["with"]["ref"] = (
+                        "${{ github.event.pull_request['head']['sha'] }}"
+                    )
+                else:
+                    workflow["concurrency"]["queue"] = "single"
+                with self.assertRaises(AssertionError):
+                    self._assert_secure_merge_workflow(workflow)
+
+    def test_all_workflows_pin_external_actions(self) -> None:
+        """Enforce the repository-wide immutable action revision policy."""
+        workflow_dir = Path(__file__).resolve().parents[1] / ".github" / "workflows"
+        paths = sorted(workflow_dir.glob("*.yml")) + sorted(
+            workflow_dir.glob("*.yaml")
+        )
+        self.assertGreaterEqual(len(paths), 6)
+        for path in paths:
+            with self.subTest(workflow=path.name):
+                with path.open(encoding="utf-8") as source:
+                    data = yaml.load(source, Loader=yaml.BaseLoader)
+                for job in data["jobs"].values():
+                    refs = [job.get("uses")]
+                    refs.extend(step.get("uses") for step in job.get("steps", []))
+                    for reference in filter(None, refs):
+                        self.assertRegex(reference, r"^[^@]+@[0-9a-f]{40}$")
+
+    def test_recent_merge_reconciliation_recovers_three_lost_events(self) -> None:
+        """Reconcile rapid merges and never repeat a completed bot summary."""
+        api = _FakeGitHub()
+        api.open_prs = []
+        api.issues[2]["body"] = (
+            "## Partial ports\n"
+            + "".join(
+                f"- **In progress (not merged):** [PR #{number}]\n"
+                f"- [ ] Fork PR #{number} merged\n"
+                for number in (19, 20, 21)
+            )
+            + "- [ ] Broad acceptance\n"
+        )
+        merged_pulls = []
+        for number, hour in ((19, 9), (20, 10), (21, 11)):
+            when = f"2026-11-17T{hour:02d}:00:00Z"
+            merged_pulls.append(
+                {
+                    **_event()["pull_request"],
+                    "number": number,
+                    "merged_at": when,
+                    "updated_at": when,
+                }
+            )
+        api.closed_pages[1] = list(reversed(merged_pulls))
+        now = datetime(2026, 11, 17, 12, tzinfo=timezone.utc)
         self.assertEqual(
-            action_references,
-            [
-                "actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
-                "actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405",
-            ],
+            sync.reconcile_recent_merges(
+                api, REPOSITORY, "main", current_time=now
+            ),
+            [19, 20, 21],
         )
-        self.assertIn("pull_request_target:", workflow)
-        self.assertIn("github.event.pull_request.merged == true", workflow)
-        self.assertIn(
-            "github.event.pull_request.base.ref == "
-            "github.event.repository.default_branch",
-            workflow,
+        for number in (19, 20, 21):
+            self.assertIn(f"- **Merged:** [PR #{number}]", api.issues[2]["body"])
+            self.assertIn(f"- [x] Fork PR #{number} merged", api.issues[2]["body"])
+        self.assertIn("- [ ] Broad acceptance", api.issues[2]["body"])
+        original_posts = api.posted.copy()
+        self.assertEqual(
+            sync.reconcile_recent_merges(
+                api, REPOSITORY, "main", current_time=now
+            ),
+            [],
         )
-        self.assertIn("persist-credentials: false", workflow)
-        self.assertIn("contents: read", workflow)
-        self.assertIn("issues: write", workflow)
-        self.assertIn("pull-requests: write", workflow)
-        self.assertNotIn("github.event.pull_request.head.", workflow)
+        self.assertEqual(api.posted, original_posts)
+
+    def test_recent_reconciliation_ignores_old_and_unmerged_prs(self) -> None:
+        """Do not replay merges outside the bounded recovery window."""
+        api = _FakeGitHub()
+        api.closed_pages[1] = [
+            {
+                **_event()["pull_request"],
+                "updated_at": "2026-11-14T10:00:00Z",
+                "merged_at": "2026-11-14T10:00:00Z",
+            },
+        ]
+        now = datetime(2026, 11, 17, 12, tzinfo=timezone.utc)
+        self.assertEqual(
+            sync.reconcile_recent_merges(
+                api, REPOSITORY, "main", current_time=now
+            ),
+            [],
+        )
+        self.assertEqual(api.posted, [])
+        api.closed_pages[1] = [
+            {
+                **_event()["pull_request"],
+                "updated_at": "2026-11-17T10:00:00Z",
+                "merged_at": None,
+            }
+        ]
+        self.assertEqual(
+            sync.reconcile_recent_merges(
+                api, REPOSITORY, "main", current_time=now
+            ),
+            [],
+        )
+
+    def test_recent_reconciliation_rejects_invalid_responses(self) -> None:
+        """Fail explicitly rather than silently skipping unverifiable merges."""
+        api = _FakeGitHub()
+        api.closed_pages[1] = [
+            {**_event()["pull_request"], "updated_at": "invalid-time"}
+        ]
+        now = datetime(2026, 11, 17, 12, tzinfo=timezone.utc)
+        with self.assertRaisesRegex(ValueError, "invalid timestamp"):
+            sync.reconcile_recent_merges(
+                api, REPOSITORY, "main", current_time=now
+            )
 
     def test_issue_reference_parsing_skips_upstream_links_and_code(self) -> None:
         """Parse explicit repository issue references but not unrelated sources."""
