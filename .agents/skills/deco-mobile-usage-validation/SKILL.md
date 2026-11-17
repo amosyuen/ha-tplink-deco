@@ -66,7 +66,11 @@ description: "Use when adding, reviewing or maintaining read-only 4G/5G Deco mob
    current data is supported and update interval; never export the actual
    counter, raw data, model, names or credentials. Translate the entity
    name in every shipped locale and document Recorder/history exposure
-   without promising retroactive deletion.
+   without promising retroactive deletion. **P2 review lesson:** a class-level
+   `_attr_name` overrides the translated `_attr_translation_key` in both
+   supported Home Assistant versions. Do not set `_attr_name` on the mobile
+   entity; test the real `Entity.name` resolution with Dutch platform
+   translations, not merely JSON key presence.
 
 ## Regression and completion gate
 
