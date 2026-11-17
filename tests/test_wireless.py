@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-import pytest
 from homeassistant.helpers.update_coordinator import UpdateFailed
+import pytest
 
 from custom_components.tplink_deco.api import TplinkDecoApi
 from custom_components.tplink_deco.binary_sensor import TplinkDecoWirelessBinarySensor
@@ -146,9 +146,7 @@ async def test_api_uses_read_only_wireless_form_and_redacts_errors() -> None:
     api._decrypt_data = MagicMock(
         return_value={"result": {"band2_4": {"host": {"enable": True}}}}
     )
-    assert await api.async_get_wireless() == {
-        "band2_4": {"host": {"enable": True}}
-    }
+    assert await api.async_get_wireless() == {"band2_4": {"host": {"enable": True}}}
     api._encode_payload.assert_called_once_with({"operation": "read"})
     api._async_post.assert_awaited_once_with(
         "Get wireless status",
@@ -206,7 +204,8 @@ async def test_wireless_networks_are_discovered_once_and_linked_to_master() -> N
         await async_setup_entry(hass, entry, batches.append)
     initial = [entity for batch in batches for entity in batch]
     entities = [
-        entity for entity in initial
+        entity
+        for entity in initial
         if isinstance(entity, TplinkDecoWirelessBinarySensor)
     ]
     assert len(entities) == 1
@@ -222,7 +221,8 @@ async def test_wireless_networks_are_discovered_once_and_linked_to_master() -> N
     listener()
     updated = [entity for batch in batches for entity in batch]
     iot = next(
-        entity for entity in updated
+        entity
+        for entity in updated
         if isinstance(entity, TplinkDecoWirelessBinarySensor)
         and entity.entity_description.key == "iot"
     )
