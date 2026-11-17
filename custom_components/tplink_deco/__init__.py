@@ -46,6 +46,7 @@ from .const import CONF_TIMEOUT_SECONDS
 from .const import CONF_VERIFY_SSL
 from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
+from .const import COORDINATOR_MOBILE_KEY
 from .const import COORDINATOR_WIRELESS_KEY
 from .const import DEFAULT_CONSIDER_HOME
 from .const import DEFAULT_DECO_POSTFIX
@@ -65,6 +66,7 @@ from .coordinator import TpLinkDecoClient
 from .coordinator import TpLinkDecoData
 from .coordinator import TplinkDecoClientUpdateCoordinator
 from .coordinator import TplinkDecoUpdateCoordinator
+from .mobile import TplinkDecoMobileDataUpdateCoordinator
 from .wireless import TplinkDecoWirelessUpdateCoordinator
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -174,10 +176,14 @@ async def async_create_and_refresh_coordinators(
         update_interval,
         expose_ssids=config_data.get(CONF_EXPOSE_WIFI_SSIDS) is True,
     )
+    mobile_coordinator = TplinkDecoMobileDataUpdateCoordinator(
+        hass, api, config_entry, deco_coordinator
+    )
     return {
         COORDINATOR_DECOS_KEY: deco_coordinator,
         COORDINATOR_CLIENTS_KEY: clients_coordinator,
         COORDINATOR_WIRELESS_KEY: wireless_coordinator,
+        COORDINATOR_MOBILE_KEY: mobile_coordinator,
     }
 
 
@@ -351,6 +357,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             wireless_coordinator.async_refresh(),
             name="tplink_deco initial wireless refresh",
         )
+    mobile_coordinator = data.get(COORDINATOR_MOBILE_KEY)
+    if mobile_coordinator is not None:
+        config_entry.async_create_background_task(
+            hass,
+            mobile_coordinator.async_refresh(),
+            name="tplink_deco initial mobile data refresh",
+        )
 
     return True
 
@@ -372,6 +385,7 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     deco_coordinator = data.get(COORDINATOR_DECOS_KEY)
     clients_coordinator = data.get(COORDINATOR_CLIENTS_KEY)
     wireless_coordinator = data.get(COORDINATOR_WIRELESS_KEY)
+    mobile_coordinator = data.get(COORDINATOR_MOBILE_KEY)
 
     unloaded = all(
         await asyncio.gather(
@@ -385,12 +399,17 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
         return False
 
     # Platform unload must succeed before stopping polling or releasing callbacks.
-    for coordinator in (deco_coordinator, clients_coordinator, wireless_coordinator):
+    for coordinator in (
+        deco_coordinator,
+        clients_coordinator,
+        wireless_coordinator,
+        mobile_coordinator,
+    ):
         if coordinator is not None:
             await coordinator.async_shutdown()
 
     # Only fork-specific Deco/client coordinators implement async_close.
-    # Home Assistant's wireless DataUpdateCoordinator does not.
+    # Optional wireless/mobile DataUpdateCoordinators do not.
     for coordinator in (deco_coordinator, clients_coordinator):
         if coordinator is not None:
             await coordinator.async_close()
