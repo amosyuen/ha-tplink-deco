@@ -253,6 +253,15 @@ policy for AI-assisted development.
   scope, head SHA or CI. Preserve independently useful review history
   rather than overwriting it unnecessarily. See the
   [PR branch-maintenance skill](.agents/skills/github-pr-branch-maintenance/SKILL.md).
+- **PR #49 merge-state evidence:** GitHub returned a nonempty
+  `merge_commit_sha` even while PR #49 was explicitly `open` and
+  `merged=false`. Never use that field alone to assert a merge:
+  require `merged=true`, a real `merged_at`, and verification of the
+  expected code on the post-merge `main` commit. PR #48's head branch
+  was deleted after its verified merge; a branch-ref 404 is **not**
+  evidence that the merged implementation was lost. Read the verified
+  merge commit or `main`, rather than recreating or overwriting the
+  deleted branch.
 
 ## Preserve fork compatibility
 
