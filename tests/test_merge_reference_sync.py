@@ -2,6 +2,7 @@
 
 import importlib.util
 from pathlib import Path
+import re
 import unittest
 
 _MODULE_PATH = (
@@ -113,6 +114,39 @@ class _FakeGitHub:
 
 class MergeReferenceSyncTests(unittest.TestCase):
     """Verify link extraction, exact scoping, safe updates and idempotency."""
+
+    def test_merge_workflow_pins_trusted_actions(self) -> None:
+        """Pin action revisions and preserve safe merge-only execution."""
+        workflow_path = (
+            Path(__file__).resolve().parents[1]
+            / ".github"
+            / "workflows"
+            / "sync-merged-references.yml"
+        )
+        workflow = workflow_path.read_text(encoding="utf-8")
+        action_references = re.findall(
+            r"^\s*uses:\s+([^\s#]+)", workflow, flags=re.MULTILINE
+        )
+
+        self.assertEqual(
+            action_references,
+            [
+                "actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+                "actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405",
+            ],
+        )
+        self.assertIn("pull_request_target:", workflow)
+        self.assertIn("github.event.pull_request.merged == true", workflow)
+        self.assertIn(
+            "github.event.pull_request.base.ref == "
+            "github.event.repository.default_branch",
+            workflow,
+        )
+        self.assertIn("persist-credentials: false", workflow)
+        self.assertIn("contents: read", workflow)
+        self.assertIn("issues: write", workflow)
+        self.assertIn("pull-requests: write", workflow)
+        self.assertNotIn("github.event.pull_request.head.", workflow)
 
     def test_issue_reference_parsing_skips_upstream_links_and_code(self) -> None:
         """Parse explicit repository issue references but not unrelated sources."""

@@ -43,6 +43,39 @@ description: "Use when reviewing, changing, validating or troubleshooting automa
    GraphQL links and scoped related-PR notices. Run tests in the existing
    Python/Home Assistant matrix plus pre-commit, HACS and Hassfest.
 
+## Pinned action revisions (PR #37 merge failure)
+
+**Observed failure:** The PR #37 post-merge sync job could not initialize
+because the repository requires `uses:` actions pinned to full-length
+commit SHAs. The rejected workflow referenced `actions/checkout@v6`
+and `actions/setup-python@v6.2.0`. This failure is separate from the
+PR's successful Python/HA and linting checks.
+
+1. Inspect the failed **merge-triggered job log**, the current
+   `.github/workflows/sync-merged-references.yml` and the working
+   `.github/workflows/tests.yaml` and `pytest.yaml` references.
+2. Resolve exact release-tag commit SHAs using official GitHub Actions
+   repository refs. For the verified releases: `actions/checkout@v6`
+   resolves to `d23441a48e516b6c34aea4fa41551a30e30af803`, and
+   `actions/setup-python@v6.2.0` resolves to
+   `a309ff8b426b58ec0e2a45f0f869d46889d02405`. Include version
+   comments for readability; do not replace the pins with movable tags.
+3. Keep `pull_request_target: closed`, the confirmed merge and
+   default-branch conditions, the trusted default-branch checkout,
+   `persist-credentials: false`, and minimal contents/read plus
+   issues/pull-requests/write permissions unchanged. Never checkout
+   untrusted PR head code using a write-capable token.
+4. Add an offline regression test that reads the actual workflow and
+   verifies its pinned action references and safety-critical guards.
+   Retain the existing mock synchronization tests; changing the workflow
+   must not change the linked-issue semantics or mark issue #2 complete.
+5. Run the existing Python 3.13 / HA 2025.12 and Python 3.14 /
+   HA 2026.11 regression matrices, pre-commit, HACS and Hassfest on
+   the final head. Successful PR CI establishes static correctness,
+   **not** the functioning of a merge-triggered event. After a reviewed
+   merge to `main`, inspect a new real merge-triggered run; failed
+   past events are not automatically replayed.
+
 ## Deployment and limitations
 
 - This workflow only becomes active when merged onto the repository default

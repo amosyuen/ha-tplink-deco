@@ -114,6 +114,20 @@ policy for AI-assisted development.
   trusted default-branch code with narrowly scoped write permissions, not
   the untrusted PR head. Follow the GitHub merge-reference synchronization
   skill when modifying its implementation or testing GitHub API behavior.
+- **Merge-sync action-policy regression (PR #37 post-merge):** a
+  `pull_request_target` workflow failed before running its script because
+  `actions/checkout@v6` and `actions/setup-python@v6.2.0` were not
+  pinned to full 40-character commit SHAs. Resolve trusted release tags
+  against the upstream action repositories and reuse verified pins from
+  existing passing workflows. Keep readable version comments. Add a
+  workflow-source regression test for every `uses` reference, the
+  merge-only/default-branch guard, minimal token permissions and disabled
+  persisted checkout credentials. Do not change the trusted checkout
+  target or the issue-scoping script to fix an action-policy failure.
+  CI on the PR verifies the files, **not** an actual merge-triggered
+  execution: inspect the next real post-merge run before claiming the
+  synchronization automation works. Never replay old merge events or
+  automatically check broad issue #2 acceptance criteria.
 - At merge time, update only same-repository issues linked explicitly in the
   PR body or GitHub closing-issue references. Check only issue checklist
   lines that explicitly name the merged PR. Notify only related **open** PRs
