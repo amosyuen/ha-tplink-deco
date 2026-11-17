@@ -7,6 +7,7 @@ from homeassistant.core import HomeAssistant
 
 from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
+from .const import COORDINATOR_WIRELESS_KEY
 from .const import DOMAIN
 from .coordinator import CoordinatorHealth
 from .coordinator import TplinkDecoClientUpdateCoordinator
@@ -64,7 +65,7 @@ async def async_get_config_entry_diagnostics(
     decos = deco_data.decos if deco_data is not None else {}
     clients = client_coordinator.data or {}
 
-    return {
+    result = {
         "schema_version": 1,
         "deco_coordinator": {
             **_coordinator_snapshot(deco_coordinator),
@@ -87,3 +88,11 @@ async def async_get_config_entry_diagnostics(
             "online_clients": sum(bool(client.online) for client in clients.values()),
         },
     }
+    wireless_coordinator = data.get(COORDINATOR_WIRELESS_KEY)
+    if wireless_coordinator is not None:
+        result["wireless_coordinator"] = {
+            "last_update_success": wireless_coordinator.last_update_success,
+            "retry_remaining_seconds": wireless_coordinator.retry_remaining_seconds,
+            "available_networks": sorted(wireless_coordinator.data or {}),
+        }
+    return result
