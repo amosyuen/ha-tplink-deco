@@ -62,7 +62,6 @@ async def async_setup_entry(
         )
     )
 
-
     wireless_coordinator = data.get(COORDINATOR_WIRELESS_KEY)
     if wireless_coordinator is None:
         return
