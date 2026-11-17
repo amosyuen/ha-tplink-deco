@@ -37,5 +37,12 @@
     "error": {
       "invalid_expose_wifi_ssids": "Velg på eller av for å vise Wi-Fi-nettverksnavn."
     }
+  },
+  "entity": {
+    "sensor": {
+      "mobile_data_usage": {
+        "name": "Mobildatabruk"
+      }
+    }
   }
 }
