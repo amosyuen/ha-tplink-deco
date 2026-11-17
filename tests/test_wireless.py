@@ -317,8 +317,10 @@ def test_wireless_decryption_errors_never_log_raw_payload(
     assert SECRET not in caplog.text
 
 
+@pytest.mark.parametrize("error_code", [123, SECRET])
 @pytest.mark.asyncio
 async def test_wireless_http_api_error_never_logs_private_json(
+    error_code: object,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """A rejected WLAN API request must not log its password-bearing response."""
@@ -327,11 +329,13 @@ async def test_wireless_http_api_error_never_logs_private_json(
     response.history = []
     response.raise_for_status = MagicMock()
     response.headers.getall.return_value = []
-    response.json = AsyncMock(return_value={"error_code": 123, "message": SECRET})
+    response.json = AsyncMock(return_value={"error_code": error_code, "message": SECRET})
     api._session.post = AsyncMock(return_value=response)
     caplog.set_level(logging.DEBUG)
 
-    with pytest.raises(UnexpectedApiException, match="Get wireless status error"):
+    with pytest.raises(
+        UnexpectedApiException, match="Wireless status request was rejected"
+    ) as error:
         await api._async_post(
             "Get wireless status",
             "http://192.0.2.1/cgi-bin/luci/;stok=test-stok/admin/wireless",
@@ -339,6 +343,7 @@ async def test_wireless_http_api_error_never_logs_private_json(
             "encoded",
         )
 
+    assert SECRET not in str(error.value)
     assert SECRET not in caplog.text
 
 
