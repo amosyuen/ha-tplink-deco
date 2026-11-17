@@ -560,6 +560,11 @@ class TplinkDecoApi:
         authenticated_request = self._stok not in (None, "") and url.startswith(
             f"{self._host}/cgi-bin/luci/;stok={self._stok}/"
         )
+        mobile_usage_request = (
+            context == "Get mobile data usage" and params.get("form") == "internet"
+        )
+        private_status_request = params.get("form") == "wlan" or mobile_usage_request
+        private_label = "Mobile data" if mobile_usage_request else "Wireless status"
         headers = {CONTENT_TYPE: "application/json"}
         # Gebruik een dictionary voor cookies in plaats van een string in headers
         request_cookies = {}
@@ -594,9 +599,9 @@ class TplinkDecoApi:
 
                 # Soms antwoordt de server met de verkeerde content-type
                 response_json = await response.json(content_type=None)
-                if params.get("form") == "wlan" and not isinstance(response_json, dict):
+                if private_status_request and not isinstance(response_json, dict):
                     raise UnexpectedApiException(
-                        "Wireless status response is malformed"
+                        f"{private_label} response is malformed"
                     )
                 if "error_code" in response_json:
                     error_code = response_json.get("error_code")
@@ -606,7 +611,7 @@ class TplinkDecoApi:
                             f"{context} authenticated session expired (error_code=-5002)"
                         )
                     if error_code != 0 and error_code != "":
-                        if params.get("form") == "wlan":
+                        if private_status_request:
                             _LOGGER.debug("%s returned API error", context)
                         else:
                             _LOGGER.debug(
@@ -615,9 +620,9 @@ class TplinkDecoApi:
                                 error_code,
                                 response_json,
                             )
-                        if params.get("form") == "wlan":
+                        if private_status_request:
                             raise UnexpectedApiException(
-                                "Wireless status request was rejected"
+                                f"{private_label} request was rejected"
                             ) from None
                         raise UnexpectedApiException(f"{context} error: {error_code}")
 
@@ -629,9 +634,9 @@ class TplinkDecoApi:
             )
             raise TimeoutException from err
         except aiohttp.ClientResponseError as err:
-            if params.get("form") == "wlan":
-                # aiohttp errors can contain the LuCI token in request_info.
-                _LOGGER.debug("Wireless status HTTP error: %d", err.status)
+            if private_status_request:
+                # aiohttp errors can contain a LuCI token in request_info.
+                _LOGGER.debug("%s HTTP error: %d", private_label, err.status)
             elif params.get("form") == "client_list" and 500 <= err.status < 600:
                 # aiohttp exceptions can contain a LuCI session token in
                 # request_info.real_url. Never interpolate these exceptions.
@@ -647,9 +652,9 @@ class TplinkDecoApi:
                 raise err
             if err.status == 403:
                 self.clear_auth()
-                if params.get("form") == "wlan":
+                if private_status_request:
                     raise ForbiddenException(
-                        "Wireless status forbidden (HTTP 403)"
+                        f"{private_label} forbidden (HTTP 403)"
                     ) from None
                 message = f"{context} Forbidden error: {err}"
                 raise ForbiddenException(message) from err
@@ -665,14 +670,18 @@ class TplinkDecoApi:
             ) from None
         except aiohttp.ClientConnectorError as err:
             # Network failures do not prove authentication expired.
-            if params.get("form") == "wlan":
-                _LOGGER.debug("Wireless connection failed (%s)", type(err).__name__)
+            if private_status_request:
+                _LOGGER.debug(
+                    "%s connection failed (%s)", private_label, type(err).__name__
+                )
             else:
                 _LOGGER.error("%s connection error: %s", context, err)
             raise
         except aiohttp.ClientError as err:
-            if params.get("form") == "wlan":
-                _LOGGER.debug("Wireless transport failed (%s)", type(err).__name__)
+            if private_status_request:
+                _LOGGER.debug(
+                    "%s transport failed (%s)", private_label, type(err).__name__
+                )
             else:
                 _LOGGER.error(
                     "%s client error: %s",
@@ -766,12 +775,19 @@ class TplinkDecoApi:
             data_json = json.loads(data_decrypted)
             return data_json
         except Exception as err:
-            if context == "Get wireless status":
+            if context in ("Get wireless status", "Get mobile data usage"):
+                private_label = (
+                    "Mobile data"
+                    if context == "Get mobile data usage"
+                    else "Wireless status"
+                )
                 _LOGGER.debug(
-                    "Wireless response decoding failed (%s)", type(err).__name__
+                    "%s response decoding failed (%s)",
+                    private_label,
+                    type(err).__name__,
                 )
                 raise UnexpectedApiException(
-                    "Wireless status response could not be decoded"
+                    f"{private_label} response could not be decoded"
                 ) from None
             _LOGGER.error(
                 "%s decode data error=%s, data=%s",
