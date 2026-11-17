@@ -169,6 +169,13 @@ Their physical-firmware validation remains a separate limitation.
   failed node. When **all** node client polls fail, retain the complete
   previous client dictionary, including clients lacking a known Deco
   association.
+- Regular per-Deco client-list replies are validated as complete
+  lists before any cached client is updated. A malformed later item,
+  duplicate or missing MAC, or invalid client data rejects the poll
+  with a fixed error; previously known clients and per-node successful
+  poll readiness remain intact. A valid empty reply is still success,
+  and a timed-out peer still permits valid nodes to update. Client
+  identifiers are not emitted in discovery DEBUG logs.
 - Down/Up throughput aggregation includes only clients with truthy
   `online` status. Per-Deco data rates additionally require the matching
   `deco_mac`; network-wide totals include online clients across nodes.
