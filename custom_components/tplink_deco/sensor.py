@@ -389,12 +389,14 @@ async def async_setup_entry(
                 return
             mobile_sensor_macs.add(master.mac)
             async_add_entities(
-                [TplinkMobileDataUsageSensor(coordinator_decos, coordinator_mobile, master.mac)]
+                [
+                    TplinkMobileDataUsageSensor(
+                        coordinator_decos, coordinator_mobile, master.mac
+                    )
+                ]
             )
 
-        entry.async_on_unload(
-            coordinator_mobile.async_add_listener(_add_mobile_sensor)
-        )
+        entry.async_on_unload(coordinator_mobile.async_add_listener(_add_mobile_sensor))
         _add_mobile_sensor()
 
 
@@ -435,9 +437,8 @@ class TplinkMobileDataUsageSensor(CoordinatorEntity, SensorEntity):
     @property
     def available(self) -> bool:
         """Hide old-master values after any master-generation transition."""
-        return (
-            super().available
-            and self.coordinator.has_current_usage(self._master_mac)
+        return super().available and self.coordinator.has_current_usage(
+            self._master_mac
         )
 
     @property
