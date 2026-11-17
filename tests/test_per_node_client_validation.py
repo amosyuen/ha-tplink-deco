@@ -133,6 +133,57 @@ async def test_malformed_node_response_type_is_rejected_without_state_changes(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "invalid_ip",
+    [
+        "not-an-ip-address",
+        {"private": PRIVATE_VALUE},
+    ],
+    ids=["malformed-ip-string", "unexpected-ip-mapping"],
+)
+async def test_invalid_client_ip_normalizes_without_rejecting_valid_peer(
+    invalid_ip: object,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Preserve a successful client refresh when firmware sends an invalid IP."""
+    cached_client = TpLinkDecoClient(CLIENT_MAC)
+    cached_client.name = "old-name"
+    cached_client.ip_address = "192.0.2.1"
+    cached_client.online = False
+    coordinator, api = _coordinator({CLIENT_MAC: cached_client})
+    api.async_list_clients = AsyncMock(
+        return_value=[
+            {
+                "mac": CLIENT_MAC,
+                "name": "updated-name",
+                "ip": invalid_ip,
+                "online": True,
+            }
+        ]
+    )
+
+    with caplog.at_level(logging.DEBUG):
+        result = await coordinator._async_update_data()
+
+    assert result[CLIENT_MAC] is cached_client
+    assert cached_client.name == "updated-name"
+    assert cached_client.ip_address is None
+    assert cached_client.online is True
+    assert cached_client.deco_mac == MASTER_MAC
+    assert cached_client.last_activity is not None
+    assert coordinator.has_successful_refresh is True
+    assert coordinator.successfully_polled_deco_macs == {MASTER_MAC}
+    assert coordinator.health.consecutive_failures == 0
+    assert coordinator.health.last_error == "0"
+    assert coordinator.health.last_successful_update is not None
+    assert CLIENT_MAC not in caplog.text
+    assert PRIVATE_VALUE not in caplog.text
+    api.async_list_clients.assert_awaited_once_with(
+        MASTER_MAC, timeout_error_retries=0
+    )
+
+
+@pytest.mark.asyncio
 async def test_valid_peer_updates_when_other_node_times_out() -> None:
     """A missing node response remains incomplete, not an empty success."""
     old_client = TpLinkDecoClient(CLIENT_MAC)
