@@ -22,9 +22,10 @@ non-blocking initial client refresh (PR #29), coordinator health
 (PR #33), independent status polling (PR #34), bounded client-list
 concurrency (PR #35), restore-state error hardening (PR #36), and
 read-only WLAN status (PR #41) have since merged into the fork.
-The SSID opt-in contract below is introduced by PR #42; it applies
-to that PR branch, and is **not** a deployed `main` capability until
-the PR actually merges.
+The privacy-safe SSID opt-in contract introduced by PR #42 has merged
+into `main`. The optional mobile WAN usage contract below is introduced
+by the current upstream #631 backport PR and must not be described as
+deployed until that PR is merged.
 
 ## 1. Integration boundary and data ownership
 
@@ -35,9 +36,10 @@ the PR actually merges.
   `device_tracker`, `sensor`, `binary_sensor`, `switch`, `select`
   and `button`. The authoritative list is `PLATFORMS` in `const.py`;
   confirm it before changing this guide.
-- Each configuration entry stores three independent coordinators under
-  `hass.data[DOMAIN][entry_id]`: **two required** for mesh/client data
-  and **one optional** for read-only WiFi status:
+- With the scoped mobile data backport, each configuration entry stores
+  four independent coordinators under `hass.data[DOMAIN][entry_id]`:
+  **two required** for mesh/client data and **two optional** for read-only
+  WiFi status and mobile WAN usage:
   - `COORDINATOR_DECOS_KEY` / `TplinkDecoUpdateCoordinator` discovers mesh
     nodes, identifies the master and obtains optional performance readings.
   - `COORDINATOR_CLIENTS_KEY` / `TplinkDecoClientUpdateCoordinator` polls
@@ -46,6 +48,10 @@ the PR actually merges.
   - `COORDINATOR_WIRELESS_KEY` / `TplinkDecoWirelessUpdateCoordinator` polls
     Main, Guest and IoT network enabled flags independently; unsupported
     firmware does not prevent the required coordinator refreshes.
+  - `COORDINATOR_MOBILE_KEY` / `TplinkDecoMobileDataUpdateCoordinator`
+    polls read-only WAN consumption in KiB every five minutes **only**
+    for a master recognized as a 4G/5G model. It cannot block setup or
+    required coordinator refreshes.
 - The client coordinator uses its paired Deco coordinator's device inventory
   and pause flag. It must not treat a peer configuration entry's data or API
   session as its own.
