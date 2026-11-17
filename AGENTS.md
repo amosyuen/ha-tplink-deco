@@ -1125,7 +1125,6 @@ policy for AI-assisted development.
 - Make the smallest change that meets the issue's acceptance criteria,
   document user-visible behavior, and explain regression coverage in the PR.
 
-
 ## Read-only WLAN status backport lessons (upstream #627)
 
 - Keep optional WLAN requests in an independent coordinator per config
