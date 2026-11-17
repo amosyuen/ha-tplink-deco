@@ -100,9 +100,8 @@ def _normalize_device_list_interval(data: dict[str, Any]) -> bool:
 
 def _valid_ssid_choice(data: dict[str, Any]) -> bool:
     """Reject non-boolean SSID consent before network access or persistence."""
-    return (
-        CONF_EXPOSE_WIFI_SSIDS not in data
-        or isinstance(data[CONF_EXPOSE_WIFI_SSIDS], bool)
+    return CONF_EXPOSE_WIFI_SSIDS not in data or isinstance(
+        data[CONF_EXPOSE_WIFI_SSIDS], bool
     )
 
 
