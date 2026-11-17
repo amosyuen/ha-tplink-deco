@@ -459,10 +459,12 @@ retains strict UTF-8 validation to avoid silent loss of log data.
 
 Follow-up PR #46 adds detection of router authentication/error JSON
 mislabeled as text/plain or binary; such errors are never written as
-log content. Incomplete manual log downloads return a fixed
-connection failure without another transient retry, while ordinary
-Deco API retry defaults remain unchanged. This fix is not available
-on `main` before PR #46 merges.
+log content. After PR #46 merges, incomplete manual log downloads return a
+fixed connection failure without an extra transient retry, while
+ordinary Deco API retry defaults remain unchanged. Expired router
+authentication still permits one re-login/retry; a timeout or
+truncated response does not. The PR #46 fix is **not yet on
+`main`**.
 
 Legacy S7 sessions and syslog forwarding (#666) remain separate.
 Physical router behavior and Windows filesystem permission behavior

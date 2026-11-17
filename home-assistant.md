@@ -22,10 +22,9 @@ non-blocking initial client refresh (PR #29), coordinator health
 (PR #33), independent status polling (PR #34), bounded client-list
 concurrency (PR #35), restore-state error hardening (PR #36), and
 read-only WLAN status (PR #41) have since merged into the fork.
-The privacy-safe SSID opt-in contract introduced by PR #42 has merged
-into `main`. The optional mobile WAN usage contract below is introduced
-by the current upstream #631 backport PR and must not be described as
-deployed until that PR is merged.
+The privacy-safe SSID opt-in contract introduced by PR #42 and
+optional mobile WAN usage from PR #43 have both merged into `main`.
+Their physical-firmware validation remains a separate limitation.
 
 ## 1. Integration boundary and data ownership
 
@@ -342,26 +341,26 @@ deployed until that PR is merged.
   firmware payloads. Malformed error values are replaced with
   `UnknownError`. Missing coordinator data produces null/zero health
   readings. Each export is isolated to one configuration entry; device
-  diagnostics remain unimplemented. Manual system-log export is a separate
-  proposed action on PR #44, not part of Home Assistant diagnostics.
+  diagnostics remain unimplemented. Manual system-log export was merged in PR #44; it remains separate
+  from Home Assistant diagnostics.
 - `switch` controls polling. `select` chooses the main polling interval
   and persists the selected integer in the config entry before reload.
 - The three existing per-entry services are `tplink_deco.reboot_deco`,
-  `tplink_deco.pause_polling` and `tplink_deco.resume_polling`. PR #44
-  proposes a fourth, once-registered `tplink_deco.download_system_log`
-  action resolved at invocation. For
-  `reboot_deco`, resolve each selected Home Assistant device registry
+  `tplink_deco.pause_polling` and `tplink_deco.resume_polling`.
+  PR #44 added a separate integration-wide, once-registered
+  `tplink_deco.download_system_log` action, which resolves its loaded
+  config entry at invocation. For `reboot_deco`, resolve each
+  selected Home Assistant device registry
   entry to a nonempty `(DOMAIN, MAC)` identifier; reject an invalid
   selection **before** sending any reboot command. Device-registry
   records may carry additional unrelated identifiers.
 - Do not silently enable upstream syslog forwarding or **unscoped
   wireless features** while maintaining existing entities. Manual
-  system-log export is independently scoped to open PR #44.
-  Read-only WLAN status was scoped to merged PR #41; optional SSID
-  attributes were scoped to merged PR #42 and remain disabled unless
-  per-entry boolean consent is explicitly `true`. Read-only mobile
-  usage sensors were merged in PR #43 and verified on `main`. Remaining unrelated
-  work is tracked in
+  system-log export merged in PR #44; compressed snapshots merged
+  in PR #45. Read-only WLAN status merged in PR #41; optional SSID
+  attributes merged in PR #42 and remain disabled unless per-entry
+  boolean consent is explicitly `true`. Read-only mobile usage
+  sensors merged in PR #43. Remaining unrelated work is tracked in
   [issue #2](https://github.com/HiDiHo01/ha-tplink-deco/issues/2).
 
 ## 8. Config flow, setup, reload and unload
@@ -604,11 +603,14 @@ re-login/error contract. The file output remains plain UTF-8 text;
 there are no new entities, polling or network-forwarding operations.
 
 The compressed decoder is present on `main` after merge commit
-`a1208e7a0258271df50f69b4b6a51cf39e6a9b1c`. Follow-up PR #46
-closes two manual-export error paths: standalone router auth/error
-JSON with an incorrect plain-text/binary MIME label, and unwanted
-transient retries after an incomplete log response. Other API
-retry defaults remain unchanged. This follow-up is **not deployed
-until PR #46 merges**. Legacy S7 sessions and syslog forwarding
+`a1208e7a0258271df50f69b4b6a51cf39e6a9b1c`. **Open PR #46**
+proposes two manual-export error fixes: detect standalone firmware
+`errorcode`/`error_code` JSON mislabeled as `text/plain` or
+`application/octet-stream` before saving, and disable extra transient
+retries after a truncated response. It preserves JSON-formatted log
+lines without firmware error fields and retains one authentication
+re-login, while setting manual-download timeout and transient retry
+budgets to zero. Normal Deco API retry defaults remain unchanged.
+**These fixes are not on `main` until PR #46 is merged.** Legacy S7 sessions and syslog forwarding
 (#666) remain unimplemented. Physical firmware/Windows ACL tests,
 the parent-symlink race and best-effort cleanup remain unverified.
