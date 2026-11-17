@@ -502,3 +502,42 @@ async def test_master_change_keeps_opted_out_ssid_cache_empty() -> None:
     _change_master(coordinator, MASTER_A)
     assert coordinator.ssids == {}
     assert coordinator._ssid_master_mac is None
+
+
+@pytest.mark.asyncio
+async def test_deco_listener_hides_names_before_sensor_publishes_state() -> None:
+    """State publication during A -> B -> A never includes the old SSID."""
+    coordinator = _coordinator(ALPHA_RESPONSE, consent=True)
+    sensor = _linked_sensor(coordinator, MASTER_A)
+    coordinator.data = await coordinator._async_update_data()
+    assert sensor.extra_state_attributes == {"ssid": "Alpha"}
+
+    published_attributes: list[dict[str, str] | None] = []
+    with patch.object(
+        sensor,
+        "async_write_ha_state",
+        side_effect=lambda: published_attributes.append(sensor.extra_state_attributes),
+    ) as write_state:
+        _change_master(coordinator, MASTER_B)
+        sensor._handle_deco_update()
+        _change_master(coordinator, MASTER_A)
+        sensor._handle_deco_update()
+
+    assert published_attributes == [None, None]
+    assert write_state.call_count == 2
+    assert coordinator.ssids == {}
+
+
+@pytest.mark.asyncio
+async def test_master_invalidation_does_not_affect_peer_config_entry() -> None:
+    """A master change must not invalidate another entry's private names."""
+    first = _coordinator(ALPHA_RESPONSE, consent=True)
+    second = _coordinator(ALPHA_RESPONSE, consent=True)
+    first.data = await first._async_update_data()
+    second.data = await second._async_update_data()
+
+    _change_master(first, MASTER_B)
+    assert first.ssid_names_for_master(MASTER_A, "guest") == {}
+    assert second.ssid_names_for_master(MASTER_A, "guest") == {
+        "band2_4": "Alpha"
+    }
