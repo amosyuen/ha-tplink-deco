@@ -538,6 +538,4 @@ async def test_master_invalidation_does_not_affect_peer_config_entry() -> None:
 
     _change_master(first, MASTER_B)
     assert first.ssid_names_for_master(MASTER_A, "guest") == {}
-    assert second.ssid_names_for_master(MASTER_A, "guest") == {
-        "band2_4": "Alpha"
-    }
+    assert second.ssid_names_for_master(MASTER_A, "guest") == {"band2_4": "Alpha"}
