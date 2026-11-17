@@ -88,43 +88,44 @@ present on an open PR is not yet present on deployed `main`.
   on unavailable former-master entities. Never include names in diagnostics,
   DEBUG logs or raw responses.
 - **P1: associate SSID snapshots with a master and generation (PR #42).**
-  Record the owner MAC **and** a monotonic per-entry generation when a
-  successful WLAN refresh begins. Register a Deco coordinator listener
-  before adding wireless sensors; increment the generation and clear
-  SSIDs/ownership whenever the master changes. A -> B -> A is **not**
-  equivalent to no change: an older A snapshot must remain hidden until
-  a fresh A request completes. Recheck the MAC and generation when the
-  asynchronous request returns; do not publish SSIDs for a stale response.
-  Before returning sensor attributes, revalidate ownership against the
-  current master and generation. Keep boolean enabled-state behavior and
-  stable MAC-based entity IDs unchanged. Register the coordinator listener
-  for config-entry unload cleanup without closing shared sessions.
-  Test A -> B, A -> B -> A (both with and without an intervening poll),
-  an in-flight master switch, opt-out, callback publication, listener
-  lifecycle and recovery on the new owner's successful poll.
-- **Retry ownership during master changes:** the optional WLAN
-  two-failure/five-minute cooldown is specific to the currently observed
-  master generation. A real master switch must invalidate the previous
-  owner's cooldown and failure count; an unchanged-master notification
-  must retain both. If an in-flight request fails after a master switch,
-  call the same master-observation check before accounting for its error
-  and discard the stale failure without charging the new master. Return
-  only fixed, sanitized `UpdateFailed` text; keep authentication and
-  cancellation behavior unchanged. Test an established cooldown followed
-  by a new-master success, a same-master notification, A -> B and A -> B -> A
-  during an async request that raises an exception containing a synthetic
-  secret, then a current-master failure that counts as the first attempt.
-- **Validate before committing coordinator data:** SSID parsing and boolean
-  state parsing must run inside the **same** guarded update. A decoder error
-  must become a sanitized `UpdateFailed`, increment the normal wireless
-  failure count and honor the two-failure/five-minute limit, not escape
-  after backoff has been reset. Preserve previously cached names and states
-  without partially overwriting them on failed updates. Propagate auth and
-  cancellation as before. Test with an exception embedding a synthetic secret
-  and assert no secret appears in DEBUG logs or exception data. Raise the
-  fixed `UpdateFailed` **after** leaving the `except` block: `from None`
-  hides a traceback context but still retains the original private exception
-  in `__context__`. Assert both `__cause__` and `__context__` are `None`.
+  Capture the current master MAC and monotonically increasing **per-entry**
+  generation immediately **before** awaiting the WLAN API, not after a
+  successful read. Register a Deco coordinator listener before adding
+  wireless sensors; increment the generation and clear SSIDs/ownership
+  whenever the master changes. A -> B -> A is **not** equivalent to no
+  change: an older A snapshot remains hidden until a new A request
+  succeeds. After the awaited request and successful parsing, compare
+  both identities before **committing** SSIDs; a stale success may retain
+  the existing boolean WiFi-status return contract, but must not publish
+  SSID attributes. Recheck ownership in the sensor attribute getter.
+  Preserve stable MAC-based entity IDs, listener cleanup through entry
+  unload, and shared-session ownership. Test A -> B, A -> B -> A,
+  in-flight switches, opt-out, immediate callback publication and
+  per-entry isolation.
+- **Retry ownership during master changes:** a genuine master transition
+  resets the optional WLAN failure counter and five-minute cooldown; a
+  same-master notification leaves them untouched. When an in-flight request
+  fails, observe the current master again. Count the failure only if its
+  starting **MAC and generation** still match. A stale failure still
+  returns a fixed, sanitized `UpdateFailed`, but cannot consume the new
+  master's retry budget. This includes A -> B -> A while the original
+  request awaits. Do not retry synchronously to defeat the cooldown;
+  preserve Home Assistant authentication and task-cancellation handling.
+  A paused coordinator returns cached boolean status without issuing a
+  router request or resetting backoff.
+- **Validate before committing coordinator data:** parse boolean states
+  and optional names inside the **same** guarded update. A decoder error
+  becomes sanitized `UpdateFailed`, counts toward the two-failure/
+  five-minute limit **only for the unchanged starting generation**, and
+  must not reset retry state as though the update succeeded. Preserve
+  previously cached states and valid same-owner names without partially
+  committing a failed result. A real master change clears old names
+  regardless of the failed request. Raise fixed `UpdateFailed` **after**
+  leaving `except`: `raise ... from None` *inside* an exception handler
+  still retains the private original error in `__context__`. Check
+  `__cause__ is None`, `__context__ is None`, fixed message text and
+  the absence of synthetic secrets from DEBUG logs. Authentication and
+  cancellation must still propagate.
 - **Constrain firmware-derived attribute keys:** allow only the explicit
   `iot` key or numeric band identifiers matching
   `band[0-9]+(?:_[0-9]+)*` (for example `band2_4`, `band5_1`,
@@ -138,6 +139,43 @@ present on an open PR is not yet present on deployed `main`.
   coordinator refresh clearing. Document that entity history and exports
   created while enabled can survive disabling the option. Recheck all
   language translations and both supported HA CI matrices.
+
+## Required failure-outcome checks
+
+Use `tests/test_wireless.py` and `tests/test_wifi_ssid_opt_in.py` for
+focused regressions. For each check, verify the API-call count, returned
+status or exception, cached names, owner/generation, failure counter and
+cooldown—not merely that an exception was raised.
+
+- **Successful current-master read:** parse booleans and opt-in names
+  together, publish only matching-owner names, and clear the active
+  retry budget. A subsequent valid response with no SSIDs removes old names.
+- **Malformed payload or private decoder failure, unchanged master:**
+  surface only fixed `UpdateFailed` text, preserve cached results,
+  increment the failure counter exactly once, and defer calls for five
+  minutes after the second failure.
+- **Repeated same-master notification during cooldown:** retain the
+  existing failure count and deadline; do not issue a new WLAN request.
+- **Real master switch during cooldown:** clear old names, owner and
+  retry budget; allow the new master's next request without inheriting
+  the previous owner's deadline.
+- **In-flight success after A -> B or A -> B -> A:** never publish names
+  from the old request; require a fresh owner-matching poll before names
+  become visible. Preserve the established boolean-status semantics.
+- **In-flight failure after either switch:** return sanitized
+  `UpdateFailed` without charging the current owner's retry counter.
+  Verify a subsequent failure of the current master counts as attempt one.
+- **Authentication or task cancellation:** propagate the original
+  control-flow outcome; do not misclassify it as routine WLAN backoff.
+- **Pause and independent config entries:** avoid API requests during
+  pause, retain appropriate cached status, and do not modify another
+  entry's SSID ownership or retry state.
+
+For deterministic asynchronous races, coordinate mocked router calls
+with `asyncio.Event` rather than sleeps; patch `monotonic()` to test
+cooldown boundaries. Use clearly synthetic secret-bearing exceptions and
+assert they are absent from logs, messages and exception context. Do
+not infer physical mesh compatibility from mocked tests.
 
 ## Tests and failure investigation
 
