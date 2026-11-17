@@ -138,7 +138,7 @@ PR's successful Python/HA and linting checks.
    text. Logs may identify only public PR numbers and aggregate
    counts. Test with synthetic sensitive values; do not write raw
    GitHub API data into issues or review comments.
-5. **Deterministic regression matrix.** Test corrupt *later* metadata
+5. **Deterministic regression matrix.** Test corrupt _later_ metadata
    blocking all writes; a PR-specific failure followed by a valid PR;
    a second scheduled pass that retries only incomplete work; a
    duplicate PR result; invalid or naive timestamps; and redacted
