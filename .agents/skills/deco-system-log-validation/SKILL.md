@@ -85,6 +85,31 @@ description: "Use when changing authenticated manual Deco system-log downloads, 
    Capture DEBUG logs and formatted tracebacks; never report raw
    upstream exception text, response data or log contents.
 
+## Request and failure-path evidence matrix (PR #46)
+
+For mocked requests, compare the ordered `api._async_post.await_args_list`
+(`feedback_log`) and `session.post.await_args_list` (`save_log`) with the
+expected token-bearing URL, `form`, build payload, `operation=save` form,
+`sysauth` cookie and SSL context. Assert arguments **on each attempt**, not
+only the counts; after a simulated login refresh, compare both the old and
+new credentials and assert `async_login` was awaited exactly once. For the
+shared retry helper, forward a unique sentinel and assert both invocations
+received that same object. Use synthetic values; do not print credentials
+or raw firmware bodies in CI output.
+
+| Injected response or failure | Expected behavior | Required independent evidence |
+| --- | --- | --- |
+| Standalone top-level auth error (including mislabeled JSON) | One re-login at most | Refreshed build/save URL and cookie; second failure stops |
+| Standalone non-auth or malformed firmware error | Sanitized failure, no export or transient retry | Exact single-attempt requests, fixed error, no sensitive logs/tracebacks |
+| Valid JSON Lines with nested error key | Preserve all log records | Exact returned text, no relogin and no false firmware-error classification |
+| Partial read, reset, broken pipe or socket error | Sanitized transport failure, no automatic manual retry | Request arguments, one attempt, `response.release()` when allocated, private sentinel absent from logs and traceback |
+| Pathological JSON decoder recursion | Sanitized malformed-response failure | No export, response release, no exposed payload, no retry |
+| Ordinary non-log API transient error | Preserve shared default retry budget | Both invocations retain the sentinel and previous return behavior |
+
+The matrix is a minimum **test-evidence checklist**, not a new firmware
+contract. Retain the more specific boundary cases above and below, preserve
+cancellation propagation, and report any scenario not exercised as unverified.
+
 ## Boundary 2 — Home Assistant action
 
 8. Register the action once and resolve a loaded entry **at call
