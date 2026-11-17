@@ -1140,3 +1140,12 @@ policy for AI-assisted development.
   bounded retry, paused polling, master detection, multi-entry isolation,
   teardown, diagnostics redaction and source compatibility on both supported
   Home Assistant versions. Hardware tests must be reported separately.
+- **PR #41 wireless-error finding:** the existing API transport/decryption
+  helpers included raw exception or router response text in debug/error logs;
+  optional WLAN reads also assumed the encrypted data and result fields
+  existed. Validate both response envelopes before use, sanitize HTTP/JSON
+  and decryption errors at the originating transport/helper boundary, and
+  test redaction with synthetic URLs, cookies and secret-bearing payloads.
+  Preserve single-relogin handling for `-5002`, distinguish firmware timeout,
+  protect task cancellation and config-entry auth propagation, and contain
+  all other optional upstream exceptions without exposing their messages.
