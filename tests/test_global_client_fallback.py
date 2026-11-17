@@ -229,6 +229,114 @@ async def test_global_response_type_is_validated_before_client_state_changes() -
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "invalid_entry",
+    [
+        {},
+        {"mac": None},
+        {"mac": ""},
+        {"mac": 7},
+        {"mac": CLIENT, "name": "duplicate"},
+    ],
+    ids=["missing-mac", "null-mac", "empty-mac", "numeric-mac", "duplicate-mac"],
+)
+async def test_later_invalid_global_client_does_not_mutate_cached_state(
+    invalid_entry: dict[str, object],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Reject a bad later entry before mutating an earlier cached client."""
+    existing = TpLinkDecoClient(CLIENT)
+    existing.name = "original"
+    existing.deco_mac = SATELLITE
+    existing.online = True
+    existing.last_activity = datetime.now(timezone.utc) - timedelta(hours=1)
+    previous_activity = existing.last_activity
+    coordinator, api = _coordinator(
+        two_decos=True,
+        old_clients={CLIENT: existing},
+    )
+    api.async_list_clients = AsyncMock(
+        side_effect=[
+            _server_error(),
+            [],
+            [
+                {"mac": CLIENT, "name": "changed", "online": True},
+                invalid_entry,
+            ],
+        ]
+    )
+
+    with caplog.at_level(logging.DEBUG):
+        with pytest.raises(
+            ValueError, match="^Invalid global Deco client list response$"
+        ) as error:
+            await coordinator._async_update_data()
+
+    assert error.value.__cause__ is None
+    assert coordinator.data == {CLIENT: existing}
+    assert existing.name == "original"
+    assert existing.deco_mac == SATELLITE
+    assert existing.online is True
+    assert existing.last_activity == previous_activity
+    assert coordinator.client_query_mode == "per_node"
+    assert coordinator.has_successful_refresh is False
+    assert coordinator.successfully_polled_deco_macs == set()
+    assert coordinator.health.last_successful_update is None
+    assert coordinator.health.last_error == "ValueError"
+    assert coordinator.health.consecutive_failures == 1
+    assert SECRET not in caplog.text
+    assert SECRET not in str(error.value)
+
+
+@pytest.mark.asyncio
+async def test_malformed_global_retry_preserves_previous_successful_state() -> None:
+    """Do not mutate a working global cache when a later retry is malformed."""
+    existing = TpLinkDecoClient(CLIENT)
+    existing.name = "original"
+    existing.online = True
+    coordinator, api = _coordinator(old_clients={CLIENT: existing})
+    api.async_list_clients = AsyncMock(
+        side_effect=[
+            _server_error(),
+            [{"mac": CLIENT, "name": "valid", "online": True}],
+            [
+                {"mac": CLIENT, "name": "changed", "online": True},
+                {"mac": False},
+            ],
+        ]
+    )
+
+    with patch(
+        "custom_components.tplink_deco.coordinator.monotonic", return_value=1000
+    ):
+        coordinator.data = await coordinator._async_update_data()
+
+    assert coordinator.client_query_mode == "global"
+    assert existing.name == "valid"
+    last_activity = existing.last_activity
+    last_success = coordinator.health.last_successful_update
+
+    with patch(
+        "custom_components.tplink_deco.coordinator.monotonic", return_value=1005
+    ):
+        with pytest.raises(ValueError, match="Invalid global Deco client list"):
+            await coordinator._async_update_data()
+
+    assert coordinator.data[CLIENT] is existing
+    assert existing.name == "valid"
+    assert existing.last_activity == last_activity
+    assert coordinator.client_query_mode == "global"
+    assert coordinator.health.last_successful_update == last_success
+    assert coordinator.health.consecutive_failures == 1
+    assert coordinator._client_backoff_seconds == 30
+    assert [call.args[0] for call in api.async_list_clients.await_args_list] == [
+        MASTER,
+        "default",
+        "default",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_no_master_avoids_fake_default_node() -> None:
     """Do not assign a global response to an unknown device identity."""
     coordinator, api = _coordinator(master_present=False)

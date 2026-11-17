@@ -609,6 +609,21 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             not isinstance(item, dict) for item in response
         ):
             raise ValueError("Invalid global Deco client list response")
+
+        # Preflight every client before updating cached models or claiming
+        # a valid global poll. A bad later entry must not partially commit.
+        seen_macs: set[str] = set()
+        preview_time = dt_util.utcnow()
+        for item in response:
+            mac = item.get("mac")
+            if not isinstance(mac, str) or not mac.strip() or mac in seen_macs:
+                raise ValueError("Invalid global Deco client list response")
+            seen_macs.add(mac)
+            try:
+                TpLinkDecoClient(mac).update(item, "", preview_time)
+            except Exception:
+                # Do not leak firmware fields via the exception chain.
+                raise ValueError("Invalid global Deco client list response") from None
         return response
 
     async def _async_list_clients_per_deco(

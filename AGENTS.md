@@ -829,6 +829,17 @@ policy for AI-assisted development.
   Non-5xx HTTP/authentication errors and cancellation must propagate.
   Test multi-node partial/all failures, global empty/success/failure,
   timeout and privacy, backoff boundaries and per-entry isolation.
+- **Validate global payloads before mutation (PR #40 review):** a later
+  missing, empty, non-string or duplicate client MAC can otherwise
+  raise after earlier cached clients were mutated and `global` mode
+  was recorded. Validate the *entire* list before changing any cached
+  client object, successful-poll flags or query mode. Preflight the
+  established client update contract using temporary models, reject
+  invalid data with a fixed privacy-safe `ValueError` and suppress
+  its upstream exception context. Preserve previous client identity,
+  activity, node association and last-success health on failure.
+  Test corruption after a valid earlier entry and a malformed retry
+  after a previously successful global response.
 - Coordinator-health sensors are already merged in fork PR #30;
   do not describe them as unimplemented.
 

@@ -52,7 +52,13 @@ description: "Use when porting, reviewing, or debugging capped HTTP 5xx Deco cli
    calls, recovery and restart at 30 seconds, successful empty lists,
    one failed node plus a healthy peer, all nodes failing, isolated
    config entries, non-5xx propagation and the separate truncated-body
-   behavior. Mock the monotonic clock for deterministic tests.
+   behavior. For global fallback, preflight *all* response entries
+   before changing cached clients or marking query mode successful:
+   reject missing/invalid/duplicate MACs and values that cannot be
+   processed by the existing client model with a fixed redacted
+   `ValueError`. Test a valid first item followed by corrupt data and
+   a later failed retry after a valid global poll. Mock the monotonic
+   clock for deterministic tests.
 8. Run both supported Home Assistant/Python matrix entries, pre-commit,
    HACS and Hassfest on the **final** PR head. If Black, isort or
    Prettier reformats files, commit its changes and verify again.
