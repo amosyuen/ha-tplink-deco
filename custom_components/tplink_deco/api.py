@@ -756,6 +756,7 @@ class TplinkDecoApi:
                     request_cookies[cookie_parts[0]] = cookie_parts[1]
             except Exception:
                 _LOGGER.warning("Could not parse session cookie")
+        forbidden_message: str | None = None
         try:
             async with async_timeout.timeout(self._timeout_seconds):
                 response = await self._session.post(
@@ -826,6 +827,9 @@ class TplinkDecoApi:
             if private_status_request:
                 # aiohttp errors can contain a LuCI token in request_info.
                 _LOGGER.debug("%s HTTP error: %d", private_label, err.status)
+            elif err.status in (401, 403):
+                # A status exception's request_info may include LuCI tokens.
+                _LOGGER.debug("Deco API authentication HTTP error: %d", err.status)
             elif params.get("form") == "client_list" and 500 <= err.status < 600:
                 # aiohttp exceptions can contain a LuCI session token in
                 # request_info.real_url. Never interpolate these exceptions.
@@ -846,17 +850,19 @@ class TplinkDecoApi:
                 raise err
             if err.status == 403:
                 self.clear_auth()
-                if private_status_request:
-                    raise ForbiddenException(
-                        f"{private_label} forbidden (HTTP 403)"
-                    ) from None
-                message = f"{context} Forbidden error: {err}"
-                raise ForbiddenException(message) from err
-            if mobile_usage_request or system_log_build_request:
+                # Raise after leaving except so the raw aiohttp exception is
+                # not retained as the new exception's cause or context.
+                forbidden_message = (
+                    f"{private_label} forbidden (HTTP 403)"
+                    if private_status_request
+                    else "Deco API authentication forbidden (HTTP 403)"
+                )
+            elif mobile_usage_request or system_log_build_request:
                 raise UnexpectedApiException(
                     f"{private_label} HTTP request failed"
                 ) from None
-            raise err
+            else:
+                raise err
         except (aiohttp.ClientPayloadError, aiohttp.ServerDisconnectedError) as err:
             # Truncated responses and disconnects can be retried without
             # invalidating a previously authenticated session.
@@ -895,6 +901,9 @@ class TplinkDecoApi:
                     f"{private_label} transport failed"
                 ) from None
             raise
+
+        if forbidden_message is not None:
+            raise ForbiddenException(forbidden_message)
 
     def _encode_payload(self, payload: Any):
         data = self._encode_data(payload)
