@@ -68,5 +68,12 @@
       "unknown": "Neočakávaná chyba",
       "invalid_expose_wifi_ssids": "Vyberte zapnuté alebo vypnuté pre zobrazovanie názvov Wi-Fi sietí."
     }
+  },
+  "entity": {
+    "sensor": {
+      "mobile_data_usage": {
+        "name": "Spotreba mobilných dát"
+      }
+    }
   }
 }
