@@ -107,6 +107,28 @@ PR's successful Python/HA and linting checks.
   Tests cannot establish actual deployment; verify a new real
   scheduled and merge-triggered run after merging.
 
+## Robust failure handling during scheduled reconciliation
+
+- Validate *all* recent eligible merged PR records before the first
+  issue mutation: expected base repository, positive integer PR number,
+  full merge commit SHA, timezone-aware timestamps and optional text
+  fields. A corrupt *later* record must prevent partial updates from
+  earlier records in the same reconciliation scan.
+- Reject malformed merge-event timestamps instead of interpreting naive
+  datetimes using the runner's local timezone. Do not expose untrusted
+  timestamp content through chained exceptions.
+- Deduplicate repeated PR list entries before processing. Preserve
+  bot-owned completion markers so a failed run is safely retried by
+  the next scheduled reconciliation; do not retry mutating requests
+  automatically when a transport timeout leaves their outcome unknown.
+- Convert HTTP, transport and non-JSON GitHub API failures to static,
+  privacy-safe errors without raw response bodies, endpoint data or
+  token-bearing exception messages. Test with synthetic sensitive
+  payloads and verify both unsupported-data and recovery paths.
+- Preflight protects against corrupt *merge metadata*. An unexpected
+  failure while writing still requires a retry/reconciliation; GitHub
+  issue updates are not an atomic transaction across multiple objects.
+
 ## Deployment and limitations
 
 - This workflow only becomes active when merged onto the repository default

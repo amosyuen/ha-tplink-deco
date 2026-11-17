@@ -4,8 +4,12 @@ from copy import deepcopy
 from datetime import datetime
 from datetime import timezone
 import importlib.util
+from io import BytesIO
 from pathlib import Path
 import unittest
+from unittest.mock import patch
+from urllib.error import HTTPError
+from urllib.error import URLError
 
 import yaml
 
@@ -332,6 +336,88 @@ class MergeReferenceSyncTests(unittest.TestCase):
         now = datetime(2026, 11, 17, 12, tzinfo=timezone.utc)
         with self.assertRaisesRegex(ValueError, "invalid timestamp"):
             sync.reconcile_recent_merges(api, REPOSITORY, "main", current_time=now)
+
+    def test_reconciliation_preflights_all_merges_before_writes(self) -> None:
+        """Reject a malformed later merge before changing an earlier issue."""
+        now = datetime(2026, 11, 17, 12, tzinfo=timezone.utc)
+        valid = {
+            **_event()["pull_request"],
+            "updated_at": "2026-11-17T11:00:00Z",
+            "merged_at": "2026-11-17T11:00:00Z",
+        }
+        for field, bad_value in (
+            ("number", True),
+            ("merge_commit_sha", "secret-merge-sha"),
+            ("base", {"ref": "main", "repo": None}),
+            ("body", ["untrusted-description"]),
+        ):
+            with self.subTest(field=field):
+                client = _FakeGitHub()
+                client.closed_pages[1] = [
+                    {**valid, field: bad_value},
+                    {
+                        **valid,
+                        "updated_at": "2026-11-17T10:00:00Z",
+                        "merged_at": "2026-11-17T10:00:00Z",
+                    },
+                ]
+                with self.assertRaisesRegex(ValueError, "invalid"):
+                    sync.reconcile_recent_merges(
+                        client, REPOSITORY, "main", current_time=now
+                    )
+                self.assertEqual(client.patches, 0)
+                self.assertEqual(client.posted, [])
+                self.assertIn("- [ ] Retry incomplete responses", client.issues[2]["body"])
+
+    def test_reconciliation_deduplicates_pull_request_pages(self) -> None:
+        """Process duplicate GitHub list entries only once."""
+        client = _FakeGitHub()
+        client.open_prs = []
+        row = {
+            **_event()["pull_request"],
+            "updated_at": "2026-11-17T11:00:00Z",
+            "merged_at": "2026-11-17T11:00:00Z",
+        }
+        client.closed_pages[1] = [row, row.copy()]
+        now = datetime(2026, 11, 17, 12, tzinfo=timezone.utc)
+        self.assertEqual(
+            sync.reconcile_recent_merges(client, REPOSITORY, "main", current_time=now),
+            [19],
+        )
+        self.assertEqual(client.patches, 1)
+
+    def test_merge_event_rejects_naive_and_malformed_timestamps(self) -> None:
+        """Reject timestamps that lack UTC offsets before any write."""
+        for merged_at in ("2026-11-17T11:00:00", "private-token-not-a-date"):
+            with self.subTest(merged_at=merged_at):
+                client = _FakeGitHub()
+                event = _event()
+                event["pull_request"]["merged_at"] = merged_at
+                with self.assertRaisesRegex(ValueError, "timestamp"):
+                    sync.synchronize_merge(client, REPOSITORY, event)
+                self.assertEqual(client.posted, [])
+                self.assertEqual(client.patches, 0)
+
+    def test_api_errors_do_not_disclose_payloads_or_transport_details(self) -> None:
+        """Map transport, HTTP and invalid JSON errors to sanitized exceptions."""
+        client = sync.GitHubClient("synthetic-secret-token")
+        failures = (
+            (HTTPError("https://api.github.com/private", 503, "secret-data", None, None), "HTTP 503"),
+            (URLError("secret-network-address"), "transport failure"),
+            (TimeoutError("secret-transport-data"), "transport failure"),
+        )
+        for failure, expected in failures:
+            with self.subTest(expected=expected):
+                with patch.object(sync, "urlopen", side_effect=failure):
+                    with self.assertRaisesRegex(RuntimeError, expected) as raised:
+                        client.request("GET", "/repos/HiDiHo01/ha-tplink-deco")
+                message = str(raised.exception)
+                self.assertNotIn("secret", message)
+                self.assertNotIn("private", message)
+        with patch.object(sync, "urlopen", return_value=BytesIO(b"secret-invalid-json")):
+            with self.assertRaisesRegex(RuntimeError, "invalid JSON") as raised:
+                client.request("GET", "/repos/HiDiHo01/ha-tplink-deco")
+        self.assertNotIn("secret", str(raised.exception))
 
     def test_issue_reference_parsing_skips_upstream_links_and_code(self) -> None:
         """Parse explicit repository issue references but not unrelated sources."""

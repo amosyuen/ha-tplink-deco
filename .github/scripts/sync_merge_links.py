@@ -14,6 +14,7 @@ import os
 import re
 from typing import Any
 from urllib.error import HTTPError
+from urllib.error import URLError
 from urllib.request import Request
 from urllib.request import urlopen
 
@@ -163,6 +164,11 @@ class GitHubClient:
             raise RuntimeError(
                 f"GitHub API {method} failed with HTTP {error.code}"
             ) from None
+        except (URLError, TimeoutError):
+            # Retry at the workflow level; POST/PATCH are not safe to replay here.
+            raise RuntimeError(f"GitHub API {method} transport failure") from None
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            raise RuntimeError(f"GitHub API {method} returned invalid JSON") from None
 
     def pages(self, path: str) -> list[dict[str, Any]]:
         """Read bounded pagination; fail rather than silently omit relationships."""
@@ -254,12 +260,7 @@ def synchronize_merge(
         or not isinstance(merged_at, str)
     ):
         raise ValueError("Merged PR has an invalid number, SHA or timestamp")
-    merged_date = (
-        datetime.fromisoformat(merged_at.replace("Z", "+00:00"))
-        .astimezone(timezone.utc)
-        .date()
-        .isoformat()
-    )
+    merged_date = _timestamp(merged_at).date().isoformat()
     pr_url = f"https://github.com/{repository}/pull/{number}"
     issue_numbers = issue_references(
         f"{pr.get('title') or ''}\n{pr.get('body') or ''}", repository
@@ -351,8 +352,8 @@ def _timestamp(value: object) -> datetime:
         raise ValueError("GitHub pull request has an invalid timestamp")
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as error:
-        raise ValueError("GitHub pull request has an invalid timestamp") from error
+    except ValueError:
+        raise ValueError("GitHub pull request has an invalid timestamp") from None
     if parsed.tzinfo is None:
         raise ValueError("GitHub pull request timestamp must have a timezone")
     return parsed.astimezone(timezone.utc)
@@ -400,24 +401,42 @@ def reconcile_recent_merges(
             merged_at = _timestamp(row["merged_at"])
             if not cutoff <= merged_at <= now:
                 continue
-            base = row.get("base") or {}
+            base = row.get("base")
+            if not isinstance(base, dict) or not isinstance(base.get("repo"), dict):
+                raise ValueError("GitHub merged pull request base is invalid")
             if (
-                not isinstance(base, dict)
-                or base.get("ref") != default_branch
-                or (base.get("repo") or {}).get("full_name") != repository
+                base.get("ref") != default_branch
+                or base["repo"].get("full_name") != repository
             ):
                 continue
+            number = row.get("number")
+            merge_sha = row.get("merge_commit_sha")
+            if (
+                type(number) is not int
+                or number <= 0
+                or not isinstance(merge_sha, str)
+                or re.fullmatch(r"[0-9a-f]{40}", merge_sha) is None
+            ):
+                raise ValueError("GitHub merged pull request identity is invalid")
+            if any(
+                row.get(field) is not None and not isinstance(row[field], str)
+                for field in ("title", "body")
+            ):
+                raise ValueError("GitHub merged pull request description is invalid")
             recent.append(row)
         if older_found or len(rows) < 100:
             break
     else:
         raise RuntimeError("Recent merge scan exceeded safe pagination limit")
 
+    # All eligible merge metadata is validated before the first issue/PR write.
     processed: list[int] = []
+    seen: set[int] = set()
     for row in sorted(recent, key=lambda item: _timestamp(item["merged_at"])):
-        number = row.get("number")
-        if type(number) is not int or number <= 0:
-            raise ValueError("GitHub merged pull request number is invalid")
+        number = row["number"]
+        if number in seen:
+            continue
+        seen.add(number)
         marker = f"<!-- deco-merge-sync:summary-pr-{number} -->"
         comments = client.pages(f"/repos/{repository}/issues/{number}/comments")
         if any(

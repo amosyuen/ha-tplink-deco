@@ -138,6 +138,17 @@ policy for AI-assisted development.
   identify completion by the bot-owned summary marker, and make retries
   idempotent. A successful PR check does not prove the scheduled or
   merge-triggered write-capable workflow has executed.
+- **Reconciliation failure containment (PR #38 hardening):** validate
+  every eligible recent merge's base repository, PR number, merge SHA,
+  timestamps and textual fields **before** writing to any issue or
+  related PR. Fail with sanitized errors for malformed GitHub
+  responses, ambiguous identities and bad network/JSON responses.
+  Do not retry POST or PATCH blindly after a transport timeout;
+  rely on the serialized scheduled reconciliation and bot-owned
+  idempotency markers. Test that invalid metadata on a later merge
+  cannot leave an earlier issue partially updated, that duplicate
+  list entries do not repeat writes, and that naive or malformed
+  event timestamps are rejected.
 - **Workflow-policy scope (PR #38 review):** audit **all**
   `.github/workflows/*.yml` and `*.yaml` action references rather
   than treating action pinning as specific to merge-sync. Resolve
