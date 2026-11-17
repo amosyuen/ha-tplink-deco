@@ -7,7 +7,9 @@ from typing import Any
 from homeassistant.components.device_tracker.const import CONF_SCAN_INTERVAL
 import pytest
 
-INTEGRATION_PATH = Path(__file__).resolve().parents[1] / "custom_components" / "tplink_deco"
+INTEGRATION_PATH = (
+    Path(__file__).resolve().parents[1] / "custom_components" / "tplink_deco"
+)
 
 
 def _load_labels(file_name: str) -> dict[str, Any]:
@@ -60,9 +62,9 @@ def test_scan_interval_translation_matches_real_home_assistant_form_key(
         labels = _load_labels(file_name)
         form_labels = labels[section_name]["step"][form_step]["data"]
 
-        assert CONF_SCAN_INTERVAL in form_labels, (
-            f"{file_name} is missing the {section_name} scan-interval label"
-        )
+        assert (
+            CONF_SCAN_INTERVAL in form_labels
+        ), f"{file_name} is missing the {section_name} scan-interval label"
         assert form_labels[CONF_SCAN_INTERVAL]
 
 
