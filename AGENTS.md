@@ -765,11 +765,10 @@ policy for AI-assisted development.
 
 - **Verified fork contract:** retain per-Deco client queries and their
   existing partial-success state recovery, 5xx backoff, user-configured
-  main polling interval, stable MAC-based identities and factual
-  `per_node` query-mode diagnostics. Upstream #556 also includes a
-  **global-client-list fallback**, which is **not** part of this
-  concurrency-only port. Never mark the global fallback complete solely
-  because concurrent requests are bounded.
+  main polling interval and stable MAC-based identities. The later
+  global fallback is a separate upstream #527 backport: query mode is
+  `per_node` normally and `global` after a successful fallback.
+  Fork PR #35 added concurrency limits but no global recovery.
 - **Concurrency and retries:** permit **at most two** concurrent
   `client_list` requests _per coordinator_, using an async semaphore
   (never `sleep()` or a global lock). Pass a request-local timeout retry
@@ -818,8 +817,20 @@ policy for AI-assisted development.
   Test sanitized logging, the 300-second cap, recovery and multi-node
   failures against both Home Assistant versions. Use the
   [client backoff validation skill](.agents/skills/deco-client-backoff-validation/SKILL.md).
-- Dedicated global-client-list fallback and coordinator-health sensors
-  are separate upstream work. Do not invent them to complete backoff.
+- **Global client-list fallback (upstream #527):** one HTTP 5xx
+  per-node failure may trigger a *single* `device_mac=default` query.
+  A successful global reply maps live clients to the real master MAC,
+  not to a fictional `default` device; the diagnostic query mode
+  changes to `global`. Continue one global query per scheduled poll
+  during the per-node backoff, without another batch of per-node calls.
+  After per-node recovery, restore true associations, the normal query
+  mode and zero backoff. With failed global recovery preserve cached
+  clients and healthy peers, and never misreport failure as empty.
+  Non-5xx HTTP/authentication errors and cancellation must propagate.
+  Test multi-node partial/all failures, global empty/success/failure,
+  timeout and privacy, backoff boundaries and per-entry isolation.
+- Coordinator-health sensors are already merged in fork PR #30;
+  do not describe them as unimplemented.
 
 ## Retry incomplete API responses without losing client state (upstream PR #590)
 
