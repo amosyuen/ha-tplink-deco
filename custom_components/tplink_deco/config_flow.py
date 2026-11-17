@@ -4,6 +4,8 @@ import asyncio
 import logging
 from typing import Any
 
+import aiohttp
+
 from homeassistant import config_entries
 from homeassistant.components.device_tracker.const import CONF_CONSIDER_HOME
 from homeassistant.components.device_tracker.const import CONF_SCAN_INTERVAL
@@ -206,13 +208,12 @@ def _ensure_user_input_optionals(data: dict[str:Any]) -> None:
             data[key] = ""
 
 
-async def _async_test_credentials(hass: HomeAssistant, data: dict[str:Any]):
-    """Return true if credentials is valid."""
+async def _async_test_credentials(
+    hass: HomeAssistant, data: dict[str, Any]
+) -> dict[str, str]:
+    """Check credentials and expose only sanitized form errors."""
     try:
-        coordinators = await async_create_and_refresh_coordinators(
-            hass,
-            data,
-        )
+        coordinators = await async_create_and_refresh_coordinators(hass, data)
         await asyncio.gather(
             *(
                 coordinator.async_shutdown()
@@ -226,19 +227,22 @@ async def _async_test_credentials(hass: HomeAssistant, data: dict[str:Any]):
                 )
             )
         )
-        return {}
-    except TimeoutException:
+    except (TimeoutException, asyncio.TimeoutError):
+        _LOGGER.debug("Deco credential check timed out")
         return {"base": "timeout_connect"}
-    except ConfigEntryAuthFailed as err:
-        _LOGGER.error("Error authenticating credentials: %s", err)
+    except ConfigEntryAuthFailed:
+        _LOGGER.debug("Deco credentials rejected")
         return {"base": "invalid_auth"}
-    except ConfigEntryNotReady as err:
-        _LOGGER.error("Error connection to host: %s", err)
+    except (ConfigEntryNotReady, aiohttp.ClientConnectionError):
+        _LOGGER.debug("Deco host unavailable during credential check")
         return {"base": "invalid_host"}
     except Exception as err:
-        _LOGGER.error("Error testing credentials: %s", err)
-        raise err
+        # Upstream error messages may contain passwords, tokens or router URLs.
+        _LOGGER.error(
+            "Unexpected Deco credential check failure (%s)", type(err).__name__
+        )
         return {"base": "unknown"}
+    return {}
 
 
 class TplinkDecoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
@@ -336,8 +340,10 @@ class TplinkDecoOptionsFlowHandler(config_entries.OptionsFlow):
                 self._errors = {CONF_EXPOSE_WIFI_SSIDS: "invalid_expose_wifi_ssids"}
             else:
                 _ensure_user_input_optionals(user_input)
-                self.data.update(user_input)
-                self._errors = await _async_test_credentials(self.hass, self.data)
+                candidate_data = {**self.data, **user_input}
+                self._errors = await _async_test_credentials(self.hass, candidate_data)
+                if not self._errors:
+                    self.data = candidate_data
             if not self._errors:
                 self.hass.config_entries.async_update_entry(
                     entry=self.config_entry,
