@@ -107,7 +107,7 @@ async def test_reauth_replaces_only_credentials_and_preserves_saved_options(
         CONF_DECO_PREFIX,
         CONF_DECO_POSTFIX,
     ):
-        assert option in expected_data if option in old_data else option not in expected_data
+        assert (option in expected_data) is (option in old_data)
 
 
 @pytest.mark.asyncio
