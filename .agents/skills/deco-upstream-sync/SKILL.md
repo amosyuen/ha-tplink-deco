@@ -30,7 +30,7 @@ description: "Use when comparing, backporting, reviewing, or implementing change
   error must prevent **all** background scheduling. Capture and close
   unscheduled mock coroutines to avoid false unawaited-coroutine warnings.
 - **HTTP 403 device-list retry parity (upstream
-  `tests/test_api_transport_errors.py`):** port the *behavioral test*,
+  `tests/test_api_transport_errors.py`):** port the _behavioral test_,
   not upstream's complete test file or unsupported S7 outer-session
   fixtures. Exercise the fork's real bound `_async_post` and
   `async_list_devices`: construct token-bearing `ClientResponseError`
