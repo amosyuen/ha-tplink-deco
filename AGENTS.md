@@ -1149,3 +1149,11 @@ policy for AI-assisted development.
   Preserve single-relogin handling for `-5002`, distinguish firmware timeout,
   protect task cancellation and config-entry auth propagation, and contain
   all other optional upstream exceptions without exposing their messages.
+- **PR #41 lifecycle review findings:** a plain `DataUpdateCoordinator`
+  supports `async_shutdown()` but may have no fork-specific `async_close()`.
+  Do not call custom teardown methods on a new coordinator without
+  verifying its interface. If an entity is bound to a particular master
+  MAC, make it unavailable when the current master changes and subscribe
+  to master-coordinator updates so the change is published immediately.
+  Keep old registry IDs intact; regressions must cover shutdown ordering,
+  missing custom close hooks and master replacement.
