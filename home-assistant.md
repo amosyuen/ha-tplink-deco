@@ -285,6 +285,15 @@ Their physical-firmware validation remains a separate limitation.
   Their previously established error types and authentication/retry
   behavior remain unchanged; exceptions propagated by non-private
   endpoints are not themselves redacted by this logging change.
+- Malformed device/client lists and router login metadata, rejected
+  LuCI JSON responses and encrypted response decode failures are
+  logged using fixed labels or exception types rather than raw
+  firmware payloads or RSA/session parameter values. Numeric API
+  codes remain available in rejection exceptions; untrusted
+  string codes and decrypted login response dictionaries are
+  not exposed. This does not change successful data retrieval,
+  ordinary authentication retries or registered entities.
+- A same-host HTTP **307 → HTTPS** redirect may update the **runtime**
 - A same-host HTTP **307 → HTTPS** redirect may update the **runtime**
   API origin, including its port, to preserve subsequent authenticated
   requests. A cross-host redirect must not rewrite the configured router
