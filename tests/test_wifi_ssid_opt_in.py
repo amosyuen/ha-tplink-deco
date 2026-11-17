@@ -539,3 +539,92 @@ async def test_master_invalidation_does_not_affect_peer_config_entry() -> None:
     _change_master(first, MASTER_B)
     assert first.ssid_names_for_master(MASTER_A, "guest") == {}
     assert second.ssid_names_for_master(MASTER_A, "guest") == {"band2_4": "Alpha"}
+
+@pytest.mark.asyncio
+async def test_master_change_clears_previous_wireless_retry_cooldown() -> None:
+    """A newly elected master must not inherit the old router's backoff."""
+    coordinator = _coordinator(
+        OSError(PRIVATE_PASSWORD),
+        TimeoutError(PRIVATE_PASSWORD),
+        BETA_RESPONSE,
+        consent=True,
+    )
+    first_sensor = _linked_sensor(coordinator, MASTER_A)
+    second_sensor = _linked_sensor(coordinator, MASTER_B)
+
+    with patch(
+        "custom_components.tplink_deco.wireless.monotonic",
+        side_effect=[100.0, 110.0, 120.0],
+    ):
+        for attempt in (1, 2):
+            with pytest.raises(UpdateFailed, match="Unable to read optional wireless status"):
+                await coordinator._async_update_data()
+            assert coordinator._consecutive_failures == attempt
+
+        assert coordinator._next_retry == 410.0
+        _change_master(coordinator, MASTER_A)
+        assert coordinator._consecutive_failures == 2
+        assert coordinator._next_retry == 410.0
+
+        _change_master(coordinator, MASTER_B)
+        assert coordinator._consecutive_failures == 0
+        assert coordinator._next_retry == 0.0
+        assert first_sensor.extra_state_attributes is None
+
+        coordinator.data = await coordinator._async_update_data()
+        assert coordinator.data == {"guest": True}
+        assert second_sensor.extra_state_attributes == {"ssid": "Beta"}
+        assert coordinator._consecutive_failures == 0
+        assert coordinator._next_retry == 0.0
+
+
+@pytest.mark.parametrize("return_to_first_master", [False, True])
+@pytest.mark.asyncio
+async def test_inflight_old_master_failure_does_not_penalize_new_master(
+    return_to_first_master: bool,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Stale private errors must not start the new master's cooldown."""
+    coordinator = _coordinator(consent=True)
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def delayed_error() -> dict[str, object]:
+        """Report an old router failure after another master is selected."""
+        started.set()
+        await release.wait()
+        raise OSError(PRIVATE_PASSWORD)
+
+    coordinator.api.async_get_wireless = AsyncMock(side_effect=delayed_error)
+    caplog.set_level(logging.DEBUG)
+    with patch(
+        "custom_components.tplink_deco.wireless.monotonic",
+        side_effect=[100.0, 110.0],
+    ):
+        request = asyncio.create_task(coordinator._async_update_data())
+        await started.wait()
+        _change_master(coordinator, MASTER_B)
+        if return_to_first_master:
+            _change_master(coordinator, MASTER_A)
+        release.set()
+
+        with pytest.raises(
+            UpdateFailed, match="Unable to read optional wireless status"
+        ) as raised:
+            await request
+
+        assert raised.value.__cause__ is None
+        assert raised.value.__context__ is None
+        assert coordinator._consecutive_failures == 0
+        assert coordinator._next_retry == 0.0
+        assert coordinator.ssids == {}
+
+        coordinator.api.async_get_wireless = AsyncMock(
+            side_effect=TimeoutError(PRIVATE_PASSWORD)
+        )
+        with pytest.raises(UpdateFailed, match="Unable to read optional wireless status"):
+            await coordinator._async_update_data()
+        assert coordinator._consecutive_failures == 1
+        assert coordinator._next_retry == 0.0
+
+    assert PRIVATE_PASSWORD not in caplog.text
