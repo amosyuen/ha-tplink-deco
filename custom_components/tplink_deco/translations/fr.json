@@ -7,19 +7,41 @@
           "username": "Identifiant",
           "password": "Mot de Passe",
           "link_client_devices": "Associer les traceurs clients aux appareils par adresse MAC",
-          "expose_wifi_ssids": "Afficher les noms des réseaux Wi-Fi sur les capteurs d’état Wi-Fi"
-        }
+          "expose_wifi_ssids": "Afficher les noms des réseaux Wi-Fi sur les capteurs d’état Wi-Fi",
+          "host": "Hôte",
+          "interval_seconds": "Secondes entre les actualisations",
+          "device_list_interval": "Secondes entre les mises à jour de l’état des Deco (0 = uniquement au démarrage)",
+          "consider_home": "Délai en secondes avant de marquer un appareil comme absent après sa dernière détection",
+          "timeout_seconds": "Délai d’attente en secondes",
+          "timeout_error_retries": "Nombre de nouvelles tentatives après un délai d’attente dépassé",
+          "verify_ssl": "Vérifier la validité du certificat SSL",
+          "client_prefix": "Préfixe des noms de clients",
+          "client_postfix": "Suffixe des noms de clients",
+          "deco_prefix": "Préfixe des noms de Deco",
+          "deco_postfix": "Suffixe des noms de Deco"
+        },
+        "description": "Utilisez les identifiants du portail d’administration Web. Consultez la documentation pour connaître les conditions de connexion."
       },
       "reauth_confirm": {
         "title": "TP-Link Deco",
         "data": {
           "username": "Identifiant",
           "password": "Mot de Passe"
-        }
+        },
+        "description": "Problème avec les identifiants de connexion, éventuellement après une connexion depuis un autre appareil. Consultez la documentation."
       }
     },
     "error": {
-      "invalid_expose_wifi_ssids": "Choisissez activé ou désactivé pour afficher les noms des réseaux Wi-Fi."
+      "invalid_expose_wifi_ssids": "Choisissez activé ou désactivé pour afficher les noms des réseaux Wi-Fi.",
+      "invalid_auth": "Authentification incorrecte",
+      "invalid_host": "Impossible de se connecter à l’hôte",
+      "timeout_connect": "Délai de connexion dépassé",
+      "unknown": "Erreur inconnue",
+      "invalid_scan_interval": "Choisissez un intervalle d’actualisation de 10, 30, 60 ou 120 secondes.",
+      "invalid_device_list_interval": "Choisissez 0 pour une mise à jour uniquement au démarrage ou au moins 10 secondes pour l’état des Deco."
+    },
+    "abort": {
+      "reauth_successful": "Réauthentification réussie"
     }
   },
   "options": {
@@ -30,12 +52,33 @@
           "username": "Identifiant",
           "password": "Mot de Passe",
           "link_client_devices": "Associer les traceurs clients aux appareils par adresse MAC",
-          "expose_wifi_ssids": "Afficher les noms des réseaux Wi-Fi sur les capteurs d’état Wi-Fi"
-        }
+          "expose_wifi_ssids": "Afficher les noms des réseaux Wi-Fi sur les capteurs d’état Wi-Fi",
+          "host": "Hôte",
+          "interval_seconds": "Secondes entre les actualisations",
+          "device_list_interval": "Secondes entre les mises à jour de l’état des Deco (0 = uniquement au démarrage)",
+          "consider_home": "Délai en secondes avant de marquer un appareil comme absent après sa dernière détection",
+          "timeout_seconds": "Délai d’attente en secondes",
+          "timeout_error_retries": "Nombre de nouvelles tentatives après un délai d’attente dépassé",
+          "verify_ssl": "Vérifier la validité du certificat SSL",
+          "client_prefix": "Préfixe des noms de clients",
+          "client_postfix": "Suffixe des noms de clients",
+          "deco_prefix": "Préfixe des noms de Deco",
+          "deco_postfix": "Suffixe des noms de Deco"
+        },
+        "description": "Utilisez les identifiants du portail d’administration Web. Consultez la documentation pour connaître les conditions de connexion."
       }
     },
     "error": {
-      "invalid_expose_wifi_ssids": "Choisissez activé ou désactivé pour afficher les noms des réseaux Wi-Fi."
+      "invalid_expose_wifi_ssids": "Choisissez activé ou désactivé pour afficher les noms des réseaux Wi-Fi.",
+      "invalid_auth": "Authentification incorrecte",
+      "invalid_host": "Impossible de se connecter à l’hôte",
+      "timeout_connect": "Délai de connexion dépassé",
+      "unknown": "Erreur inconnue",
+      "invalid_scan_interval": "Choisissez un intervalle d’actualisation de 10, 30, 60 ou 120 secondes.",
+      "invalid_device_list_interval": "Choisissez 0 pour une mise à jour uniquement au démarrage ou au moins 10 secondes pour l’état des Deco."
+    },
+    "abort": {
+      "reauth_successful": "Réauthentification réussie"
     }
   },
   "entity": {
