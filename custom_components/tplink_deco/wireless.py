@@ -15,6 +15,8 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from .api import TplinkDecoApi
+from .api import decode_name_with_fallback
+from .const import ATTR_SSID
 from .const import DOMAIN
 from .coordinator import TplinkDecoUpdateCoordinator
 from .coordinator import async_call_and_propagate_config_error
@@ -111,6 +113,52 @@ def parse_wireless_states(config: object) -> dict[str, bool]:
     return states
 
 
+def _resolve_band_sections(
+    config: object, paths: tuple[tuple[str, ...], ...]
+) -> list[tuple[str, dict[str, Any]]]:
+    """Resolve recognized network sections with their top-level band names."""
+    sections: list[tuple[str, dict[str, Any]]] = []
+    if not isinstance(config, dict):
+        return sections
+    for path in paths:
+        if not path:
+            continue
+        for key, value in config.items():
+            if _key_matches(path[0], key):
+                sections.extend(
+                    (key, section)
+                    for section in _resolve_sections(value, (path[1:],))
+                )
+    return sections
+
+
+def parse_wireless_ssids(config: object) -> dict[str, dict[str, str]]:
+    """Extract only supported SSID strings from known firmware sections."""
+    ssids: dict[str, dict[str, str]] = {}
+    for network in WIRELESS_NETWORKS:
+        names: dict[str, str] = {}
+        for band, section in _resolve_band_sections(config, network.paths):
+            raw_name = section.get("ssid")
+            if not isinstance(raw_name, str) or not raw_name:
+                continue
+            decoded_name = decode_name_with_fallback(raw_name)
+            if decoded_name:
+                names[band] = decoded_name
+        if names:
+            ssids[network.key] = names
+    return ssids
+
+
+def wireless_ssid_attributes(names: dict[str, str]) -> dict[str, str]:
+    """Expose a common name once, or individual names per band."""
+    if len(set(names.values())) == 1:
+        return {ATTR_SSID: next(iter(names.values()))}
+    return {
+        f"{ATTR_SSID}_{band}": name
+        for band, name in sorted(names.items())
+    }
+
+
 class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator[dict[str, bool]]):
     """Poll optional WiFi status independently of mandatory Deco refreshes."""
 
@@ -121,9 +169,11 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator[dict[str, bool]]
         config_entry: ConfigEntry | None,
         deco_coordinator: TplinkDecoUpdateCoordinator,
         update_interval: timedelta | None,
+        expose_ssids: bool = False,
     ) -> None:
         """Initialize a separate per-config-entry WiFi coordinator."""
         self.api = api
+        self.expose_ssids = expose_ssids is True
         self._deco_coordinator = deco_coordinator
         super().__init__(
             hass,
@@ -133,6 +183,7 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator[dict[str, bool]]
             update_interval=update_interval,
         )
         self.data = {}
+        self.ssids: dict[str, dict[str, str]] = {}
         self._next_retry = 0.0
         self._consecutive_failures = 0
 
@@ -177,5 +228,15 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator[dict[str, bool]]
             raise UpdateFailed("Unable to read optional wireless status") from None
 
         self.reset_retry()
+        # Never retain names without explicit consent; ignore unsupported networks.
+        self.ssids = (
+            {
+                key: names
+                for key, names in parse_wireless_ssids(response).items()
+                if key in states
+            }
+            if self.expose_ssids
+            else {}
+        )
         _LOGGER.debug("Wireless network keys=%s", sorted(states))
         return states
