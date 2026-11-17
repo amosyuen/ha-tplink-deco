@@ -609,25 +609,34 @@ class TplinkDecoApi:
         if self._seq is None or self._stok is None or self._cookie is None:
             await self.async_login()
 
-    async def async_login(self):
+    async def async_login(self) -> None:
+        """Share one login while isolating waiter and owner cancellation."""
         if self._login_future is not None:
-            await self._login_future
+            # Cancelling a waiting poll must not cancel the shared login.
+            await asyncio.shield(self._login_future)
             return
 
-        self._login_future = asyncio.get_running_loop().create_future()
+        login_future: asyncio.Future[bool] = asyncio.get_running_loop().create_future()
+        self._login_future = login_future
         try:
             await self._async_login()
-            self._login_future.set_result(True)
+        except asyncio.CancelledError:
+            # An interrupted login may have only a partial session.
+            self.clear_auth()
+            login_future.cancel()
+            raise
         except Exception as err:
-            self._login_future.set_exception(err)
-            raise err
+            login_future.set_exception(err)
+            raise
+        else:
+            login_future.set_result(True)
         finally:
-            # Await future to suppress future exception was never retrieved error
-            try:
-                await self._login_future
-            except Exception:
-                pass
-            self._login_future = None
+            # Retrieve an owner failure even when nobody joined the login.
+            # Never await the future here: cancellation must not deadlock.
+            if login_future.done() and not login_future.cancelled():
+                login_future.exception()
+            if self._login_future is login_future:
+                self._login_future = None
 
     async def _async_login(self):
         if self._aes_key is None:
