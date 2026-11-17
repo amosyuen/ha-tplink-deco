@@ -109,8 +109,7 @@ Keep `AI_POLICY.md` unchanged unless governing policy itself changes.
   security guarantees.
 - **PR #50 scope and validation drift (2026-11-17):** after
   expanding HTTP 403 hardening to generic HTTP, connector and timeout
-  logging, `AGENTS.md` still claimed the change only covered HTTP
-  403. Compare the entire PR branch's production diff and focused
+  logging, `AGENTS.md` still claimed the change only covered HTTP 403. Compare the entire PR branch's production diff and focused
   tests with all applicable scope statements before a documentation
   follow-up, and distinguish sanitized **integration logs** from
   still-propagated raw HTTP exceptions. The first follow-up test run
