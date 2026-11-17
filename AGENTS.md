@@ -845,7 +845,7 @@ policy for AI-assisted development.
   block so both `__cause__` and `__context__` are `None`.
   Raise it `from None` outside the handler to **also** retain the
   established `__suppress_context__ = True` contract (mobile tests).
-  Using `raise ... from None` *inside* the handler suppresses traceback
+  Using `raise ... from None` _inside_ the handler suppresses traceback
   formatting but does not remove the original `__context__` object.
 - **Bound-request regression:** drive the real `async_list_devices`
   and `_async_post` methods with mocked `aiohttp.ClientSession.post`
