@@ -169,13 +169,17 @@ Their physical-firmware validation remains a separate limitation.
   failed node. When **all** node client polls fail, retain the complete
   previous client dictionary, including clients lacking a known Deco
   association.
-- Regular per-Deco client-list replies are validated as complete
-  lists before any cached client is updated. A malformed later item,
-  duplicate or missing MAC, or invalid client data rejects the poll
-  with a fixed error; previously known clients and per-node successful
-  poll readiness remain intact. A valid empty reply is still success,
-  and a timed-out peer still permits valid nodes to update. Client
-  identifiers are not emitted in discovery DEBUG logs.
+- **Proposed in open fork PR #53 (not yet on `main`):** regular
+  per-Deco client-list replies receive a full preflight before cached
+  clients are updated. Missing/duplicate/invalid MAC identifiers and
+  non-string/non-null client names are rejected with a fixed error.
+  An invalid client IP is **not** such an error:
+  `filter_invalid_ip` deliberately normalizes it to `None`.
+  Previously known clients and successful-poll readiness survive an
+  invalid list; valid empty lists and partial timeout recovery retain
+  their established behavior. PR #53 also removes client MACs from
+  discovery DEBUG logging. These claims describe the PR branch until
+  the merge and deployed code are independently verified.
 - Down/Up throughput aggregation includes only clients with truthy
   `online` status. Per-Deco data rates additionally require the matching
   `deco_mac`; network-wide totals include online clients across nodes.
@@ -252,18 +256,16 @@ Their physical-firmware validation remains a separate limitation.
   Paused polling and device/inventory refreshes remain unaffected.
 - Non-5xx HTTP or explicit auth-expiry responses do not silently enter the
   5xx backoff path. Backoff does not replace API-level retry limits.
-- **Proposed in the current issue #2 PR (upstream #556, partial):** use
-  at most two simultaneous client-list requests per configuration
-  entry. Each per-node call disables extra timeout retries without
-  changing defaults for other API methods. An exhausted node timeout
-  is an incomplete response: retain its last-known clients while
-  successful peers continue to update. The timeout health counter
-  advances once per poll cycle containing a node timeout, even when
-  peer nodes succeed; consecutive-failure status still distinguishes
-  partial success from all-node failure. Unexpected failures and
-  cancellations cancel outstanding requests and their semaphore waiters.
-  The global-list recovery is a later separate addition. Normal
-  per-node queries retain their zero timeout-retry override.
+- **Merged in fork PR #35 (upstream #556, partial):** the client
+  coordinator permits at most two simultaneous per-node client-list
+  requests per configuration entry. Each request disables extra
+  timeout retries without changing other API defaults. A node timeout
+  is incomplete, so successful peers still update while the failed
+  node's cached clients survive. Health counts timeouts once per poll
+  cycle, including partial success. Unexpected failures and cancellation
+  cancel and await outstanding sibling requests and semaphore waiters.
+  **Global fallback merged separately in fork PR #40**, preserving
+  the existing per-node zero-timeout-retry override.
 
 ## 6. Router session and protocol behavior
 
