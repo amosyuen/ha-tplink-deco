@@ -34,6 +34,12 @@ description: "Use when changing authenticated manual Deco system-log downloads, 
    For a manual log request, timeout retries = 0 and transient
    retries = 0; one authentication re-login is still permitted
    after an expired HTTP 401/403 or recognized firmware auth code.
+   For mocked `feedback_log` and `save_log` requests, inspect
+   the actual await arguments on **every** attempt: the token-bearing
+   URL, form parameters/payload and session cookie. A re-login must
+   use the newly issued token URL and cookie on both requests.
+   Call counts alone do not establish this; pass a sentinel through
+   the shared retry-helper test and assert each attempt receives it.
    A truncated `aiohttp.ClientPayloadError` response must cause
    **one** build/save attempt, with no hidden retry; an auth-expired
    response may produce a second attempt after re-login. Other Deco

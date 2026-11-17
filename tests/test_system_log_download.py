@@ -11,6 +11,7 @@ import traceback
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
+from unittest.mock import call
 from unittest.mock import patch
 
 import aiohttp
@@ -77,6 +78,56 @@ def _response(
             message=SECRET,
         )
     return response
+
+
+def _assert_log_export_requests(
+    api: TplinkDecoApi,
+    session: MagicMock,
+    expected_credentials: tuple[tuple[str, str], ...],
+) -> None:
+    """Verify the build and save URL, form and cookie for each attempt."""
+    expected_urls = [
+        f"https://192.0.2.1/cgi-bin/luci/;stok={token}/admin/log_export"
+        for token, _cookie in expected_credentials
+    ]
+    assert api._async_post.await_count == len(expected_credentials)
+    assert api._async_post.await_args_list == [
+        call(
+            SYSTEM_LOG_CONTEXT,
+            url,
+            params={"form": "feedback_log"},
+            data="encoded-data",
+        )
+        for url in expected_urls
+    ]
+    expected_payload = {
+        "operation": "build",
+        "params": {"level": int(SystemLogLevel.ALL)},
+    }
+    assert api._encode_payload.call_args_list == [
+        call(expected_payload) for _ in expected_credentials
+    ]
+    assert session.post.await_count == len(expected_credentials)
+
+    for save_call, url, (_token, cookie) in zip(
+        session.post.await_args_list,
+        expected_urls,
+        expected_credentials,
+        strict=True,
+    ):
+        assert save_call.args == (url,)
+        assert set(save_call.kwargs) == {"params", "data", "cookies", "ssl"}
+        assert save_call.kwargs["params"] == {"form": "save_log"}
+        assert save_call.kwargs["cookies"] == {"sysauth": cookie}
+        assert save_call.kwargs["ssl"] is api._ssl_context
+
+        form_data = save_call.kwargs["data"]
+        assert isinstance(form_data, aiohttp.FormData)
+        assert len(form_data._fields) == 1
+        field_options, field_headers, field_value = form_data._fields[0]
+        assert field_options["name"] == "operation"
+        assert not field_headers
+        assert field_value == "save"
 
 
 @pytest.mark.asyncio
@@ -449,9 +500,14 @@ async def test_mislabeled_firmware_auth_error_reauthenticates_once(
 
     assert session.post.await_count == 2
     assert api._async_post.await_count == 2
-    api.async_login.assert_awaited_once()
+    api.async_login.assert_awaited_once_with()
     assert SECRET not in caplog.text
 
+    _assert_log_export_requests(
+        api,
+        session,
+        ((SECRET, "PRIVATE_COOKIE"), ("fresh-session", "fresh-cookie")),
+    )
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("content_type", ["text/plain", "application/octet-stream"])
@@ -475,6 +531,7 @@ async def test_mislabeled_firmware_non_auth_error_is_rejected(
     assert SECRET not in "".join(traceback.format_exception(caught.value))
     assert SECRET not in caplog.text
 
+    _assert_log_export_requests(api, session, ((SECRET, "PRIVATE_COOKIE"),))
 
 @pytest.mark.asyncio
 async def test_malformed_mislabeled_firmware_error_is_not_written() -> None:
@@ -488,6 +545,7 @@ async def test_malformed_mislabeled_firmware_error_is_not_written() -> None:
         await api.async_get_system_log()
     assert session.post.await_count == 1
 
+    _assert_log_export_requests(api, session, ((SECRET, "PRIVATE_COOKIE"),))
 
 @pytest.mark.asyncio
 async def test_valid_json_log_line_without_errorcode_is_preserved() -> None:
@@ -497,6 +555,7 @@ async def test_valid_json_log_line_without_errorcode_is_preserved() -> None:
     session.post.return_value = _response(source, content_type="text/plain")
     assert await api.async_get_system_log() == source.decode("utf-8")
 
+    _assert_log_export_requests(api, session, ((SECRET, "PRIVATE_COOKIE"),))
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
@@ -524,6 +583,7 @@ async def test_nested_error_keys_in_json_log_records_are_preserved(
     session.post.return_value.release.assert_called_once()
     assert SECRET not in caplog.text
 
+    _assert_log_export_requests(api, session, ((SECRET, "PRIVATE_COOKIE"),))
 
 @pytest.mark.asyncio
 async def test_truncated_firmware_error_with_preceding_field_is_rejected() -> None:
@@ -542,6 +602,7 @@ async def test_truncated_firmware_error_with_preceding_field_is_rejected() -> No
     session.post.assert_awaited_once()
     session.post.return_value.release.assert_called_once()
 
+    _assert_log_export_requests(api, session, ((SECRET, "PRIVATE_COOKIE"),))
 
 @pytest.mark.asyncio
 async def test_manual_system_log_incomplete_response_does_not_retry() -> None:
@@ -560,6 +621,7 @@ async def test_manual_system_log_incomplete_response_does_not_retry() -> None:
     assert session.post.await_count == 1
     response.release.assert_called_once()
 
+    _assert_log_export_requests(api, session, ((SECRET, "PRIVATE_COOKIE"),))
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
@@ -612,6 +674,7 @@ async def test_log_stream_failures_are_sanitized_without_extra_retry(
     session.post.assert_awaited_once()
     response.release.assert_called_once()
 
+    _assert_log_export_requests(api, session, ((SECRET, "PRIVATE_COOKIE"),))
 
 @pytest.mark.asyncio
 async def test_log_request_socket_failure_does_not_leak_or_retry(
@@ -633,6 +696,7 @@ async def test_log_request_socket_failure_does_not_leak_or_retry(
     api._async_post.assert_awaited_once()
     session.post.assert_awaited_once()
 
+    _assert_log_export_requests(api, session, ((SECRET, "PRIVATE_COOKIE"),))
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("content_type", ["text/plain", "application/json"])
@@ -664,15 +728,19 @@ async def test_deep_firmware_json_parser_failures_are_sanitized(
     session.post.assert_awaited_once()
     session.post.return_value.release.assert_called_once()
 
+    _assert_log_export_requests(api, session, ((SECRET, "PRIVATE_COOKIE"),))
 
 @pytest.mark.asyncio
 async def test_normal_api_transient_retries_remain_backward_compatible() -> None:
     """Keep the default transient retry policy for non-log API operations."""
     api, _session = _api_and_session()
     api._timeout_error_retries = 1
+    retry_argument = object()
     request = AsyncMock(
         side_effect=[TransientConnectionException("temporary"), "restored"]
     )
 
-    assert await api._async_call_with_retry(request) == "restored"
+    assert await api._async_call_with_retry(request, retry_argument) == "restored"
     assert request.await_count == 2
+
+    assert request.await_args_list == [call(retry_argument), call(retry_argument)]
