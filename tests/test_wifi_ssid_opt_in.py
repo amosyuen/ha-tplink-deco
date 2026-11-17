@@ -540,6 +540,7 @@ async def test_master_invalidation_does_not_affect_peer_config_entry() -> None:
     assert first.ssid_names_for_master(MASTER_A, "guest") == {}
     assert second.ssid_names_for_master(MASTER_A, "guest") == {"band2_4": "Alpha"}
 
+
 @pytest.mark.asyncio
 async def test_master_change_clears_previous_wireless_retry_cooldown() -> None:
     """A newly elected master must not inherit the old router's backoff."""
@@ -557,7 +558,9 @@ async def test_master_change_clears_previous_wireless_retry_cooldown() -> None:
         side_effect=[100.0, 110.0, 120.0],
     ):
         for attempt in (1, 2):
-            with pytest.raises(UpdateFailed, match="Unable to read optional wireless status"):
+            with pytest.raises(
+                UpdateFailed, match="Unable to read optional wireless status"
+            ):
                 await coordinator._async_update_data()
             assert coordinator._consecutive_failures == attempt
 
@@ -622,7 +625,9 @@ async def test_inflight_old_master_failure_does_not_penalize_new_master(
         coordinator.api.async_get_wireless = AsyncMock(
             side_effect=TimeoutError(PRIVATE_PASSWORD)
         )
-        with pytest.raises(UpdateFailed, match="Unable to read optional wireless status"):
+        with pytest.raises(
+            UpdateFailed, match="Unable to read optional wireless status"
+        ):
             await coordinator._async_update_data()
         assert coordinator._consecutive_failures == 1
         assert coordinator._next_retry == 0.0
