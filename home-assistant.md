@@ -611,6 +611,11 @@ retries after a truncated response. It preserves JSON-formatted log
 lines without firmware error fields and retains one authentication
 re-login, while setting manual-download timeout and transient retry
 budgets to zero. Normal Deco API retry defaults remain unchanged.
-**These fixes are not on `main` until PR #46 is merged.** Legacy S7 sessions and syslog forwarding
+**These fixes are not on `main` until PR #46 is merged.**
+An unresolved PR #46 review finding concerns JSON Lines log text:
+a nested `errorcode` field can be mistaken for a standalone
+firmware error by the proposed parser. Preserve such log text in
+a regression test before claiming that the follow-up is complete.
+Legacy S7 sessions and syslog forwarding
 (#666) remain unimplemented. Physical firmware/Windows ACL tests,
 the parent-symlink race and best-effort cleanup remain unverified.

@@ -1217,10 +1217,16 @@ policy for AI-assisted development.
   Classify a declared `application/json` response as a firmware
   error; for misleading `text/plain`/`application/octet-stream`,
   inspect only a JSON-object-shaped response containing a firmware
-  error key. A malformed error-looking object must not become
-  exported text. Test valid non-error JSON log lines and both
-  malformed and recognized error payloads with synthetic secrets
-  in DEBUG logs, rendered tracebacks and service responses.
+  error key. A nested `errorcode` in newline-delimited JSON log
+  records is **not** a standalone top-level firmware error. Do not
+  decide that parsing must fail solely because a raw substring is
+  present anywhere in the body. Test multiple JSON log lines
+  containing a nested error field; preserve them as log text while
+  rejecting truncated **standalone** firmware error objects.
+  Test malformed and recognized error payloads with synthetic
+  secrets in DEBUG logs, tracebacks and service responses.
+  **PR #46 review follow-up:** this regression is not fixed until
+  a corresponding code change and focused test are verified.
 - **Per-call transport retry lesson (PR #46):** disabling timeout
   retries does not necessarily disable the shared helper's transient
   retries. Set both timeout and transient retries to **zero for

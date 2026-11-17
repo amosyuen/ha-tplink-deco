@@ -48,8 +48,14 @@ description: "Use when changing authenticated manual Deco system-log downloads, 
    `errorcode` and `error_code` without logging their raw payloads.
    An expired-auth code enters the **one** re-login path; other
    error codes and malformed error-looking JSON produce fixed
-   errors. Preserve valid JSON-formatted log entries without
-   firmware error fields and strict UTF-8 handling.
+   errors. Preserve valid JSON-formatted log entries and strict
+   UTF-8 handling. A nested `errorcode` in a JSON Lines log
+   is not a top-level standalone firmware error: test at least
+   two newline-separated records, one with nested `errorcode`,
+   and retain the whole log. Also test a truncated standalone
+   firmware error to ensure it is still rejected. The PR #46
+   CodeRabbit finding remains open until code and test changes
+   demonstrate this distinction; documentation alone is not a fix.
 6. For tar decoding, prefer the exact `syslog.log` basename among
    **regular** archive members; otherwise use the first regular
    member. Ignore symbolic/hard links, directories and device

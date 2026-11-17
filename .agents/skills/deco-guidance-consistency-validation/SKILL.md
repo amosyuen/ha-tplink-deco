@@ -41,6 +41,12 @@ Keep `AI_POLICY.md` unchanged unless governing policy itself changes.
 
 ## Failures observed and deterministic validation
 
+- **PR #46 late review finding:** a new inline review comment can
+  arrive after an earlier zero-thread check, even after final-head
+  CI passes. Re-fetch review threads **immediately before** a
+  completion or merge-ready claim; verify new findings against the
+  code, record still-valid regressions and never resolve a thread
+  merely because its intended rule was documented.
 - **PR #46 cross-section drift (2026-11-17):** even after
   system-log PRs #44/#45 merged, earlier `home-assistant.md`
   sections still called PR #44 a proposed/open service; the
