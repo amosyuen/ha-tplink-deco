@@ -294,9 +294,7 @@ async def test_ssid_decoder_failures_are_sanitized_and_use_wireless_backoff(
     )
     previous_states = await coordinator._async_update_data()
     coordinator.data = previous_states
-    previous_names = {
-        key: dict(bands) for key, bands in coordinator.ssids.items()
-    }
+    previous_names = {key: dict(bands) for key, bands in coordinator.ssids.items()}
     caplog.set_level(logging.DEBUG)
 
     with patch(
