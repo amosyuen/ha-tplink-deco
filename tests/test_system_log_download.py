@@ -52,7 +52,9 @@ def _response(
     response.status = status
     response.history = ()
     response.content.read = AsyncMock(
-        side_effect=[body[index : index + 65536] for index in range(0, len(body), 65536)]
+        side_effect=[
+            body[index : index + 65536] for index in range(0, len(body), 65536)
+        ]
         + [b""]
     )
     response.release = MagicMock()
