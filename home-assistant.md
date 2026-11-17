@@ -271,6 +271,13 @@ Their physical-firmware validation remains a separate limitation.
   error fields) also enters that re-login flow. An expired session gets
   **at most one** re-login attempt. Do not treat an initial-login error
   or a request to an unrelated endpoint as authenticated session expiry.
+- Generic HTTP **403** errors are normalized to a fixed,
+  privacy-safe `ForbiddenException` without retaining the original
+  token-bearing HTTP error as cause/context; the standard one-relogin
+  retry uses a refreshed LuCI URL and cookie. HTTP 401 keeps its
+  existing propagated response-error type. Authentication failures
+  are logged by controlled status only, not the original request URL
+  or router message. Real firmware behavior remains unverified.
 - A same-host HTTP **307 → HTTPS** redirect may update the **runtime**
   API origin, including its port, to preserve subsequent authenticated
   requests. A cross-host redirect must not rewrite the configured router
