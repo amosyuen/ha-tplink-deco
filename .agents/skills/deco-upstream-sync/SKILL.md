@@ -326,12 +326,12 @@ use the whitelist and validation procedure above.
 
 ## Initial optional client refresh without startup blocking (upstream #645)
 
-When this fork's `async_create_and_refresh_coordinators` awaits the client
-coordinator's first refresh, slow per-node requests block platform setup.
-Leave the first **Deco device** refresh awaited and keep provisional-client
-reconciliation before constructing the client coordinator. For configured
-entries, defer only the **client** first refresh until after platform
-forwarding and service/listener setup, then use
+Historically, awaiting the client coordinator's first refresh in
+`async_create_and_refresh_coordinators` blocked platform setup on slow
+per-node requests. Keep the first **Deco device** refresh awaited and
+reconcile provisional clients before constructing the client coordinator.
+For configured entries, schedule the **client** initial refresh after
+platform forwarding and service/listener setup using
 `ConfigEntry.async_create_background_task(hass, clients.async_refresh(), ...)`.
 Do **not** use `async_request_refresh()` here: its debouncer can create a
 foreground task and defeat the intended startup behavior.
