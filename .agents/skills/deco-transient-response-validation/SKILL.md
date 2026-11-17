@@ -56,8 +56,13 @@ description: "Use when implementing or reviewing bounded Deco API retries for tr
    missing/non-string/duplicate MACs and invalid fields **after** a valid
    cached client. Assert whole-list preflight before any cached mutation,
    preserved identities/activity/count readiness on failure, and no client
-   MACs in discovery DEBUG logs. Assert no raw upstream errors,
-   credentials or identifiers appear in logs.
+   MACs in discovery DEBUG logs. Match rejection fixtures to the real
+   client-model contract: `filter_invalid_ip` normalizes invalid IPs to
+   `None` rather than raising, while a non-string client name is rejected
+   by the per-node preflight in PR #53. Test these as separate outcomes;
+   never make valid degraded-data behavior fail merely to satisfy a
+   negative test. Assert no raw upstream errors, credentials or
+   identifiers appear in logs.
 9. Update existing transport tests that assumed a disconnect always
    propagates immediately. Preserve their original authentication
    assertions and check `timeout_error_retries=0` separately.
@@ -72,9 +77,10 @@ description: "Use when implementing or reviewing bounded Deco API retries for tr
     tested scope and limitations; refresh that record after material changes.
     Keep the corresponding checklist item unchecked until the PR is
     actually merged and its implementation verified on `main`. If closed
-    without merging, record that result and leave the task open. HTTP 500
-    exponential backoff and global client-list fallback remain separate
-    upstream work.
+    without merging, record that result and leave the task open. HTTP 5xx
+    backoff and global client-list fallback already exist in this fork
+    (global fallback merged in PR #40); validate their compatibility
+    without reimplementing them as part of a transient-response fix.
 
 Keep repository-wide rules in `AGENTS.md` and governing policy in
 `AI_POLICY.md`.
