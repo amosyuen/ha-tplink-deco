@@ -193,6 +193,20 @@ not infer physical mesh compatibility from mocked tests.
    can fail because the tested path was never executed. Use a realistic
    response with `raise_for_status()`, `json()`, `headers` and a
    secret-bearing `request_info` as relevant.
+   **Constructor-bypassing fixtures:** after adding coordinator state,
+   inspect both `tests/test_wireless.py` and
+   `tests/test_wifi_ssid_opt_in.py`. Their `object.__new__` helpers
+   must initialize `expose_ssids`, `data`, `ssids`,
+   `_observed_master_mac`, `_master_generation`,
+   `_ssid_master_mac`, `_ssid_master_generation`,
+   `_next_retry` and `_consecutive_failures` consistently with
+   the mocked Deco master. A bare `MagicMock` is not a valid MAC.
+   Test `__init__` separately to verify the actual
+   `async_add_listener` callback is registered through
+   `config_entry.async_on_unload`; explicitly check listener cleanup
+   in the relevant unload/lifecycle tests. Calling
+   `_handle_deco_update()` manually only tests its behavior, not
+   subscription or teardown.
 10. In `tests/test_session_unload_cleanup.py`, test successful and
     failed platform unload, the exact shutdown/close/logout order,
     idempotent cleanup and a wireless test double that **deliberately
