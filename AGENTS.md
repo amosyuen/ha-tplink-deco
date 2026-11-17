@@ -1152,8 +1152,14 @@ policy for AI-assisted development.
   transitions. Verify both Python/HA matrices, pre-commit, HACS and
   Hassfest on the same final commit; do not treat skipped reviewers or
   untested physical hardware as passes.
+- **SSID privacy (upstream #637):** never infer consent from truthy config
+  values; use an explicit boolean defaulting to `False` per entry, and
+  reject non-boolean form submissions. Keep SSIDs out of status data, logs,
+  diagnostics and entities when consent is off; when enabled, expose names
+  only on verified, currently available networks and clear them on a
+  subsequent successful response without names. Document that opting out
+  does not remove Home Assistant Recorder history or third-party exports.
 - **Use the dedicated procedure:** follow
   [Deco wireless-status validation](.agents/skills/deco-wireless-status-validation/SKILL.md)
   for API contracts, deterministic mocks, exact failure cases, entity
-  lifecycle and PR/issue tracking. SSID exposure (upstream #637) remains
-  a separate opt-in/privacy-reviewed scope.
+  lifecycle, opt-in SSID handling and PR/issue tracking.
