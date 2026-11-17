@@ -250,7 +250,9 @@ class TplinkDecoWirelessBinarySensor(CoordinatorEntity, BinarySensorEntity):
         """Return opt-in WiFi names only when the current network is available."""
         if self.coordinator.expose_ssids is not True or not self.available:
             return None
-        names = self.coordinator.ssids.get(self.entity_description.key)
+        names = self.coordinator.ssid_names_for_master(
+            self._master_deco.mac, self.entity_description.key
+        )
         return wireless_ssid_attributes(names) if names else None
 
     @property
