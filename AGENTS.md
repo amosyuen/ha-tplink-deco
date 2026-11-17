@@ -847,6 +847,18 @@ policy for AI-assisted development.
   established `__suppress_context__ = True` contract (mobile tests).
   Using `raise ... from None` _inside_ the handler suppresses traceback
   formatting but does not remove the original `__context__` object.
+- **Other transport errors:** the original generic HTTP 400/401/5xx,
+  connector, client-error and timeout branches also logged the
+  untrusted exception or `context` string (which can contain LuCI
+  tokens, cookie details or reboot MACs). Report only a controlled
+  numeric HTTP status, exception **class** or fixed timeout message.
+  Preserve the existing 401 `aiohttp.ClientResponseError` type,
+  non-auth HTTP error propagation, connection-failure classification,
+  authentication retention and configured retry budgets; sanitized
+  logging alone does **not** imply that a propagated raw exception is
+  safe to expose in external tracebacks. Regress at the actual
+  `_async_post` boundary with synthetic sensitive status messages,
+  request URLs, connector hostnames and context values.
 - **Bound-request regression:** drive the real `async_list_devices`
   and `_async_post` methods with mocked `aiohttp.ClientSession.post`
   responses. Assert **both** requests' exact LuCI token URLs, form data
