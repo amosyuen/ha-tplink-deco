@@ -14,6 +14,16 @@ conflicts before proceeding.
 - Update that guide in the same PR whenever an integration-specific behavior
   or invariant changes. Confirm new claims against the current code and
   distinguish deployed behavior from pending upstream/backport work.
+- **Cross-section documentation drift gate (PRs #41/#42):** before publishing
+  any feature or correcting review findings, inspect both earlier overview
+  sections and later feature appendices for contradictory claims. Derive
+  platform counts from `PLATFORMS` in `const.py`, coordinator topology
+  from config-entry setup, and optional entity/consent behavior from the
+  actual coordinator, config flow and entity code. Identify historical
+  baselines as historical; a feature implemented on a PR branch is **not**
+  deployed on `main` until its merge is independently verified. Reconcile
+  checklist progress with the actual issue text, not an old combined item.
+  Treat documentation-only commits as new PR heads requiring final-head CI.
 - Keep general Home Assistant, Python, security, testing and review standards
   in `AGENTS.md`, `AI_POLICY.md` and `CLAUDE.md` when present; do not
   duplicate those general rules in the integration guide. `AI_POLICY.md`
