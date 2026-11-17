@@ -11,10 +11,13 @@ description: "Use when changing Home Assistant entry setup/unload, coordinator s
    current `custom_components/tplink_deco/__init__.py`, `coordinator.py`,
    `api.py`, existing lifecycle tests, and any relevant upstream PR.
 2. Identify the coordinators **actually created by this fork** and the
-   ownership of their resources. Currently the fork uses Deco and client
-   `DataUpdateCoordinator` objects and a Home Assistant-owned shared
-   aiohttp `ClientSession`. Do not assume upstream mobile/wireless
-   coordinators or legacy outer-session protocols already exist.
+   ownership of their resources. With PR #41, the fork has required Deco
+   and client coordinators plus a separate **optional WLAN**
+   `DataUpdateCoordinator`; the aiohttp `ClientSession` is owned by
+   Home Assistant. Do not assume upstream mobile coordinators or legacy
+   outer-session protocols exist. Verify each coordinator's supported
+   cleanup methods independently; do not infer them from a shared base
+   class.
 3. Review `async_setup_entry` as well as `async_unload_entry`. Await
    `async_forward_entry_setups` before completing setup, and do not
    register services/listeners after a failed platform setup.
@@ -36,6 +39,9 @@ description: "Use when changing Home Assistant entry setup/unload, coordinator s
    removal of entry data. These are different cleanup steps; do not
    substitute one for the other. Include a test fixture with a wireless
    coordinator that deliberately has no `async_close` attribute.
+   Also verify that an optional WLAN failure cannot prevent required
+   coordinators from refreshing or a successfully unloaded entry from
+   logging out, removing services and releasing its stored runtime.
 6. Only after coordinator cleanup, attempt the router's best-effort logout.
    Skip the request if there is no complete session, and always clear
    local token/cookie/sequence data on completion or failure.
@@ -63,6 +69,14 @@ description: "Use when changing Home Assistant entry setup/unload, coordinator s
     Home Assistant 2026.11, plus pre-commit, HACS and Hassfest.
     Apply formatter corrections on the branch and re-check the new
     commit rather than relying on CI from a superseded head.
+
+## Related optional feature validation
+
+The WLAN-specific HTTP boundary, authentication, timeout, cache,
+redaction and master-availability regression procedures live in
+[Deco wireless-status validation](../deco-wireless-status-validation/SKILL.md).
+This lifecycle skill owns the cross-platform unload order and shared
+session contract; do not duplicate the full WLAN test matrix here.
 
 ## Handoff
 
