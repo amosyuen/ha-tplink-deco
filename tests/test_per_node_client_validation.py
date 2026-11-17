@@ -92,7 +92,9 @@ async def test_late_invalid_node_reply_preserves_prior_client_state(
     )
 
     with caplog.at_level(logging.DEBUG):
-        with pytest.raises(ValueError, match="^Invalid Deco client list response$") as exc:
+        with pytest.raises(
+            ValueError, match="^Invalid Deco client list response$"
+        ) as exc:
             await coordinator._async_update_data()
 
     assert coordinator.data == {CLIENT_MAC: old_client}
@@ -107,9 +109,7 @@ async def test_late_invalid_node_reply_preserves_prior_client_state(
     assert exc.value.__cause__ is None
     assert PRIVATE_VALUE not in caplog.text
     assert PRIVATE_VALUE not in "".join(traceback.format_exception(exc.value))
-    api.async_list_clients.assert_awaited_once_with(
-        MASTER_MAC, timeout_error_retries=0
-    )
+    api.async_list_clients.assert_awaited_once_with(MASTER_MAC, timeout_error_retries=0)
 
 
 @pytest.mark.asyncio
