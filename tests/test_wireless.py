@@ -329,7 +329,9 @@ async def test_wireless_http_api_error_never_logs_private_json(
     response.history = []
     response.raise_for_status = MagicMock()
     response.headers.getall.return_value = []
-    response.json = AsyncMock(return_value={"error_code": error_code, "message": SECRET})
+    response.json = AsyncMock(
+        return_value={"error_code": error_code, "message": SECRET}
+    )
     api._session.post = AsyncMock(return_value=response)
     caplog.set_level(logging.DEBUG)
 
