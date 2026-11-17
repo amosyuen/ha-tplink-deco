@@ -102,6 +102,18 @@ present on an open PR is not yet present on deployed `main`.
   Test A -> B, A -> B -> A (both with and without an intervening poll),
   an in-flight master switch, opt-out, callback publication, listener
   lifecycle and recovery on the new owner's successful poll.
+- **Retry ownership during master changes:** the optional WLAN
+  two-failure/five-minute cooldown is specific to the currently observed
+  master generation. A real master switch must invalidate the previous
+  owner's cooldown and failure count; an unchanged-master notification
+  must retain both. If an in-flight request fails after a master switch,
+  call the same master-observation check before accounting for its error
+  and discard the stale failure without charging the new master. Return
+  only fixed, sanitized `UpdateFailed` text; keep authentication and
+  cancellation behavior unchanged. Test an established cooldown followed
+  by a new-master success, a same-master notification, A -> B and A -> B -> A
+  during an async request that raises an exception containing a synthetic
+  secret, then a current-master failure that counts as the first attempt.
 - **Validate before committing coordinator data:** SSID parsing and boolean
   state parsing must run inside the **same** guarded update. A decoder error
   must become a sanitized `UpdateFailed`, increment the normal wireless
