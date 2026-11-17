@@ -121,7 +121,7 @@ present on an open PR is not yet present on deployed `main`.
   previously cached states and valid same-owner names without partially
   committing a failed result. A real master change clears old names
   regardless of the failed request. Raise fixed `UpdateFailed` **after**
-  leaving `except`: `raise ... from None` *inside* an exception handler
+  leaving `except`: `raise ... from None` _inside_ an exception handler
   still retains the private original error in `__context__`. Check
   `__cause__ is None`, `__context__ is None`, fixed message text and
   the absence of synthetic secrets from DEBUG logs. Authentication and
