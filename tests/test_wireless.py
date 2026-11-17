@@ -176,7 +176,9 @@ async def test_api_rejects_malformed_wireless_payload() -> None:
     api._encode_payload = MagicMock(return_value="encrypted")
     api._async_post = AsyncMock(return_value={"data": "ciphertext"})
     api._decrypt_data = MagicMock(return_value={"result": [SECRET]})
-    with pytest.raises(ValueError, match="Wireless status response is malformed"):
+    with pytest.raises(
+        UnexpectedApiException, match="Wireless status response is malformed"
+    ):
         await api.async_get_wireless()
 
 
