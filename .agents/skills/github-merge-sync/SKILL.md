@@ -160,6 +160,34 @@ PR's successful Python/HA and linting checks.
    the 48-hour recovery window are finite; anything older requires
    explicit operator review rather than automatic unbounded replay.
 
+## Directive issue-link parsing (post-merge PR #38 failure)
+
+**Verified defect:** The merged PR #38 description had a formatted
+`Part of #2` line with nearby `PR #37` and
+`run #43756254588` links. The previous parser collected all
+`#number` values on the same line, confusing PR/run IDs for issues.
+The first deployed merge-sync run started but reported a sanitized
+HTTP 404; its exact failing request path was not recorded, so do not
+claim the malformed issue-link extraction is the conclusively traced
+HTTP target.
+
+1. Match only the **leading contiguous issue-number list** following
+   a recognized directive (`Part of #2, #3 and #4`). Stop before
+   explanatory prose or Markdown links to PRs, workflow runs, or other
+   non-issue resources. Preserve recognized Markdown/list prefixes.
+2. Keep the separate allowlisted same-repository `/issues/N` URL and
+   `owner/repository#N` extractors. Never broaden matching to
+   arbitrary external links or raw `#numbers` elsewhere in the PR.
+3. Add direct parser, event-triggered synchronization and scheduled
+   48-hour reconciliation tests. Use synthetic PR and Actions links
+   after a valid issue directive and verify no spurious issue GETs,
+   no duplicate comments, and that explicit multi-issue directives
+   still work.
+4. Preserve GitHub API 404 as a real error; never hide it, enlarge
+   token permissions or mark tracking issue #2 complete to force
+   a green sync run. After merge, check a **new actual** merge-triggered
+   run and an hourly scheduled run, not only PR-head CI.
+
 ## Deployment and limitations
 
 - This workflow only becomes active when merged onto the repository default

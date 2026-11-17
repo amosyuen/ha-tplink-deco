@@ -157,6 +157,19 @@ policy for AI-assisted development.
   have partially succeeded before failing: GitHub changes across issues
   are **not transactional**. Test a failing first candidate, a valid
   later candidate, partial outcomes and an idempotent rerun.
+- **Issue-reference directive boundaries (PR #38 post-merge):** a PR
+  summary line beginning `Part of #2` also mentioned `PR #37` and
+  an Actions `run #43756254588`. The old directive parser accepted
+  every `#number` on that line as an issue, and the deployed sync
+  subsequently failed with HTTP 404. Parse only the leading, contiguous
+  explicit issue-number sequence after a recognized directive; inspect
+  same-repository issue URLs and scoped issue links separately. Never
+  interpret later explanatory PR or workflow-run links as issues.
+  Preserve comma/and-separated multi-issue directives, safety limits,
+  idempotent summaries and privacy-safe errors. Cover both direct
+  merge events and scheduled reconciliation with synthetic mixed
+  Markdown examples. An observed HTTP 404 alone does not identify the
+  failing URL; verify actual production execution after the fix.
 - **Network/API error contract (PR #38):** convert HTTP status,
   transport timeouts and invalid JSON into fixed, privacy-safe errors
   without exposing upstream messages, paths, credentials or payloads.

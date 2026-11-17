@@ -499,6 +499,71 @@ class MergeReferenceSyncTests(unittest.TestCase):
         )
         self.assertEqual(sync.issue_references(body, REPOSITORY), {2, 3, 4, 5, 6, 7, 8})
 
+    def test_directive_references_stop_before_pr_and_action_run_links(self) -> None:
+        """Do not treat numbers in nearby PR or workflow links as issue IDs."""
+        body = (
+            "**Part of #2 — reliability of post-merge issue synchronization.** "
+            f"After [PR #37](https://github.com/{REPOSITORY}/pull/37) merged, "
+            "[run #43756254588]"
+            f"(https://github.com/{REPOSITORY}/actions/runs/43756254588) "
+            "failed before the sync script ran.\n"
+            "Part of #2. This PR fixes supporting automation, not PR #37.\n"
+        )
+        self.assertEqual(sync.issue_references(body, REPOSITORY), {2})
+
+        client = _FakeGitHub()
+        event = _event(body=body)
+        self.assertEqual(sync.synchronize_merge(client, REPOSITORY, event)[0], [2])
+        self.assertEqual(client.patches, 1)
+        self.assertEqual(client.posted.count(2), 1)
+        first_posts = client.posted.copy()
+        self.assertEqual(sync.synchronize_merge(client, REPOSITORY, event)[0], [2])
+        self.assertEqual(client.posted, first_posts)
+        self.assertEqual(client.patches, 1)
+
+    def test_directive_reference_prefix_accepts_multiple_explicit_issues(self) -> None:
+        """Preserve valid multi-issue directives but exclude prose numbers."""
+        body = (
+            "Refs: #2, #3 and #4; #5 — PR #37 and run #43756254588\n"
+            "- **Part of #6, and #7**; unrelated run #99\n"
+            f"Related to {REPOSITORY}#8\n"
+            f"https://github.com/{REPOSITORY}/issues/9\n"
+            f"https://github.com/{REPOSITORY}/pull/10\n"
+            f"https://github.com/{REPOSITORY}/actions/runs/11\n"
+        )
+        self.assertEqual(
+            sync.issue_references(body, REPOSITORY), set(range(2, 10))
+        )
+
+    def test_scheduled_reconciliation_handles_pr_and_run_links(self) -> None:
+        """Recover a merge from a PR description without spurious issue reads."""
+        body = (
+            "**Part of #2 — workflow recovery.** "
+            f"See [PR #37](https://github.com/{REPOSITORY}/pull/37) and "
+            f"[run #43756254588](https://github.com/{REPOSITORY}/actions/runs/43756254588)."
+        )
+        client = _FakeGitHub()
+        client.open_prs = []
+        row = {
+            **_event(body=body)["pull_request"],
+            "merged_at": "2026-11-17T10:00:00Z",
+            "updated_at": "2026-11-17T10:00:00Z",
+        }
+        client.closed_pages[1] = [row]
+        now = datetime(2026, 11, 17, 12, tzinfo=timezone.utc)
+
+        self.assertEqual(
+            sync.reconcile_recent_merges(client, REPOSITORY, "main", current_time=now),
+            [19],
+        )
+        self.assertEqual(client.patches, 1)
+        first_posts = client.posted.copy()
+        self.assertEqual(
+            sync.reconcile_recent_merges(client, REPOSITORY, "main", current_time=now),
+            [],
+        )
+        self.assertEqual(client.posted, first_posts)
+
     def test_does_not_treat_pr_urls_as_issue_references(self) -> None:
         """A pull request URL is never an issue link, even with matching ID."""
         body = f"https://github.com/{REPOSITORY}/pull/19"

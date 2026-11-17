@@ -25,6 +25,12 @@ _MAX_RELATED_PRS = 100
 _RECONCILE_LOOKBACK = timedelta(hours=48)
 _BOT_LOGIN = "github-actions[bot]"
 _API_ROOT = "https://api.github.com"
+# Only an initial sequence of explicit bare issue IDs belongs to a directive.
+# Later PR, workflow-run or explanatory references are not issue links.
+_DIRECTIVE_ISSUE_PREFIX = re.compile(
+    r"^\s*#\d+\b(?:\s*[,;&]\s*(?:and\s+)?#\d+\b|\s+and\s+#\d+\b|\s+#\d+\b)*",
+    flags=re.I,
+)
 
 
 def _repository_parts(repository: str) -> tuple[str, str]:
@@ -70,10 +76,14 @@ def issue_references(text: str, repository: str) -> set[int]:
         normalized = re.sub(r"^\s*(?:[-*]\s+|>\s+)*", "", line)
         match = directive.match(normalized.lstrip("*_"))
         if match:
-            found.update(
-                int(value)
-                for value in re.findall(r"(?<![\w/])#(\d+)\b", match.group(1))
-            )
+            # The directive's issue list ends before explanatory prose.
+            # In "Part of #2 ... PR #37 ... run #123", only #2 is an issue.
+            prefix = _DIRECTIVE_ISSUE_PREFIX.match(match.group(1))
+            if prefix:
+                found.update(
+                    int(value)
+                    for value in re.findall(r"#(\d+)\b", prefix.group())
+                )
     found.discard(0)
     if len(found) > _MAX_ISSUES:
         raise ValueError("Too many linked issues; refusing broad updates")
