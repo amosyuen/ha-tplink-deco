@@ -36,7 +36,7 @@ def _leaf_paths(
     return paths
 
 
-@pytest.mark.parametrize("locale", ["en", "nl"])
+@pytest.mark.parametrize("locale", ["en", "nl", "sk", "sv"])
 def test_canonical_translation_keys_are_present_in_locale(locale: str) -> None:
     """Avoid silently falling back on missing setup, options or entity labels."""
     source = _load_labels("strings.json")
@@ -58,7 +58,13 @@ def test_scan_interval_translation_matches_real_home_assistant_form_key(
     section_name, form_step = step_name
     assert CONF_SCAN_INTERVAL == "interval_seconds"
 
-    for file_name in ("strings.json", "translations/en.json", "translations/nl.json"):
+    for file_name in (
+        "strings.json",
+        "translations/en.json",
+        "translations/nl.json",
+        "translations/sk.json",
+        "translations/sv.json",
+    ):
         labels = _load_labels(file_name)
         form_labels = labels[section_name]["step"][form_step]["data"]
 
