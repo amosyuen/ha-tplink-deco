@@ -1175,22 +1175,25 @@ policy for AI-assisted development.
   sufficient proof of ownership. Replace (do not merge) cached names on
   a successful poll. Opting out does **not** erase Home Assistant Recorder
   history, backups or third-party exports.
-- **Atomic WLAN failure handling (PR #42):** parse both boolean flags and
-  optional SSID names within the same guarded refresh; do not replace the
-  cached names, declare a successful poll or reset retry backoff until
-  both parsers succeed. Retry budgets belong to the observed master
-  generation: a switch clears the prior master's failure count and
-  five-minute cooldown; errors from a request started under an earlier
-  generation must not count against the new master, including A -> B -> A.
-  A repeated update for the same master must **not** reset its backoff.
-  For optional decode errors, preserve cached
-  status/names and use the established sanitized `UpdateFailed` and
-  two-failure/five-minute retry budget. Raise the fixed error **after**
-  leaving `except` so its `__context__` cannot retain a private upstream
-  exception; verify `__cause__` and `__context__` are `None`. Keep
-  authentication failures and cancellation distinct. Constrain
-  firmware-derived SSID attribute suffixes to compact numeric band keys,
-  never arbitrary or oversized firmware input.
+- **Atomic WLAN failure handling (PR #42):** capture the current master
+  MAC and generation **before** awaiting the router request. Parse both
+  boolean flags and optional SSID names in one guarded refresh; commit
+  names only after successful parsing and an unchanged owner/generation.
+  A failed poll must preserve previously published coordinator state and
+  valid same-owner SSID names; a master change invalidates old names.
+  Retry budgets belong to the observed master generation: a real change
+  clears the prior failure count and five-minute cooldown, including
+  A -> B -> A; a notification for the same master does **not** reset it.
+  Attribute a failed request to its **starting** generation: stale errors
+  still produce sanitized `UpdateFailed` but cannot increment the new
+  master's failure count. Current-owner failures use the existing
+  two-failure/five-minute budget, including SSID decoder failures.
+  Raise the fixed error **after** leaving `except` so its `__context__`
+  cannot retain a private upstream exception; test that `__cause__`
+  and `__context__` are `None`. Propagate authentication failures and
+  cancellation unchanged. Keep arbitrary or oversized firmware keys
+  out of SSID attribute names. Use the WLAN skill's error-outcome matrix
+  for deterministic concurrency, privacy and backoff regressions.
 - **Use the dedicated procedure:** follow
   [Deco wireless-status validation](.agents/skills/deco-wireless-status-validation/SKILL.md)
   for API contracts, deterministic mocks, exact failure cases, entity
