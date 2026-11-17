@@ -867,12 +867,30 @@ policy for AI-assisted development.
   `request_info` and error text and verify DEBUG logs, public
   exception and rendered traceback do not expose them. No actual
   router, cookies or real credentials belong in tests or PR logs.
-- This addresses only the proven generic HTTP 403 parity/privacy path;
-  do not present it as full API error-log sanitation or complete
-  upstream test parity. Use
-  [upstream-sync validation](.agents/skills/deco-upstream-sync/SKILL.md)
-  and run both supported Python/HA matrices plus lint/HACS/Hassfest
-  on the final head.
+- **Scope and evidence (PR #50):** the fork now sanitizes the 403
+  exception boundary and logs for generic HTTP statuses, connector,
+  other client errors and timeouts. This does **not** sanitize every
+  API logging site, nor raw HTTP/connector exceptions deliberately
+  propagated for compatibility; distinguish a secret-free integration
+  log from an exception rendered by a caller or Home Assistant.
+  Do not claim complete upstream test parity, traceback redaction or
+  physical-firmware validation from these focused regressions.
+- **Exact log assertions (PR #50 CI lesson):** different branches
+  intentionally emit `Deco API HTTP error: 400`,
+  `Deco API authentication HTTP error: 401`,
+  `Deco API HTTP error: 502` and
+  `Deco client-list server error: HTTP 503`. Match the current
+  source's fixed labels rather than assuming every branch formats
+  `HTTP <status>`. Keep numeric statuses and exception classes as
+  metadata only, and assert synthetic tokens, cookies, request URLs,
+  device identifiers and upstream messages are absent from DEBUG
+  logs. Do not weaken a privacy assertion to fix an inaccurate
+  expected label.
+- For this scope follow
+  [upstream-sync validation](.agents/skills/deco-upstream-sync/SKILL.md),
+  including Black/Prettier's exact output, and run both supported
+  Python/HA matrices plus Pre-commit/HACS/Hassfest on the **final**
+  commit (including a documentation-only follow-up).
 
 ## Authenticated API expiry error -5002 (upstream PR #620)
 
