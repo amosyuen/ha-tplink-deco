@@ -50,6 +50,14 @@ Keep `AI_POLICY.md` unchanged unless governing policy itself changes.
   upstream #637 remained open during PR #42 after PR #42 had merged.
   Check linked work items and cross-skill references against real
   merge state before updating a tracking issue.
+- **Security-claim calibration (PR #44):** a successful static
+  symlink test and ordinary partial-write cleanup regression do not
+  establish time-of-check/time-of-use protection or guaranteed
+  deletion. Reconcile assertions such as "never exposed", "atomic"
+  or "always removed" with the **actual** filesystem operations,
+  concurrency model and platform-specific tests. Record untested
+  Windows behavior and adversarial race cases as limitations, not
+  security guarantees.
 - **Formatter false finish:** PR #43 pre-commit failed twice on
   documentation/test changes because Black or Prettier rewrote files.
   Read the failing job's actual diff and apply exactly those changes;

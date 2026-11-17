@@ -1153,47 +1153,56 @@ policy for AI-assisted development.
 - Make the smallest change that meets the issue's acceptance criteria,
   document user-visible behavior, and explain regression coverage in the PR.
 
-## Manual system-log export (upstream #650, issue #2)
+## Manual system-log export (upstream #650; PR #44; issue #2)
 
-- **Explicit action only:** never poll or forward router system logs
-  automatically. Register the action once at integration setup and
-  select a loaded entry on invocation. An ambiguous, unloaded or
-  foreign entry must fail before router access. Do not disturb the
-  existing three per-entry services or their unload behavior.
-- **Sensitive API boundary:** encrypted `feedback_log` build and
-  unencrypted `save_log` requests may contain credentials in LuCI
-  URLs/cookies and sensitive system-log text. Sanitize exceptions
-  at both boundaries and test rendered tracebacks and DEBUG logs
-  against synthetic secrets. Preserve one bounded authentication
-  retry and propagate cancellation.
-- **Storage safeguards:** cap plain-text downloads at 8 MiB; reject
-  malformed or unsupported responses. Validate ASCII `.log`
-  basenames, traversal, Windows reserved names and file collisions.
-  Use an executor and exclusive creation with private permissions
-  where supported. **PR #44 review lesson:** a private export path can
-  still be redirected through a symbolic-link parent even with
-  `O_NOFOLLOW` on the final filename; reject symlinked export directories.
-  A write or buffered-close exception after file creation must remove
-  the new partial file without touching a pre-existing collision.
-  Regression-test symlink rejection and same-name retry after both
-  failures. **Additional PR #44 error-boundary lesson:** the Home Assistant
-  service action must not expose upstream login/HTTP/transport exceptions
-  (which may include LuCI tokens), and must also safely handle
-  non-`OSError` failures such as `UnicodeEncodeError` while writing
-  downloaded log text. Raise fixed `ServiceValidationError` messages
-  _after leaving_ exception handlers so no private `__context__`
-  survives; classify auth, timeout and disconnects without exposing
-  raw text, validate the returned API type and propagate cancellation.
-  Test rendered tracebacks and a same-name retry after an encoding error.
-  Never log exported content or destination paths.
-  Document user responsibility for securely storing and removing logs.
-- **Scoped upstream work:** the manual plain-text export (#650)
-  does not implement gzip/tar decoding (#673), syslog forwarding
-  (#666), or legacy S7 sessions. Keep the combined #650/#673
-  checklist item unchecked while compressed snapshot support is
-  outstanding. Follow the
+- **Manual, single-entry action:** register `download_system_log` once;
+  resolve the selected **loaded** Deco entry when called, rejecting
+  ambiguous, unloaded and foreign entries before router access.
+  Never turn on automatic syslog forwarding or alter the existing
+  reboot/pause/resume services.
+- **API privacy boundary:** encrypted `feedback_log` build and
+  unencrypted `save_log` transfer can carry authenticated LuCI
+  URLs/cookies and sensitive log data. Bound the plain-text UTF-8
+  snapshot to 8 MiB (read through EOF in bounded chunks); distinguish
+  expired authentication from network/timeout/HTTP failures and permit
+  at most one re-login. Never interpolate raw response or exception
+  text into DEBUG logs, service errors or diagnostics.
+- **Home Assistant service boundary (PR #44 error-handling lesson):**
+  classify `EmptyDataException`, `ForbiddenException` and login
+  failures as authentication errors; `TimeoutException` as timeout;
+  `TransientConnectionException` as interrupted transport; other
+  ordinary API exceptions as a fixed generic failure. Reject non-text
+  results before creating files. Raise fixed `ServiceValidationError`
+  **outside the originating `except` block** so neither
+  `__context__` nor `__cause__` retains secrets. By contrast,
+  `raise ... from None` only suppresses context in formatted
+  tracebacks. Preserve `asyncio.CancelledError` propagation.
+  Test rendered tracebacks and DEBUG logs with synthetic secrets.
+- **File lifecycle boundary (verified PR #44 review lessons):**
+  validate an ASCII `.log` basename, create through the executor
+  under `tplink_deco_logs`, reject an existing symlinked export
+  directory, use exclusive file creation and private permissions
+  where supported, and never overwrite existing exports. Catch
+  write/close/encoding failures without leaking underlying error
+  text; attempt to remove a partial export and permit same-name retry.
+  Add regressions for symlink rejection, collisions, write, close and
+  `UnicodeEncodeError`. Store no raw logs in diagnostics or entities.
+- **Security claim boundary:** `os.path.islink` is a point-in-time
+  check and final-component `O_NOFOLLOW` does not protect against
+  concurrent changes to a parent path. Current `os.unlink(path)`
+  cleanup is also path-based and may fail. Static symlink and ordinary
+  failure-path tests do **not** prove race-safe directory ownership,
+  guaranteed removal or Windows reparse-point/ACL safety. Document
+  these limitations; any stronger guarantee requires explicit
+  platform-aware implementation and adversarial regression tests.
+- **Upstream scope:** this PR covers manual plain-text #650 only.
+  gzip/tar snapshots (#673), syslog forwarding (#666), legacy S7
+  sessions, physical router verification and Windows ACL validation
+  remain outstanding. Keep combined #650/#673 tracking item
+  unchecked until full parity is merged and verified. Follow the
   [system-log validation skill](.agents/skills/deco-system-log-validation/SKILL.md)
-  and require all five CI checks on the final PR head.
+  and verify the two Python/HA matrices, pre-commit, HACS and
+  Hassfest on the **same final commit**.
 
 ## Optional mobile WAN usage (upstream #631, issue #2)
 

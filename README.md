@@ -435,7 +435,13 @@ logs in Home Assistant diagnostics or integration logs, but the saved
 file retains the sensitive original text. Restrict access to the
 output directory, do not share or sync its contents, and delete
 exports when they are no longer needed. File access permissions
-depend on the underlying operating system and filesystem.
+depend on the underlying operating system and filesystem. Existing
+symbolic links at the export directory are rejected, but concurrent
+filesystem changes and Windows reparse-point/ACL handling have
+**not** been independently verified; do not place the Home Assistant
+configuration directory under untrusted write access. A failed
+write triggers best-effort removal of a partial export, which may
+still need manual cleanup if the filesystem prevents deletion.
 
 This PR supports plain-text UTF-8 logs only. Gzip/tar snapshots
 (upstream #673), legacy S7 sessions and syslog forwarding (#666)

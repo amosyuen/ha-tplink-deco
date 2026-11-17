@@ -568,14 +568,21 @@ router authentication failures, timeouts, interrupted connections and
 other API failures into fixed user-facing service errors without retaining
 the original exception context; unexpected non-text results are rejected
 before writing. File-system and encoding failures receive another fixed
-error, and partial files are removed on write/close errors. Cancellation
-is propagated. Raw token URLs, cookies and log contents must never reach
-integration logs or formatted exceptions.
+error. The writer attempts to remove newly created partial files after
+write/close failures, but cleanup is not guaranteed if unlinking fails
+or a concurrent actor changes the path. Cancellation propagates.
+Raw token URLs, cookies and log contents must never reach integration
+logs or formatted exceptions.
 
 The result is stored in a newly created file under
 `<config>/tplink_deco_logs/` via the executor. The file name is an
 ASCII `.log` basename, cannot overwrite an existing file and
 receives private permissions where the platform supports them.
+An existing symlinked export directory is rejected before writing.
+This point-in-time check, final-file `O_NOFOLLOW` and path-based
+cleanup have **not** been verified against concurrent parent-directory
+replacement, Windows reparse points or Windows ACLs. These measures
+must not be described as race-proof storage or guaranteed cleanup.
 Only the explicit service response contains its path and line count.
 Router logs may contain sensitive network data and must be stored,
 shared and removed with care. The action does not populate any
