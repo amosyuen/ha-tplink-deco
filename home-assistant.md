@@ -429,7 +429,10 @@ An unsupported network is absent rather than incorrectly reported as OFF.
 Existing wireless entities become unavailable if their network disappears
 from a valid later response. Optional wireless failures cannot block Deco
 or client polling, and repeated failures defer wireless requests by five
-minutes. Existing pause and config-entry shutdown semantics apply.
+minutes. Existing pause and config-entry shutdown semantics apply. On unload,
+the wireless coordinator receives Home Assistant's `async_shutdown()`;
+only the existing fork-specific Deco/client coordinators receive their
+custom `async_close()` calls.
 
 The coordinator stores only boolean states. SSIDs, passwords, PSKs and raw
 responses must not enter state attributes, diagnostics or logs. Optional
