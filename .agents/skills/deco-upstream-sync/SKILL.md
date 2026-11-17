@@ -86,7 +86,18 @@ description: "Use when comparing, backporting, reviewing, or implementing change
   arbitrary string error codes or full decrypted login responses
   into outward exceptions. A log-only fix must not be presented as
   sanitizing propagated original exceptions.
-- Keep tests for unimplemented features (S7 outer sessions and syslog
+- **Concurrent login cancellation regression (fork PR #51):**
+  exercise the real `TplinkDecoApi.async_login` with mocked
+  `_async_login`, gated by `asyncio.Event`. Concurrent
+  waiters must share the owner's result; a cancelled waiter must
+  not cancel the owner's shared future; a cancelled owner must
+  notify waiting callers, clear partial authentication and release
+  the future immediately. A failed owner must propagate the
+  original exception to all current waiters and permit a fresh
+  subsequent login. Never await a pending failed/cancelled future
+  in `finally`; shield only independent waiters, not the login
+  operation. Bound every scenario with `asyncio.wait_for` so CI
+  reports a regression rather than hanging.
 - Keep tests for unimplemented features (S7 outer sessions and syslog
   forwarding) explicitly **pending**, not failed or silently claimed as
   ported. This is one focused increment toward test parity; do not check
