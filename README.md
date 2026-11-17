@@ -42,8 +42,21 @@ normally. After repeated wireless failures, retries are deferred by up to
 five minutes. Authentication expiration preserves a single re-login retry,
 while malformed response data and HTTP errors are reported without revealing
 session information or private WiFi settings. The integration does not change
-wireless settings or expose SSIDs, WiFi passwords, PSKs or raw wireless data.
-SSID exposure from upstream #637 remains a separate, opt-in feature to review.
+wireless settings or expose WiFi passwords, PSKs or raw wireless data.
+
+**WiFi network names (SSIDs) are hidden by default.** To show them, explicitly
+enable **Show WiFi network names on the WiFi status sensors** in the integration
+options. The selected entry's existing Main, Guest and IoT WiFi binary sensors
+then provide an `ssid` attribute if all bands share a name, or
+`ssid_band2_4`, `ssid_band5_1` and similar attributes when bands differ.
+Unsupported or missing names are omitted. No additional entities are created.
+
+**Privacy:** SSIDs can reveal personal or location-related information to
+users and automations with access to entity states, history and exports.
+Only enable this if that visibility is acceptable. Disabling the option
+removes names from new coordinator state after reload; existing external
+history, notifications and backups are not erased. Router passwords, PSKs,
+tokens and raw WLAN responses are never exposed through these attributes.
 
 ### Optional client device linking
 
