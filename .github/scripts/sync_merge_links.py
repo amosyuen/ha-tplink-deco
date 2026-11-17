@@ -6,6 +6,7 @@ Run only trusted default-branch code. Issue, PR, and event bodies are data.
 from __future__ import annotations
 
 from datetime import datetime
+from datetime import timedelta
 from datetime import timezone
 import json
 import logging
@@ -20,6 +21,7 @@ _LOGGER = logging.getLogger(__name__)
 _MAX_PAGES = 10
 _MAX_ISSUES = 25
 _MAX_RELATED_PRS = 100
+_RECONCILE_LOOKBACK = timedelta(hours=48)
 _BOT_LOGIN = "github-actions[bot]"
 _API_ROOT = "https://api.github.com"
 
@@ -343,16 +345,117 @@ def synchronize_merge(
     return updated_issues, updated_prs
 
 
+
+def _timestamp(value: object) -> datetime:
+    """Validate a timezone-aware GitHub timestamp without exposing input."""
+    if not isinstance(value, str):
+        raise ValueError("GitHub pull request has an invalid timestamp")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ValueError("GitHub pull request has an invalid timestamp") from error
+    if parsed.tzinfo is None:
+        raise ValueError("GitHub pull request timestamp must have a timezone")
+    return parsed.astimezone(timezone.utc)
+
+
+def reconcile_recent_merges(
+    client: GitHubClient,
+    repository: str,
+    default_branch: str,
+    *,
+    current_time: datetime | None = None,
+) -> list[int]:
+    """Retry confirmed recent merges skipped by a failed or displaced run.
+
+    Only trusted GitHub API metadata is used, and only recent default-branch
+    merges with no completed bot summary are processed. Enumeration is bounded
+    and fails explicitly if its safe scan limit is reached.
+    """
+    _repository_parts(repository)
+    if not isinstance(default_branch, str) or not default_branch:
+        raise ValueError("Repository default branch is invalid")
+    now = current_time if current_time is not None else datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        raise ValueError("Reconciliation time must have a timezone")
+    cutoff = now.astimezone(timezone.utc) - _RECONCILE_LOOKBACK
+    recent: list[dict[str, Any]] = []
+
+    for page in range(1, _MAX_PAGES + 1):
+        path = (
+            f"/repos/{repository}/pulls?"
+            f"state=closed&sort=updated&direction=desc&per_page=100&page={page}"
+        )
+        rows = client.request("GET", path)
+        if not isinstance(rows, list):
+            raise ValueError("GitHub closed pull request response must be a list")
+        older_found = False
+        for row in rows:
+            if not isinstance(row, dict):
+                raise ValueError("GitHub closed pull request record is invalid")
+            if _timestamp(row.get("updated_at")) < cutoff:
+                older_found = True
+                break
+            if row.get("merged_at") is None:
+                continue
+            merged_at = _timestamp(row["merged_at"])
+            if not cutoff <= merged_at <= now:
+                continue
+            base = row.get("base") or {}
+            if (
+                not isinstance(base, dict)
+                or base.get("ref") != default_branch
+                or (base.get("repo") or {}).get("full_name") != repository
+            ):
+                continue
+            recent.append(row)
+        if older_found or len(rows) < 100:
+            break
+    else:
+        raise RuntimeError("Recent merge scan exceeded safe pagination limit")
+
+    processed: list[int] = []
+    for row in sorted(recent, key=lambda item: _timestamp(item["merged_at"])):
+        number = row.get("number")
+        if type(number) is not int or number <= 0:
+            raise ValueError("GitHub merged pull request number is invalid")
+        marker = f"<!-- deco-merge-sync:summary-pr-{number} -->"
+        comments = client.pages(f"/repos/{repository}/issues/{number}/comments")
+        if any(
+            comment.get("user", {}).get("login") == _BOT_LOGIN
+            and marker in (comment.get("body") or "")
+            for comment in comments
+        ):
+            continue
+
+        event = {
+            "action": "closed",
+            "repository": {"default_branch": default_branch},
+            "pull_request": {**row, "merged": True},
+        }
+        synchronize_merge(client, repository, event)
+        processed.append(number)
+    return processed
+
+
 def main() -> None:
-    """Read the trusted event file and synchronize referenced work items."""
+    """Synchronize a confirmed merge or reconcile recent default-branch merges."""
     logging.basicConfig(level=logging.INFO)
-    with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as event_file:
-        event = json.load(event_file)
-    synchronize_merge(
-        GitHubClient(os.environ["GITHUB_TOKEN"]),
-        os.environ["GITHUB_REPOSITORY"],
-        event,
-    )
+    client = GitHubClient(os.environ["GITHUB_TOKEN"])
+    repository = os.environ["GITHUB_REPOSITORY"]
+    event_name = os.environ["GITHUB_EVENT_NAME"]
+    if event_name == "schedule":
+        _repository_parts(repository)
+        repo_data = client.request("GET", f"/repos/{repository}")
+        if not isinstance(repo_data, dict):
+            raise ValueError("GitHub repository metadata is invalid")
+        reconcile_recent_merges(client, repository, repo_data.get("default_branch"))
+    elif event_name == "pull_request_target":
+        with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as event_file:
+            event = json.load(event_file)
+        synchronize_merge(client, repository, event)
+    else:
+        raise ValueError("Unsupported merge synchronization event")
 
 
 if __name__ == "__main__":

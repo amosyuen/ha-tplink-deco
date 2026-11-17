@@ -4,6 +4,9 @@ on:
   pull_request_target:
     types:
       - closed
+  # Retry missing merge events using trusted default-branch code.
+  schedule:
+    - cron: "17 * * * *"
 
 # Only default-branch code runs. Never check out PR heads with a write token.
 permissions:
@@ -11,16 +14,19 @@ permissions:
   issues: write
   pull-requests: write
 
-# Serialize issue edits when several PRs merge close together.
+# Serialize writes. The default single pending slot can discard merges.
 concurrency:
   group: merged-reference-sync-${{ github.repository }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   synchronize:
     if: >-
-      github.event.pull_request.merged == true &&
-      github.event.pull_request.base.ref == github.event.repository.default_branch
+      (github.event_name == 'pull_request_target' &&
+       github.event.pull_request.merged == true &&
+       github.event.pull_request.base.ref == github.event.repository.default_branch)
+      || github.event_name == 'schedule'
     runs-on: ubuntu-latest
     steps:
       - name: Check out trusted default-branch code only

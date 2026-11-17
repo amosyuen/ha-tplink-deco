@@ -128,6 +128,24 @@ policy for AI-assisted development.
   execution: inspect the next real post-merge run before claiming the
   synchronization automation works. Never replay old merge events or
   automatically check broad issue #2 acceptance criteria.
+- **Merge-sync reliability (PR #38 review):** a shared concurrency group
+  with only one pending run silently replaces earlier pending merges.
+  Use `queue: max` with `cancel-in-progress: false` for serialized
+  processing, and reconcile recent confirmed default-branch merges on
+  a trusted scheduled run. Queueing is capped at 100 pending runs;
+  the bounded 48-hour reconciliation window and pagination caps require
+  operator attention if exceeded. Process only unsynchronized merges,
+  identify completion by the bot-owned summary marker, and make retries
+  idempotent. A successful PR check does not prove the scheduled or
+  merge-triggered write-capable workflow has executed.
+- **Workflow-policy scope (PR #38 review):** audit **all**
+  `.github/workflows/*.yml` and `*.yaml` action references rather
+  than treating action pinning as specific to merge-sync. Resolve
+  release-tag SHAs from official action repositories, dereference
+  annotated tags, retain version comments, and reject mutable `uses`
+  references. Parse workflow YAML for security tests: compare exact
+  event types, permissions, job conditions, trusted checkout target
+  and token handling. Text-substring assertions are insufficient.
 - At merge time, update only same-repository issues linked explicitly in the
   PR body or GitHub closing-issue references. Check only issue checklist
   lines that explicitly name the merged PR. Notify only related **open** PRs

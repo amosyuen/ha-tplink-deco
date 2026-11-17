@@ -29,10 +29,12 @@ description: "Use when reviewing, changing, validating or troubleshooting automa
    linked issue or explicitly referencing the merged PR. Post a concise
    informational comment; never rebase, auto-merge or close other PRs.
 6. Use stable, bot-owned HTML comment markers to avoid duplicate issue/PR
-   comments on reruns. Serialize the merge workflow to avoid conflicting
-   edits to a shared tracking issue. Apply strict pagination and
-   linked-item limits; fail explicitly instead of silently skipping
-   excessive or unverified references.
+   comments on reruns. Serialize the merge workflow and use `queue: max`
+   to retain up to 100 pending runs rather than replacing the previous
+   pending merge. Schedule bounded 48-hour reconciliation of confirmed
+   default-branch merges, skipping only those with a completed bot-owned
+   summary. Apply strict pagination and linked-item limits; fail
+   explicitly when reconciliation cannot verify the full window.
 7. Treat the merge event, PR text, issue bodies and GraphQL results as
    untrusted **data**. Validate the repository, PR number, merge SHA and
    default branch; sanitize logging; use parameterized API requests and
@@ -75,6 +77,35 @@ PR's successful Python/HA and linting checks.
    **not** the functioning of a merge-triggered event. After a reviewed
    merge to `main`, inspect a new real merge-triggered run; failed
    past events are not automatically replayed.
+
+## Review hardening: lost events, action scope and structural tests
+
+- **Concurrency review:** `cancel-in-progress: false` without
+  `queue: max` is not lossless: newer pending runs replace older
+  pending runs. GitHub's 100-pending-run maximum is still bounded.
+  Scheduled recovery must inspect recent merged PRs on the trusted
+  default branch, verify merge metadata, and use the existing bot
+  summary marker to skip completed work. Reconciliation is limited
+  to 48 hours; report window or pagination gaps instead of implying
+  unbounded durability. Preserve the same serialization group for
+  scheduled and event-triggered runs.
+- **Repository-wide action policy:** inspect all six workflows, not
+  just merge synchronization. Verify the action refs using official
+  GitHub tag objects, dereferencing annotated tags to their commits.
+  `labeler.yml` uses `actions/checkout@v6` and
+  `crazy-max/ghaction-github-labeler@v5.3.0`;
+  `dependabot-auto-merge.yml` uses `dependabot/fetch-metadata@v2.5.0`;
+  `release-drafter.yml` uses
+  `release-drafter/release-drafter@v7.2.1`.
+  Protect all workflow `uses` entries with a shared regression test.
+- **Structural security tests:** parse workflow YAML with a safe,
+  non-coercing loader so the `on` key stays literal. Assert the exact
+  trigger, permission mapping, merge/default-branch condition, trusted
+  checkout ref, disabled persisted credentials, pinned actions and
+  scheduled recovery. Negative tests must reject additional triggers
+  or rights, moved guards and bracket-notation PR-head checkouts.
+  Tests cannot establish actual deployment; verify a new real
+  scheduled and merge-triggered run after merging.
 
 ## Deployment and limitations
 

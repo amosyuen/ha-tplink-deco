@@ -6,3 +6,4 @@ pycryptodome>=3.12.0
 pytest>=8.3.0
 pytest-asyncio>=1.0.0
 pytest-cov>=6.0.0
+PyYAML>=6.0.2
