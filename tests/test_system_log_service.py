@@ -225,6 +225,7 @@ async def test_rejects_invalid_log_level_before_router_request(
         COORDINATOR_DECOS_KEY
     ].api.async_get_system_log.assert_not_awaited()
 
+
 class _FailingLogWriter:
     """Simulate failure after a new file has already been created."""
 
