@@ -8,10 +8,10 @@ from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
+import aiohttp
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.helpers.update_coordinator import UpdateFailed
-import aiohttp
 import pytest
 
 from custom_components.tplink_deco import async_setup_entry
@@ -497,6 +497,7 @@ async def test_mobile_coordinator_shutdown_does_not_call_custom_close() -> None:
     deco.api.async_logout.assert_awaited_once()
     assert entry.entry_id not in hass.data[DOMAIN]
 
+
 @pytest.mark.parametrize("status", [403, 502])
 @pytest.mark.asyncio
 async def test_real_mobile_http_failure_redacts_authenticated_request(
@@ -594,9 +595,7 @@ async def test_real_mobile_connection_error_never_logs_private_host(
     api._async_post = TplinkDecoApi._async_post.__get__(api, TplinkDecoApi)
     connection_key = SimpleNamespace(host=PRIVATE_VALUE, port=80, ssl=False)
     api._session.post = AsyncMock(
-        side_effect=aiohttp.ClientConnectorError(
-            connection_key, OSError(PRIVATE_VALUE)
-        )
+        side_effect=aiohttp.ClientConnectorError(connection_key, OSError(PRIVATE_VALUE))
     )
     caplog.set_level(logging.DEBUG)
     with pytest.raises(aiohttp.ClientConnectorError):
