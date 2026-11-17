@@ -5,7 +5,6 @@ import logging
 from typing import Any
 
 import aiohttp
-
 from homeassistant import config_entries
 from homeassistant.components.device_tracker.const import CONF_CONSIDER_HOME
 from homeassistant.components.device_tracker.const import CONF_SCAN_INTERVAL
