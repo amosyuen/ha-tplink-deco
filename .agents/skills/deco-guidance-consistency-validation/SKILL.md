@@ -46,6 +46,14 @@ Keep `AI_POLICY.md` unchanged unless governing policy itself changes.
   still described a pre-mobile three-coordinator snapshot. Reconcile
   every status claim with the **target ref**, distinguishing optional
   PR-branch behavior from already merged main behavior.
+- **PR #44 merge-status drift:** the combined issue #2 checklist was
+  marked complete by merge-sync when only the **plain-text** half
+  (#650) had merged and gzip/tar (#673) was missing; the issue
+  status simultaneously said "merged" and "not merged". On
+  combined upstream tasks, verify **all subtasks** against `main`
+  before checking a box. After a merge, reconcile conflicting
+  prose, final SHA, the still-outstanding half and exact checklist
+  state. A historical PR-body statement is not evidence of deployment.
 - **Post-merge status drift:** the upstream sync skill still stated that
   upstream #637 remained open during PR #42 after PR #42 had merged.
   Check linked work items and cross-skill references against real

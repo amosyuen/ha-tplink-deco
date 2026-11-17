@@ -1153,7 +1153,7 @@ policy for AI-assisted development.
 - Make the smallest change that meets the issue's acceptance criteria,
   document user-visible behavior, and explain regression coverage in the PR.
 
-## Manual system-log export (upstream #650; PR #44; issue #2)
+## Manual system-log export (merged PR #44; compressed log PR #45; issue #2)
 
 - **Manual, single-entry action:** register `download_system_log` once;
   resolve the selected **loaded** Deco entry when called, rejecting
@@ -1195,11 +1195,24 @@ policy for AI-assisted development.
   guaranteed removal or Windows reparse-point/ACL safety. Document
   these limitations; any stronger guarantee requires explicit
   platform-aware implementation and adversarial regression tests.
-- **Upstream scope:** this PR covers manual plain-text #650 only.
-  gzip/tar snapshots (#673), syslog forwarding (#666), legacy S7
-  sessions, physical router verification and Windows ACL validation
-  remain outstanding. Keep combined #650/#673 tracking item
-  unchecked until full parity is merged and verified. Follow the
+- **Compressed snapshot backport (upstream #673; PR #45):**
+  preserve PR #44's manual-only download, strict UTF-8 and existing
+  JSON/auth-expiration error flow. Handle gzip, tar and gzip-wrapped
+  tar without disk extraction; choose `syslog.log` by exact basename
+  among regular members or the first regular member, never a link.
+  Cap both compressed network bytes **and inflated bytes** at 8 MiB;
+  limit tar-member scanning and decode outside the Home Assistant
+  event loop. Reject corrupted, truncated, binary, oversized and
+  non-text payloads with fixed errors, no raw upstream exception
+  messages and no additional authentication retry. Test gzip bombs,
+  tar traversal/link metadata, empty archives and distinct MIME types.
+- **Remaining scope:** the plain-text portion (#650) merged in PR #44.
+  Compressed manual snapshots (#673) belong to **open PR #45**, not
+  deployed `main` before verified merge. Syslog forwarding (#666),
+  legacy S7 sessions, physical router verification and Windows ACL
+  validation remain outstanding. Keep issue #2 open and the combined
+  #650/#673 checklist unchecked pending verified merge and remaining
+  acceptance criteria. Follow the
   [system-log validation skill](.agents/skills/deco-system-log-validation/SKILL.md)
   and verify the two Python/HA matrices, pre-commit, HACS and
   Hassfest on the **same final commit**.

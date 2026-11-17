@@ -14,7 +14,7 @@ reboot_deco:
 download_system_log:
   name: Download system log
   description: >-
-    Download a plain-text Deco system log on demand to a private file under
+    Download and decode a Deco system log on demand to a private file under
     the Home Assistant configuration directory. System logs may contain
     personal or network data; protect and remove exports when no longer needed.
   fields:

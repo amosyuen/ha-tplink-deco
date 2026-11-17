@@ -550,19 +550,19 @@ Physical firmware and Recorder/history behavior remain unverified.
 PR #43 is merged; this behavior is present on `main` but physical
 firmware behavior remains unverified.
 
-## Manual system-log export (upstream #650; PR #44, not merged)
+## Manual system-log export (upstream #650; merged PR #44)
 
-The proposed `tplink_deco.download_system_log` action is registered
+The merged `tplink_deco.download_system_log` action is registered
 once and chooses a currently loaded config entry at invocation.
 When multiple Deco entries are loaded, a valid `config_entry_id` is
 mandatory; unknown or unloaded entries fail before router access.
 The three existing entry services and their lifecycle remain unchanged.
 
 The action first builds a snapshot through authenticated encrypted
-`admin/log_export?form=feedback_log`, then retrieves the plain-text
-snapshot through the unencrypted `form=save_log` request. It accepts
-only valid UTF-8 plain-text payloads of up to 8 MiB; unsupported,
-invalid and oversized responses never create an output file. Session
+`admin/log_export?form=feedback_log`, then retrieves the snapshot through the unencrypted `form=save_log`
+request. On merged `main`, only plain UTF-8 log text up to 8 MiB is
+accepted; unsupported, invalid and oversized responses create no file.
+Compressed decoding in PR #45 is an additive, not-yet-merged feature. Session
 expiry permits one shared re-login. The Home Assistant action converts
 router authentication failures, timeouts, interrupted connections and
 other API failures into fixed user-facing service errors without retaining
@@ -588,6 +588,22 @@ Router logs may contain sensitive network data and must be stored,
 shared and removed with care. The action does not populate any
 diagnostic or Recorder entity, forward logs or add polling.
 
-Compressed gzip/tar snapshots (upstream #673), legacy encrypted S7
-sessions and syslog forwarding (upstream #666) remain outside PR #44.
-No real firmware or Windows ACL tests have yet been performed.
+### Compressed snapshot decoding (upstream #673; open PR #45)
+
+PR #45 extends the manual action to accept gzip, tar and gzip-wrapped
+tar snapshots, including compressed data mislabeled as `text/plain`.
+Both compressed HTTP bytes and inflated data are capped at 8 MiB.
+Tar decoding selects the exact `syslog.log` basename among regular
+members or falls back to the first regular member; links, directories
+and device entries are ignored and no paths are extracted to disk.
+All parsing is performed off the event loop. Corrupted/oversized
+archives, unexpected binary data and malformed UTF-8 fail with fixed,
+privacy-safe errors. JSON error bodies retain the existing bounded
+re-login/error contract. The file output remains plain UTF-8 text;
+there are no new entities, polling or network-forwarding operations.
+
+This behavior is **on PR #45 only** until its merge is independently
+verified. Legacy encrypted S7 sessions and syslog forwarding (#666)
+are not implemented. Physical firmware and Windows ACL tests remain
+unverified, as do the parent-symlink race and best-effort cleanup
+limitations documented above.

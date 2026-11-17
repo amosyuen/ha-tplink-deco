@@ -311,7 +311,7 @@ Configurable:
 - `tplink_deco.pause_polling`
 - `tplink_deco.resume_polling`
 - `tplink_deco.reboot_deco`
-- `tplink_deco.download_system_log` (manual, proposed in PR #44)
+- `tplink_deco.download_system_log` (manual; merged in PR #44)
 
 ---
 
@@ -407,7 +407,7 @@ target:
     - d7f96b1f312d83f195b35ecdfbb3b02b
 ```
 
-#### Download system log (upstream #650; PR #44)
+#### Download system log (upstream #650; merged PR #44)
 
 The optional `tplink_deco.download_system_log` action downloads a snapshot
 only when explicitly called. It writes a **new**, plain-text UTF-8 file
@@ -443,11 +443,22 @@ configuration directory under untrusted write access. A failed
 write triggers best-effort removal of a partial export, which may
 still need manual cleanup if the filesystem prevents deletion.
 
-This PR supports plain-text UTF-8 logs only. Gzip/tar snapshots
-(upstream #673), legacy S7 sessions and syslog forwarding (#666)
-are separate, unfinished features. Unsupported snapshot formats
-are rejected without writing an export. Physical router behavior
-is not yet verified.
+The manual plain-text action was merged in PR #44. **PR #45, not
+yet merged**, adds transparent gzip, tar and gzip-wrapped tar snapshot
+decoding (upstream #673), even where the firmware labels a compressed
+response `text/plain`. Archives are processed in memory and never
+extracted to arbitrary paths. The exact regular `syslog.log` member
+is preferred, otherwise the first regular member; links are ignored.
+Both the downloaded bytes and expanded data have an 8 MiB limit,
+and archive decoding runs outside Home Assistant's event loop.
+Invalid archives, oversized expansion and invalid UTF-8 are rejected
+without writing an export. The action still writes only a plain-text
+`.log` file. Unlike upstream's replacement-byte strategy, the fork
+retains strict UTF-8 validation to avoid silent loss of log data.
+
+Legacy S7 sessions and syslog forwarding (#666) remain separate.
+Physical router behavior and Windows filesystem permission behavior
+have not been independently verified.
 
 {% if not installed %}
 
