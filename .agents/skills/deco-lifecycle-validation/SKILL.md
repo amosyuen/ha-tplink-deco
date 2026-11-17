@@ -11,8 +11,8 @@ description: "Use when changing Home Assistant entry setup/unload, coordinator s
    current `custom_components/tplink_deco/__init__.py`, `coordinator.py`,
    `api.py`, existing lifecycle tests, and any relevant upstream PR.
 2. Identify the coordinators **actually created by this fork** and the
-   ownership of their resources. With PR #41, the fork has required Deco
-   and client coordinators plus a separate **optional WLAN**
+   ownership of their resources. On PR #41's branch the fork has required
+   Deco and client coordinators plus a separate **optional WLAN**
    `DataUpdateCoordinator`; the aiohttp `ClientSession` is owned by
    Home Assistant. Do not assume upstream mobile coordinators or legacy
    outer-session protocols exist. Verify each coordinator's supported
