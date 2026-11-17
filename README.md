@@ -27,6 +27,20 @@ This integration provides local polling control and diagnostics for TP-Link Deco
 - Memory usage (raw + smoothed)
 - Backhaul and network diagnostics
 
+### Optional read-only WiFi status (upstream #627)
+
+For firmware exposing the local `wlan` endpoint, the integration provides
+read-only Main, Guest and IoT WiFi binary sensors. Only networks confirmed by
+the firmware are created; Main WiFi is disabled by default. The sensors use
+the regular polling interval, link to the master Deco, and start without
+delaying existing Deco and client discovery.
+
+If WiFi status cannot be read, existing Deco and client entities continue
+normally. After repeated wireless failures, retries are deferred by up to
+five minutes. The integration does not change wireless settings or expose
+SSIDs, WiFi passwords, PSKs or raw wireless data. SSID exposure from upstream
+#637 remains a separate, opt-in feature to review.
+
 ### Optional client device linking
 
 **Link client trackers to devices by MAC address** is enabled by default,
