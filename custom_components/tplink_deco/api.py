@@ -568,6 +568,10 @@ class TplinkDecoApi:
                                 error_code,
                                 response_json,
                             )
+                        if params.get("form") == "wlan":
+                            raise UnexpectedApiException(
+                                "Wireless status request was rejected"
+                            ) from None
                         raise UnexpectedApiException(f"{context} error: {error_code}")
 
                 return response_json
@@ -596,11 +600,11 @@ class TplinkDecoApi:
                 raise err
             if err.status == 403:
                 self.clear_auth()
-                message = (
-                    f"{context} Forbidden error: HTTP {err.status}"
-                    if params.get("form") == "wlan"
-                    else f"{context} Forbidden error: {err}"
-                )
+                if params.get("form") == "wlan":
+                    raise ForbiddenException(
+                        "Wireless status forbidden (HTTP 403)"
+                    ) from None
+                message = f"{context} Forbidden error: {err}"
                 raise ForbiddenException(message) from err
             raise err
         except (aiohttp.ClientPayloadError, aiohttp.ServerDisconnectedError) as err:
