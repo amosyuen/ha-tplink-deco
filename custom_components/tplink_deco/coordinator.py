@@ -647,6 +647,31 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             await asyncio.gather(*tasks, return_exceptions=True)
             raise
 
+    @staticmethod
+    def _validate_client_responses(
+        responses: list[tuple[list[dict[str, Any]] | None, bool]],
+    ) -> None:
+        """Reject malformed node replies before changing cached client state."""
+        preview_time = dt_util.utcnow()
+        for response, _ in responses:
+            if response is None:
+                continue
+            if not isinstance(response, list):
+                raise ValueError("Invalid Deco client list response")
+
+            seen_macs: set[str] = set()
+            for item in response:
+                if not isinstance(item, dict):
+                    raise ValueError("Invalid Deco client list response")
+                mac = item.get("mac")
+                if not isinstance(mac, str) or not mac.strip() or mac in seen_macs:
+                    raise ValueError("Invalid Deco client list response")
+                seen_macs.add(mac)
+                try:
+                    TpLinkDecoClient(mac).update(item, "", preview_time)
+                except Exception:
+                    raise ValueError("Invalid Deco client list response") from None
+
     async def _async_update_data(self):
         """Measure actual client queries, excluding pause and backoff skips."""
         if self._deco_update_coordinator.paused:
@@ -694,6 +719,9 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         deco_client_responses = (
             [] if global_only else await self._async_list_clients_per_deco(deco_macs)
         )
+        # Reject malformed peer data before applying any backoff or cached
+        # client mutations. The global fallback has its own full preflight.
+        self._validate_client_responses(deco_client_responses)
         server_error = any(error for _, error in deco_client_responses)
         if server_error:
             self._apply_client_backoff()
@@ -750,9 +778,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
                 if client is None:
                     client_added = True
                     client = TpLinkDecoClient(client_mac)
-                    _LOGGER.debug(
-                        "_async_update_data: Found new client mac=%s", client.mac
-                    )
+                    _LOGGER.debug("New Deco client discovered during polling")
                 client.update(deco_client, deco_mac, utc_point_in_time)
                 clients[client_mac] = client
 
