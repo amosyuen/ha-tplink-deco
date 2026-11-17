@@ -61,6 +61,26 @@ Keep `AI_POLICY.md` unchanged unless governing policy itself changes.
   still described a pre-mobile three-coordinator snapshot. Reconcile
   every status claim with the **target ref**, distinguishing optional
   PR-branch behavior from already merged main behavior.
+- **PR #49 merge-state and deleted-branch evidence (2026-11-17):**
+  GitHub may populate `merge_commit_sha` for a PR that remains
+  `open` with `merged=false`. Confirm both `merged=true` and
+  `merged_at` and inspect the expected implementation on `main`
+  before declaring anything merged. A deleted branch ref can return
+  HTTP 404 after a verified merge (as with PR #48): read its recorded
+  merge commit or current `main`, not a recreated or guessed branch.
+  Record the final source ref and distinguish committed guidance on
+  an **open PR branch** from guidance already available on `main`.
+- **PR #49 failure-source triage:** the initial Python 3.14 test failure
+  came from a missing `OptionsFlow.handler` / known-entry lookup
+  fixture, not from the production error-handling fix; a separate
+  pre-commit failure required only Prettier Markdown emphasis changes.
+  For each new failure or review finding, compare the active head
+  and real traceback/hook diff; determine whether the cause lies in
+  production code, fixture wiring, formatting or the external CI
+  environment. Fix only the verified cause and preserve prior test
+  contracts. Reply to the specific inline review thread and resolve it
+  **only after** verifying the fix; re-run all five checks on the last
+  code **or documentation** commit.
 - **PR #45 merge-status drift:** the issue-sync workflow labeled
   PR #45 "merged" but left "open, ready for review, not merged"
   prose and checklist text. Reconcile the live PR's `merged_at`,
