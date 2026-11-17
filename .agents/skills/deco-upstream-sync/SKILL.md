@@ -62,6 +62,18 @@ description: "Use when comparing, backporting, reviewing, or implementing change
   in captured DEBUG logs. Raw propagated exceptions are a
   **separate compatibility/privacy consideration**; do not claim
   this log-only hardening sanitizes their traceback objects.
+- **PR #50 deterministic log-error matrix:** assert exact recorded
+  messages for HTTP 400 (`Deco API HTTP error: 400`), 401
+  (`Deco API authentication HTTP error: 401`), 502
+  (`Deco API HTTP error: 502`) and client-list 503
+  (`Deco client-list server error: HTTP 503`). Do not expect the
+  literal `HTTP 400` substring in the generic `error: 400`
+  label; that assumption caused the first regression failure.
+  Separately assert the unchanged exception **type**, status,
+  login invalidation, cookie/token retention and secret exclusion
+  in DEBUG logs for each row. Formatter failures are independent:
+  apply only Black/Prettier's reported diff and run all five CI jobs
+  again on the final branch SHA.
 - Keep tests for unimplemented features (S7 outer sessions and syslog
   forwarding) explicitly **pending**, not failed or silently claimed as
   ported. This is one focused increment toward test parity; do not check
