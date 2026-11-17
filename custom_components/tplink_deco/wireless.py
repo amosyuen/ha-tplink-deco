@@ -126,8 +126,7 @@ def _resolve_band_sections(
         for key, value in config.items():
             if _key_matches(path[0], key):
                 sections.extend(
-                    (key, section)
-                    for section in _resolve_sections(value, (path[1:],))
+                    (key, section) for section in _resolve_sections(value, (path[1:],))
                 )
     return sections
 
@@ -153,10 +152,7 @@ def wireless_ssid_attributes(names: dict[str, str]) -> dict[str, str]:
     """Expose a common name once, or individual names per band."""
     if len(set(names.values())) == 1:
         return {ATTR_SSID: next(iter(names.values()))}
-    return {
-        f"{ATTR_SSID}_{band}": name
-        for band, name in sorted(names.items())
-    }
+    return {f"{ATTR_SSID}_{band}": name for band, name in sorted(names.items())}
 
 
 class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator[dict[str, bool]]):
