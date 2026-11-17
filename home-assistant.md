@@ -559,11 +559,12 @@ mandatory; unknown or unloaded entries fail before router access.
 The three existing entry services and their lifecycle remain unchanged.
 
 The action first builds a snapshot through authenticated encrypted
-`admin/log_export?form=feedback_log`, then retrieves the snapshot through the unencrypted `form=save_log`
-request. On merged `main`, only plain UTF-8 log text up to 8 MiB is
-accepted; unsupported, invalid and oversized responses create no file.
-Compressed decoding in PR #45 is an additive, not-yet-merged feature. Session
-expiry permits one shared re-login. The Home Assistant action converts
+`admin/log_export?form=feedback_log`, then retrieves it through the
+unencrypted `form=save_log` request. On merged `main` (PRs
+#44/#45), plain text, gzip, tar and gzip-tar are supported;
+network and expanded payloads are capped at 8 MiB. Unsupported,
+invalid and oversized responses create no file. Session expiry
+permits one shared re-login. The Home Assistant action converts
 router authentication failures, timeouts, interrupted connections and
 other API failures into fixed user-facing service errors without retaining
 the original exception context; unexpected non-text results are rejected
@@ -588,7 +589,7 @@ Router logs may contain sensitive network data and must be stored,
 shared and removed with care. The action does not populate any
 diagnostic or Recorder entity, forward logs or add polling.
 
-### Compressed snapshot decoding (upstream #673; open PR #45)
+### Compressed snapshot decoding (upstream #673; merged PR #45)
 
 PR #45 extends the manual action to accept gzip, tar and gzip-wrapped
 tar snapshots, including compressed data mislabeled as `text/plain`.
@@ -602,8 +603,12 @@ privacy-safe errors. JSON error bodies retain the existing bounded
 re-login/error contract. The file output remains plain UTF-8 text;
 there are no new entities, polling or network-forwarding operations.
 
-This behavior is **on PR #45 only** until its merge is independently
-verified. Legacy encrypted S7 sessions and syslog forwarding (#666)
-are not implemented. Physical firmware and Windows ACL tests remain
-unverified, as do the parent-symlink race and best-effort cleanup
-limitations documented above.
+The compressed decoder is present on `main` after merge commit
+`a1208e7a0258271df50f69b4b6a51cf39e6a9b1c`. Follow-up PR #46
+closes two manual-export error paths: standalone router auth/error
+JSON with an incorrect plain-text/binary MIME label, and unwanted
+transient retries after an incomplete log response. Other API
+retry defaults remain unchanged. This follow-up is **not deployed
+until PR #46 merges**. Legacy S7 sessions and syslog forwarding
+(#666) remain unimplemented. Physical firmware/Windows ACL tests,
+the parent-symlink race and best-effort cleanup remain unverified.

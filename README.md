@@ -443,9 +443,10 @@ configuration directory under untrusted write access. A failed
 write triggers best-effort removal of a partial export, which may
 still need manual cleanup if the filesystem prevents deletion.
 
-The manual plain-text action was merged in PR #44. **PR #45, not
-yet merged**, adds transparent gzip, tar and gzip-wrapped tar snapshot
-decoding (upstream #673), even where the firmware labels a compressed
+The manual plain-text action merged in PR #44 and gzip/tar support
+merged in PR #45. These provide transparent gzip, tar and
+gzip-wrapped tar snapshot decoding (upstream #673), even where the
+firmware labels a compressed
 response `text/plain`. Archives are processed in memory and never
 extracted to arbitrary paths. The exact regular `syslog.log` member
 is preferred, otherwise the first regular member; links are ignored.
@@ -455,6 +456,13 @@ Invalid archives, oversized expansion and invalid UTF-8 are rejected
 without writing an export. The action still writes only a plain-text
 `.log` file. Unlike upstream's replacement-byte strategy, the fork
 retains strict UTF-8 validation to avoid silent loss of log data.
+
+Follow-up PR #46 adds detection of router authentication/error JSON
+mislabeled as text/plain or binary; such errors are never written as
+log content. Incomplete manual log downloads return a fixed
+connection failure without another transient retry, while ordinary
+Deco API retry defaults remain unchanged. This fix is not available
+on `main` before PR #46 merges.
 
 Legacy S7 sessions and syslog forwarding (#666) remain separate.
 Physical router behavior and Windows filesystem permission behavior

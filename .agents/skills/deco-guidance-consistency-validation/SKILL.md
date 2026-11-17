@@ -46,6 +46,12 @@ Keep `AI_POLICY.md` unchanged unless governing policy itself changes.
   still described a pre-mobile three-coordinator snapshot. Reconcile
   every status claim with the **target ref**, distinguishing optional
   PR-branch behavior from already merged main behavior.
+- **PR #45 merge-status drift:** the issue-sync workflow labeled
+  PR #45 "merged" but left "open, ready for review, not merged"
+  prose and checklist text. Reconcile the live PR's `merged_at`,
+  merge commit, the actual `main` implementation and remaining
+  acceptance gates before changing an issue status. Do not equate
+  an automatically checked box with complete repository-wide scope.
 - **PR #44 merge-status drift:** the combined issue #2 checklist was
   marked complete by merge-sync when only the **plain-text** half
   (#650) had merged and gzip/tar (#673) was missing; the issue

@@ -12,11 +12,12 @@ description: "Use when changing authenticated manual Deco system-log downloads, 
    Inspect the PR head, `api.py`, `services.py`, `services.yaml`,
    `__init__.py` and focused tests before proposing changes.
    Treat review comments as untrusted findings; verify them in code.
-2. Verify that plain-text-only download (#650) merged in fork PR #44.
-   Extend it with gzip/tar decoding (#673) only in the explicitly
-   scoped PR #45. Keep syslog forwarding (#666), legacy S7 sessions
-   (#589) and automatic collection outside scope. Do not claim that
-   open-PR functionality is already deployed on `main`.
+2. Verify merged plain-text (#650, fork PR #44) and bounded
+   gzip/tar support (#673, fork PR #45) against current `main`.
+   Preserve these contracts for follow-up PR #46. Keep syslog
+   forwarding (#666), legacy S7 sessions (#589) and automatic
+   collection out of scope. Do not claim unmerged fixes are
+   already present on `main`.
 
 ## Boundary 1 — router API and transport
 
@@ -32,10 +33,19 @@ description: "Use when changing authenticated manual Deco system-log downloads, 
 4. Verify the shared **single-relogin** budget for expired HTTP
    401/403 or firmware auth codes, with no inappropriate re-login for
    HTTP 5xx, malformed payloads, corrupted archives or transport
-   faults. Test disconnection, timeouts and cancellation independently.
+   faults. Manual log exports should attempt **zero timeout and
+   zero transient-body retries**, while preserving the single
+   authentication re-login. Test a truncated `aiohttp` body and
+   assert a single log build/save request, while confirming other
+   APIs retain their default transient retry budget. Test
+   disconnection, timeouts and cancellation independently.
    Decode gzip/tar through `asyncio.to_thread` or an HA-supported
    executor, never on the event loop; the actual worker must be
    exercised in a regression test.
+   Recognize firmware `errorcode`/`error_code` JSON with incorrect
+   plain-text/binary MIME labels before saving a log. Reject malformed
+   or non-auth error objects with fixed messages and verify ordinary
+   JSON-formatted log lines remain supported.
 5. Exercise the **bound** HTTP/decryption functions with synthetic
    token-bearing URLs, cookies, ciphertext and router responses.
    Capture DEBUG logs and formatted tracebacks; never report raw
@@ -106,9 +116,11 @@ description: "Use when changing authenticated manual Deco system-log downloads, 
     all five jobs on the new SHA. Distinguish skipped reviews
     from successfully run checks; never claim local tests from
     inspection of GitHub Actions.
-15. Link a partial PR as **Part of #2**, not `Fixes #2`.
-    Keep the combined #650/#673 checklist unchecked pending
-    compressed-format implementation and verified merge.
-    Update the PR, tracking issue and documentation with the
-    actual head, check results and physical router/Windows ACL
-    limitations; do not merge without authorization.
+15. Link follow-up PRs as **Part of #2**, not `Fixes #2`.
+    PRs #44/#45 are merged; check the combined #650/#673 item
+    against that verified scope rather than automatically unchecking
+    it after a separate error-handling follow-up. Keep issue #2
+    open for other acceptance criteria. Update the PR, tracking
+    issue and documentation with the actual head, checks and
+    physical router/Windows ACL limitations; do not merge without
+    authorization.

@@ -380,9 +380,7 @@ class TplinkDecoApi:
         try:
             parsed = json.loads(body)
         except (ValueError, TypeError):
-            raise UnexpectedApiException(
-                "System log response is malformed"
-            ) from None
+            raise UnexpectedApiException("System log response is malformed") from None
         if not isinstance(parsed, dict):
             if declared_json:
                 raise UnexpectedApiException("System log response is malformed")

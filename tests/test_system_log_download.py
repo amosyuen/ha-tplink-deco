@@ -453,9 +453,7 @@ async def test_mislabeled_firmware_auth_error_reauthenticates_once(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "content_type", ["text/plain", "application/octet-stream"]
-)
+@pytest.mark.parametrize("content_type", ["text/plain", "application/octet-stream"])
 async def test_mislabeled_firmware_non_auth_error_is_rejected(
     content_type: str, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -466,7 +464,9 @@ async def test_mislabeled_firmware_non_auth_error_is_rejected(
         content_type=content_type,
     )
     with caplog.at_level(logging.DEBUG):
-        with pytest.raises(UnexpectedApiException, match="download was rejected") as caught:
+        with pytest.raises(
+            UnexpectedApiException, match="download was rejected"
+        ) as caught:
             await api.async_get_system_log()
 
     assert api._async_post.await_count == 1

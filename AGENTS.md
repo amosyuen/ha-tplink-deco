@@ -1153,7 +1153,7 @@ policy for AI-assisted development.
 - Make the smallest change that meets the issue's acceptance criteria,
   document user-visible behavior, and explain regression coverage in the PR.
 
-## Manual system-log export (merged PR #44; compressed log PR #45; issue #2)
+## Manual system-log export (merged PRs #44/#45; issue #2)
 
 - **Manual, single-entry action:** register `download_system_log` once;
   resolve the selected **loaded** Deco entry when called, rejecting
@@ -1206,16 +1206,31 @@ policy for AI-assisted development.
   non-text payloads with fixed errors, no raw upstream exception
   messages and no additional authentication retry. Test gzip bombs,
   tar traversal/link metadata, empty archives and distinct MIME types.
-- **Remaining scope:** the plain-text portion (#650) merged in PR #44.
-  Compressed manual snapshots (#673) belong to **open PR #45**, not
-  deployed `main` before verified merge. Syslog forwarding (#666),
-  legacy S7 sessions, physical router verification and Windows ACL
-  validation remain outstanding. Keep issue #2 open and the combined
-  #650/#673 checklist unchecked pending verified merge and remaining
-  acceptance criteria. Follow the
-  [system-log validation skill](.agents/skills/deco-system-log-validation/SKILL.md)
-  and verify the two Python/HA matrices, pre-commit, HACS and
-  Hassfest on the **same final commit**.
+- **Firmware error-format lesson (PR #46):** a router may send
+  standalone `errorcode`/`error_code` JSON with `text/plain` or
+  `application/octet-stream`, not only `application/json`. A
+  MIME-only dispatch can therefore save an authentication error
+  as a log file. Recognize narrowly scoped error-shaped JSON
+  before log decoding, apply the existing one-relogin budget for
+  expiry, reject malformed/error payloads with fixed messages,
+  and preserve JSON-formatted log entries without error fields.
+  Test all cases with synthetic secrets in DEBUG logs/tracebacks.
+- **Per-call transport retry lesson (PR #46):** disabling timeout
+  retries does not necessarily disable the shared helper's transient
+  retries. Set both timeout and transient retries to **zero for
+  explicit manual log downloads**, while retaining **one auth
+  re-login** and preserving default retry settings for other APIs.
+  Test a truncated `aiohttp` response against the actual helper
+  and assert one log build/save attempt.
+- **Remaining scope:** manual plain-text (#650) and bounded gzip/tar
+  (#673) merged in PRs #44/#45 and are present on `main`.
+  Syslog forwarding (#666), legacy S7 sessions, physical router
+  verification and Windows ACL validation remain outstanding.
+  Keep issue #2 open for other acceptance criteria; reconcile the
+  combined #650/#673 checklist against the merged implementation.
+  Follow the [system-log validation skill](.agents/skills/deco-system-log-validation/SKILL.md)
+  and verify both Python/HA matrices, pre-commit, HACS and Hassfest
+  on the **same final commit**.
 
 ## Optional mobile WAN usage (upstream #631, issue #2)
 
