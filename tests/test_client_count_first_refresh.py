@@ -14,6 +14,7 @@ from custom_components.tplink_deco.coordinator import TpLinkDeco
 from custom_components.tplink_deco.coordinator import TpLinkDecoClient
 from custom_components.tplink_deco.coordinator import TpLinkDecoData
 from custom_components.tplink_deco.coordinator import TplinkDecoClientUpdateCoordinator
+from custom_components.tplink_deco.exceptions import TimeoutException
 from custom_components.tplink_deco.sensor import TplinkDecoClientCountSensor
 from custom_components.tplink_deco.sensor import async_setup_entry
 
@@ -79,6 +80,9 @@ def _client_coordinator() -> tuple[TplinkDecoClientUpdateCoordinator, MagicMock]
 async def test_only_valid_per_node_responses_establish_count_readiness() -> None:
     """Keep an unpolled peer unverified through partial failures and backoff."""
     coordinator, deco_coordinator = _client_coordinator()
+    coordinator.api.async_list_clients = AsyncMock(
+        side_effect=TimeoutException("synthetic global timeout")
+    )
 
     assert coordinator.has_successful_refresh is False
     assert coordinator.successfully_polled_deco_macs == set()
