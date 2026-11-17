@@ -39,7 +39,9 @@ NETWORK_RESPONSE = {
 }
 
 
-def _coordinator(*responses: object, consent: bool = False) -> TplinkDecoWirelessUpdateCoordinator:
+def _coordinator(
+    *responses: object, consent: bool = False
+) -> TplinkDecoWirelessUpdateCoordinator:
     """Create an isolated wireless coordinator without router or HA I/O."""
     coordinator = object.__new__(TplinkDecoWirelessUpdateCoordinator)
     coordinator.api = MagicMock()
@@ -53,7 +55,9 @@ def _coordinator(*responses: object, consent: bool = False) -> TplinkDecoWireles
     return coordinator
 
 
-def _sensor(*, consent: bool, names: dict[str, dict[str, str]]) -> TplinkDecoWirelessBinarySensor:
+def _sensor(
+    *, consent: bool, names: dict[str, dict[str, str]]
+) -> TplinkDecoWirelessBinarySensor:
     """Create a sensor with a supported current master and stub coordinator."""
     sensor = object.__new__(TplinkDecoWirelessBinarySensor)
     sensor.entity_description = next(
@@ -96,14 +100,18 @@ def _form_input(choice: object) -> dict[str, object]:
     }
 
 
-@pytest.mark.parametrize("stored, expected", [(None, False), (False, False), (True, True), ("true", False)])
+@pytest.mark.parametrize(
+    "stored, expected", [(None, False), (False, False), (True, True), ("true", False)]
+)
 def test_ssid_option_defaults_to_explicit_boolean_consent(
     stored: object, expected: bool
 ) -> None:
     """Legacy or invalid stored consent must never enable SSID exposure."""
     data = {} if stored is None else {CONF_EXPOSE_WIFI_SSIDS: stored}
     schema = vol.Schema(config_flow._get_schema(data))
-    key = next(marker for marker in schema.schema if marker.schema == CONF_EXPOSE_WIFI_SSIDS)
+    key = next(
+        marker for marker in schema.schema if marker.schema == CONF_EXPOSE_WIFI_SSIDS
+    )
 
     assert DEFAULT_EXPOSE_WIFI_SSIDS is False
     assert key.default() is expected
@@ -111,7 +119,9 @@ def test_ssid_option_defaults_to_explicit_boolean_consent(
         {"type": FlowResultType.FORM, "data_schema": schema}
     )
     assert json.dumps(result)
-    assert any(field["name"] == CONF_EXPOSE_WIFI_SSIDS for field in result["data_schema"])
+    assert any(
+        field["name"] == CONF_EXPOSE_WIFI_SSIDS for field in result["data_schema"]
+    )
 
 
 @pytest.mark.parametrize("invalid", ["true", "false", None, 1, 0, [], {}])
@@ -122,7 +132,9 @@ async def test_ssid_option_rejects_non_boolean_before_network(
 ) -> None:
     """Reject coerced or malformed consent without calling the Deco API."""
     flow = _flow(kind)
-    with patch.object(config_flow, "_async_test_credentials", AsyncMock()) as credentials:
+    with patch.object(
+        config_flow, "_async_test_credentials", AsyncMock()
+    ) as credentials:
         result = await (
             flow.async_step_user(_form_input(invalid))
             if kind == "user"
@@ -137,12 +149,12 @@ async def test_ssid_option_rejects_non_boolean_before_network(
 @pytest.mark.parametrize("consent", [False, True])
 @pytest.mark.parametrize("kind", ["user", "options"])
 @pytest.mark.asyncio
-async def test_ssid_option_is_persisted_in_both_flows(
-    kind: str, consent: bool
-) -> None:
+async def test_ssid_option_is_persisted_in_both_flows(kind: str, consent: bool) -> None:
     """Preserve the boolean choice and the other setup configuration."""
     flow = _flow(kind)
-    with patch.object(config_flow, "_async_test_credentials", AsyncMock(return_value={})):
+    with patch.object(
+        config_flow, "_async_test_credentials", AsyncMock(return_value={})
+    ):
         result = await (
             flow.async_step_user(_form_input(consent))
             if kind == "user"
@@ -208,10 +220,16 @@ async def test_ssids_are_absent_by_default_and_only_retained_with_consent(
     enabled = _coordinator(NETWORK_RESPONSE, consent=True)
 
     assert await default._async_update_data() == {
-        "main": True, "guest": True, "iot": False
+        "main": True,
+        "guest": True,
+        "iot": False,
     }
     assert default.ssids == {}
-    assert await enabled._async_update_data() == {"main": True, "guest": True, "iot": False}
+    assert await enabled._async_update_data() == {
+        "main": True,
+        "guest": True,
+        "iot": False,
+    }
     assert enabled.ssids["guest"] == {"band2_4": "Guests"}
     assert enabled.ssids["main"] == {"band2_4": "Home", "band5_1": "Home-5G"}
     assert PRIVATE_PASSWORD not in caplog.text
@@ -233,7 +251,9 @@ async def test_ssid_names_are_replaced_after_a_successful_response() -> None:
 
 
 @pytest.mark.parametrize("consent", [False, True])
-def test_wireless_sensor_hides_or_exposes_names_only_with_consent(consent: bool) -> None:
+def test_wireless_sensor_hides_or_exposes_names_only_with_consent(
+    consent: bool,
+) -> None:
     """Existing entity identities remain unchanged when consent changes."""
     sensor = _sensor(consent=consent, names={"guest": {"band2_4": "Guests"}})
     assert sensor.extra_state_attributes == ({"ssid": "Guests"} if consent else None)
