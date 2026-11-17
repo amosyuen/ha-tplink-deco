@@ -435,9 +435,7 @@ async def test_malformed_coordinator_response_obeys_retry_policy() -> None:
     assert coordinator._next_retry == 0.0
 
 
-def _wireless_sensor_with_master() -> tuple[
-    TplinkDecoWirelessBinarySensor, MagicMock
-]:
+def _wireless_sensor_with_master() -> tuple[TplinkDecoWirelessBinarySensor, MagicMock]:
     """Build a real wireless entity with an independent fake mesh coordinator."""
     master = TpLinkDeco(MASTER_MAC)
     master.name = "Master"
@@ -461,10 +459,13 @@ def test_wireless_sensor_preserves_id_but_invalidates_old_master() -> None:
     old_device = sensor.device_info["identifiers"]
 
     replacement = TpLinkDeco("02:00:00:00:62:02")
-    deco_coordinator.data = TpLinkDecoData(replacement, {
-        MASTER_MAC: sensor._master_deco,
-        replacement.mac: replacement,
-    })
+    deco_coordinator.data = TpLinkDecoData(
+        replacement,
+        {
+            MASTER_MAC: sensor._master_deco,
+            replacement.mac: replacement,
+        },
+    )
     assert sensor.available is False
     assert sensor.unique_id == old_id
     assert sensor.device_info["identifiers"] == old_device
