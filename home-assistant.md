@@ -215,13 +215,20 @@ hardening/test parity (PR #36) are merged.
   the configured `timeout_error_retries` count, independently of timeout
   and one-time re-login retry budgets. A temporary transport failure does
   not itself invalidate a known authenticated session.
-- HTTP **5xx** on per-node client polling uses a separate, per-entry,
-  non-blocking exponential backoff of **30, 60, 120, 240 and at most 300
-  seconds**. While active, skip client-list requests and keep the
-  previous client state. Successful peer-node results from the failing
-  cycle are still applied. Reset backoff only after all polled nodes
-  respond successfully; a valid empty list counts as a successful result.
-  This backoff does not stop unrelated Deco/device polling.
+- HTTP **5xx** on per-node client polling triggers **one global**
+  `client_list` query using `device_mac=default` when the master is
+  known. Successful global replies assign live clients to the real
+  master's MAC because the global API does not provide trustworthy
+  node associations. Satellite counts can temporarily be less precise.
+  A failed global query leaves valid peer results and cached clients
+  intact; authentication and non-5xx failures still propagate.
+- The independent per-entry **30, 60, 120, 240, up to 300 second**
+  non-blocking backoff limits repeated broken **per-node** requests.
+  After a successful global fallback, one global query per regular
+  refresh remains available throughout the per-node cooldown.
+  Once all per-node responses succeed after expiry, their real node
+  assignments return, query mode resets to `per_node` and backoff clears.
+  Paused polling and device/inventory refreshes remain unaffected.
 - Non-5xx HTTP or explicit auth-expiry responses do not silently enter the
   5xx backoff path. Backoff does not replace API-level retry limits.
 - **Proposed in the current issue #2 PR (upstream #556, partial):** use
@@ -234,8 +241,8 @@ hardening/test parity (PR #36) are merged.
   peer nodes succeed; consecutive-failure status still distinguishes
   partial success from all-node failure. Unexpected failures and
   cancellations cancel outstanding requests and their semaphore waiters.
-  The query mode remains `per_node`; fallback to one global client
-  list is **not** implemented by this change.
+  The global-list recovery is a later separate addition. Normal
+  per-node queries retain their zero timeout-retry override.
 
 ## 6. Router session and protocol behavior
 
@@ -288,8 +295,8 @@ hardening/test parity (PR #36) are merged.
   update, API response time and last error for each existing Deco/client
   coordinator; client timeouts and query mode. Timestamps are UTC-aware,
   durations use milliseconds, error values contain only exception class
-  names, and the query mode is `per_node` until global fallback is
-  separately implemented. Stable identities use `<master_mac>_<metric_key>`.
+  names; query mode reflects the last valid `per_node` or `global`
+  strategy. Stable identities use `<master_mac>_<metric_key>`.
   A paused, backoff-skipped or no-device cycle does not change health;
   completely failed client lists count as unsuccessful, even if client
   state is retained. PR #30 itself made no additional router calls and did
