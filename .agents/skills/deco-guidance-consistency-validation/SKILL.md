@@ -93,6 +93,17 @@ Keep `AI_POLICY.md` unchanged unless governing policy itself changes.
   never disable a hook or claim an earlier commit's green checks cover
   the updated head. Prettier may replace Markdown `*emphasis*`
   with `_emphasis_` even though the visible text is unchanged.
+- **PR #46 Markdown-table format regression (2026-11-17):** the new
+  system-log failure matrix passed both HA/Python suites, HACS and
+  Hassfest, but Pre-commit failed because configured Prettier 2.2.1
+  aligned its Markdown columns. Before committing newly added or edited
+  tables, run the repository's configured pre-commit formatter and
+  preserve its exact output; do not hand-tune spacing or disable the
+  hook to make CI green. If remote CI is the first formatter available,
+  inspect its complete hook diff, apply only the reported formatting
+  and revalidate all five jobs on the resulting commit. An unchanged
+  application/test suite does not exempt a documentation-only head
+  from final-head verification.
 
 The repository CI uses these verified commands:
 
@@ -116,9 +127,12 @@ skipped, cancelled or failed jobs distinctly from passes.
    are no contradictory status statements.
 6. Update the PR body and the existing tracking-issue status entry
    with the final head, actual checks and remaining limitations;
-   preserve other checklist items. A PR open on a branch does not
-   mean its feature is deployed. Resolve review threads only after
-   valid findings have been addressed; never auto-merge a PR.
+   preserve other checklist items. Recheck the five jobs **after their
+   completion** and replace stale "still running" or "must rerun"
+   statements with the verified outcomes and run links for that SHA.
+   A PR open on a branch does not mean its feature is deployed.
+   Resolve review threads only after valid findings have been
+   addressed; never auto-merge a PR.
 7. Report only independently verified results. Physical router tests,
    Recorder/history effects and CI jobs not actually run remain
    unverified. The work is complete only when guidance is committed,
