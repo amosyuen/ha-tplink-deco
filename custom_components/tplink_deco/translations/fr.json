@@ -6,7 +6,8 @@
         "data": {
           "username": "Identifiant",
           "password": "Mot de Passe",
-          "link_client_devices": "Associer les traceurs clients aux appareils par adresse MAC"
+          "link_client_devices": "Associer les traceurs clients aux appareils par adresse MAC",
+          "expose_wifi_ssids": "Afficher les noms des réseaux Wi-Fi sur les capteurs d’état Wi-Fi"
         }
       },
       "reauth_confirm": {
@@ -17,7 +18,9 @@
         }
       }
     },
-    "error": {}
+    "error": {
+      "invalid_expose_wifi_ssids": "Choisissez activé ou désactivé pour afficher les noms des réseaux Wi-Fi."
+    }
   },
   "options": {
     "step": {
@@ -26,9 +29,13 @@
         "data": {
           "username": "Identifiant",
           "password": "Mot de Passe",
-          "link_client_devices": "Associer les traceurs clients aux appareils par adresse MAC"
+          "link_client_devices": "Associer les traceurs clients aux appareils par adresse MAC",
+          "expose_wifi_ssids": "Afficher les noms des réseaux Wi-Fi sur les capteurs d’état Wi-Fi"
         }
       }
+    },
+    "error": {
+      "invalid_expose_wifi_ssids": "Choisissez activé ou désactivé pour afficher les noms des réseaux Wi-Fi."
     }
   }
 }
