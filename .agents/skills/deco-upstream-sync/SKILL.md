@@ -560,7 +560,6 @@ adds new sensor entities, or fails the repository's full regression suite:
 
 `AGENTS.md` remains the source of repository-wide policy and quality requirements.
 
-
 ## Optional WLAN status (upstream #627)
 
 Use this procedure when implementing optional Main, Guest and IoT WiFi
