@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import traceback
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
@@ -26,6 +27,7 @@ from custom_components.tplink_deco.coordinator import TpLinkDeco
 from custom_components.tplink_deco.coordinator import TpLinkDecoData
 from custom_components.tplink_deco.exceptions import ForbiddenException
 from custom_components.tplink_deco.exceptions import LoginInvalidException
+from custom_components.tplink_deco.exceptions import TimeoutException
 from custom_components.tplink_deco.exceptions import UnexpectedApiException
 from custom_components.tplink_deco.mobile import TplinkDecoMobileDataUpdateCoordinator
 from custom_components.tplink_deco.mobile import supports_mobile_data
@@ -232,8 +234,15 @@ async def test_mobile_data_failure_is_optional_and_privacy_safe(
     coordinator.api.async_get_mobile_data_usage = AsyncMock(
         side_effect=LoginInvalidException(PRIVATE_VALUE)
     )
-    with pytest.raises(ConfigEntryAuthFailed):
+    with pytest.raises(
+        ConfigEntryAuthFailed, match="Mobile data authentication failed"
+    ) as auth_error:
         await coordinator._async_update_data()
+    assert auth_error.value.__cause__ is None
+    assert auth_error.value.__context__ is None
+    assert PRIVATE_VALUE not in str(auth_error.value)
+    assert PRIVATE_VALUE not in caplog.text
+    assert coordinator.data == DATA_USAGE
 
 
 @pytest.mark.asyncio
@@ -498,7 +507,7 @@ async def test_mobile_coordinator_shutdown_does_not_call_custom_close() -> None:
     assert entry.entry_id not in hass.data[DOMAIN]
 
 
-@pytest.mark.parametrize("status", [403, 502])
+@pytest.mark.parametrize("status", [401, 403, 502])
 @pytest.mark.asyncio
 async def test_real_mobile_http_failure_redacts_authenticated_request(
     status: int, caplog: pytest.LogCaptureFixture
@@ -519,26 +528,21 @@ async def test_real_mobile_http_failure_redacts_authenticated_request(
     api._session.post = AsyncMock(return_value=response)
     caplog.set_level(logging.DEBUG)
 
-    if status == 403:
-        with pytest.raises(ForbiddenException) as error:
-            await api._async_post(
-                "Get mobile data usage",
-                "http://192.0.2.1/cgi-bin/luci/;stok=synthetic-token/admin/network",
-                {"form": "internet"},
-                "encoded",
-            )
-        assert PRIVATE_VALUE not in str(error.value)
-        assert api._stok is None
-    else:
-        with pytest.raises(aiohttp.ClientResponseError) as error:
-            await api._async_post(
-                "Get mobile data usage",
-                "http://192.0.2.1/cgi-bin/luci/;stok=synthetic-token/admin/network",
-                {"form": "internet"},
-                "encoded",
-            )
-        assert error.value.status == 502
+    expected_error = (
+        ForbiddenException if status in (401, 403) else UnexpectedApiException
+    )
+    with pytest.raises(expected_error) as error:
+        await api._async_post(
+            "Get mobile data usage",
+            "http://192.0.2.1/cgi-bin/luci/;stok=synthetic-token/admin/network",
+            {"form": "internet"},
+            "encoded",
+        )
+    assert error.value.__suppress_context__
+    assert PRIVATE_VALUE not in str(error.value)
+    assert PRIVATE_VALUE not in "".join(traceback.format_exception(error.value))
     assert PRIVATE_VALUE not in caplog.text
+    assert (api._stok is None) is (status in (401, 403))
 
 
 @pytest.mark.asyncio
@@ -598,11 +602,82 @@ async def test_real_mobile_connection_error_never_logs_private_host(
         side_effect=aiohttp.ClientConnectorError(connection_key, OSError(PRIVATE_VALUE))
     )
     caplog.set_level(logging.DEBUG)
-    with pytest.raises(aiohttp.ClientConnectorError):
+    with pytest.raises(
+        UnexpectedApiException, match="Mobile data connection failed"
+    ) as error:
         await api._async_post(
             "Get mobile data usage",
             "http://192.0.2.1/cgi-bin/luci/;stok=synthetic-token/admin/network",
             {"form": "internet"},
             "encoded",
         )
+    assert error.value.__suppress_context__
+    assert PRIVATE_VALUE not in "".join(traceback.format_exception(error.value))
+    assert PRIVATE_VALUE not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_mobile_invalid_json_error_is_sanitized(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Reject malformed HTTP JSON without exposing its original error text."""
+    api = _api({})
+    api._async_post = TplinkDecoApi._async_post.__get__(api, TplinkDecoApi)
+    response = MagicMock()
+    response.history = []
+    response.headers.getall.return_value = []
+    response.json = AsyncMock(side_effect=ValueError(PRIVATE_VALUE))
+    api._session.post = AsyncMock(return_value=response)
+    caplog.set_level(logging.DEBUG)
+
+    with pytest.raises(
+        UnexpectedApiException, match="Mobile data response is malformed"
+    ) as error:
+        await api._async_post(
+            "Get mobile data usage",
+            "http://192.0.2.1/cgi-bin/luci/;stok=synthetic-token/admin/network",
+            {"form": "internet"},
+            "encoded",
+        )
+    assert error.value.__suppress_context__
+    assert PRIVATE_VALUE not in "".join(traceback.format_exception(error.value))
+    assert PRIVATE_VALUE not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_mobile_http_401_authentication_retry_is_bounded() -> None:
+    """Reuse exactly one authenticated retry, never an unbounded loop."""
+    api = _api({})
+    api._async_get_mobile_data_usage = AsyncMock(
+        side_effect=[ForbiddenException("Mobile data forbidden (HTTP 401)"), DATA_USAGE]
+    )
+    assert await api.async_get_mobile_data_usage() == DATA_USAGE
+    assert api._async_get_mobile_data_usage.await_count == 2
+
+    api._async_get_mobile_data_usage = AsyncMock(
+        side_effect=ForbiddenException("Mobile data forbidden (HTTP 401)")
+    )
+    with pytest.raises(ForbiddenException):
+        await api.async_get_mobile_data_usage()
+    assert api._async_get_mobile_data_usage.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_mobile_timeout_does_not_expose_upstream_context(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Retain timeout classification while hiding sensitive aiohttp details."""
+    api = _api({})
+    api._async_post = TplinkDecoApi._async_post.__get__(api, TplinkDecoApi)
+    api._session.post = AsyncMock(side_effect=asyncio.TimeoutError(PRIVATE_VALUE))
+    caplog.set_level(logging.DEBUG)
+    with pytest.raises(TimeoutException) as error:
+        await api._async_post(
+            "Get mobile data usage",
+            "http://192.0.2.1/cgi-bin/luci/;stok=synthetic-token/admin/network",
+            {"form": "internet"},
+            "encoded",
+        )
+    assert error.value.__suppress_context__
+    assert PRIVATE_VALUE not in "".join(traceback.format_exception(error.value))
     assert PRIVATE_VALUE not in caplog.text

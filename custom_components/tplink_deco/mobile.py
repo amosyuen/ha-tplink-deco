@@ -107,6 +107,7 @@ class TplinkDecoMobileDataUpdateCoordinator(DataUpdateCoordinator[int | None]):
             self._data_owner_generation = None
             return None
 
+        auth_failed = False
         try:
             usage = await async_call_and_propagate_config_error(
                 self.api.async_get_mobile_data_usage
@@ -116,7 +117,8 @@ class TplinkDecoMobileDataUpdateCoordinator(DataUpdateCoordinator[int | None]):
             ):
                 raise ValueError("Invalid mobile usage value")
         except ConfigEntryAuthFailed:
-            raise
+            # Leave this handler before raising to drop sensitive context.
+            auth_failed = True
         except Exception as error:
             _LOGGER.debug(
                 "Optional mobile usage read failed (%s)", type(error).__name__
@@ -134,5 +136,7 @@ class TplinkDecoMobileDataUpdateCoordinator(DataUpdateCoordinator[int | None]):
                 return usage
             return None
 
-        # Never retain sensitive upstream exception text in __context__.
+        # Neither sanitized exception retains the upstream cause/context.
+        if auth_failed:
+            raise ConfigEntryAuthFailed("Mobile data authentication failed")
         raise UpdateFailed("Unable to read optional mobile data")

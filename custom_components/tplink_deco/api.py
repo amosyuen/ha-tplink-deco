@@ -598,7 +598,14 @@ class TplinkDecoApi:
                         break
 
                 # Soms antwoordt de server met de verkeerde content-type
-                response_json = await response.json(content_type=None)
+                try:
+                    response_json = await response.json(content_type=None)
+                except (TypeError, ValueError):
+                    if mobile_usage_request:
+                        raise UnexpectedApiException(
+                            "Mobile data response is malformed"
+                        ) from None
+                    raise
                 if private_status_request and not isinstance(response_json, dict):
                     raise UnexpectedApiException(
                         f"{private_label} response is malformed"
@@ -632,6 +639,8 @@ class TplinkDecoApi:
                 "%s timed out",
                 context,
             )
+            if mobile_usage_request:
+                raise TimeoutException from None
             raise TimeoutException from err
         except aiohttp.ClientResponseError as err:
             if private_status_request:
@@ -649,6 +658,11 @@ class TplinkDecoApi:
                 )
             if err.status == 401:
                 self.clear_auth()
+                if mobile_usage_request:
+                    # Use the shared bounded re-login path.
+                    raise ForbiddenException(
+                        "Mobile data forbidden (HTTP 401)"
+                    ) from None
                 raise err
             if err.status == 403:
                 self.clear_auth()
@@ -658,6 +672,10 @@ class TplinkDecoApi:
                     ) from None
                 message = f"{context} Forbidden error: {err}"
                 raise ForbiddenException(message) from err
+            if mobile_usage_request:
+                raise UnexpectedApiException(
+                    "Mobile data HTTP request failed"
+                ) from None
             raise err
         except (aiohttp.ClientPayloadError, aiohttp.ServerDisconnectedError) as err:
             # Truncated responses and disconnects can be retried without
@@ -676,6 +694,10 @@ class TplinkDecoApi:
                 )
             else:
                 _LOGGER.error("%s connection error: %s", context, err)
+            if mobile_usage_request:
+                raise UnexpectedApiException(
+                    "Mobile data connection failed"
+                ) from None
             raise
         except aiohttp.ClientError as err:
             if private_status_request:
@@ -688,6 +710,10 @@ class TplinkDecoApi:
                     context,
                     err,
                 )
+            if mobile_usage_request:
+                raise UnexpectedApiException(
+                    "Mobile data transport failed"
+                ) from None
             raise
 
     def _encode_payload(self, payload: Any):
