@@ -416,14 +416,19 @@ Their physical-firmware validation remains a separate limitation.
   reauthentication and host-error labels while retaining legacy
   translated titles and validation messages. This affects only displayed
   form text, not persisted config-entry keys or migration behavior.
-- **Proposed in the current issue #2 Slovak/Swedish parity PR:** add
-  the already-supported `device_list_interval` labels, both interval
-  validation errors in setup and options, and the options reauthentication
-  success message to `sk` and `sv`. A canonical nested-key parity
-  regression covers these four locales (`en`, `nl`, `sk`, `sv`)
-  without adding runtime settings or changing previously translated
-  labels. French, Norwegian and Portuguese catalog completion remains
-  outside this focused PR; do not claim full parity for those locales.
+- **Merged in fork PR #55 (2026-11-17):** the already-supported
+  `device_list_interval` labels, setup/options polling-interval errors
+  and options reauthentication success message are translated in `sk`
+  and `sv`. The nested-key parity regression covers `en`, `nl`,
+  `sk` and `sv` on `main` (merge commit `522d4d3`).
+- **Proposed in the current issue #2 French parity PR:** the `fr`
+  catalog gains its 39 missing canonical setup/options, authentication,
+  polling, abort and error labels without changing any of the 16
+  previously shipped French text values. The same parity regression
+  is extended to French. No new settings, persistence or entity IDs
+  are introduced; the French completion remains a PR-branch change
+  until its merge is verified on `main`. Norwegian and Portuguese
+  catalogs remain incomplete and outside this PR.
 - Existing config-entry fields include host, username/password,
   connection timeout, bounded timeout retry count, TLS verification,
   `consider_home`, optional Deco/client name prefixes/postfixes and
