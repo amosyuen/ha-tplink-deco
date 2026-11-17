@@ -455,7 +455,13 @@ custom `async_close()` calls.
 The coordinator's `data` stores only boolean states. With the new, explicit
 `expose_wifi_ssids` opt-in option (default `false`), it also stores a
 **separate**, per-entry `ssids` map containing only recognized network and
-band names. Without consent, names are neither parsed into nor retained in
+band names. A snapshot is valid only for the owner master MAC **and**
+observed master generation. The optional coordinator listens for Deco
+master transitions, invalidates names immediately and rejects stale
+SSID snapshots returned by an in-flight request, including A -> B -> A
+transitions before a successful new poll. Boolean WiFi states retain their
+original behavior; a master switch cannot reattribute previously stored
+SSID names. Without consent, names are neither parsed into nor retained in
 coordinator state. The existing Main, Guest and IoT WiFi binary sensors expose
 a common `ssid` attribute for matching bands or individual `ssid_<band>`
 attributes for differing names; missing or invalid names are omitted. The
