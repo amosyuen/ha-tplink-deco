@@ -1160,6 +1160,15 @@ policy for AI-assisted development.
   Keep config-entry listener and background task ownership explicit, and
   unload this plain `DataUpdateCoordinator` with `async_shutdown()`,
   **never** the fork-only `async_close()`.
+- **Transport privacy review (PR #43):** sanitizing the coordinator's
+  `UpdateFailed` is **not sufficient** if shared `_async_post` or
+  `_decrypt_data` has already logged a token-bearing `ClientResponseError`,
+  full nonzero API JSON response, connection exception or ciphertext.
+  Include new optional read-only forms in the shared sensitive-endpoint
+  classification, preserving existing 401/403 and reauthentication
+  semantics. Test real bound transport/decrypt methods with mocked aiohttp
+  objects containing synthetic authenticated URLs and payload secrets;
+  assert they never reach captured logs.
 - Mobile diagnostics may report support status, update success and interval,
   but must not export the numeric usage, router model, API payload, token
   or credentials. Test parsing, unsupported models, late master discovery,
