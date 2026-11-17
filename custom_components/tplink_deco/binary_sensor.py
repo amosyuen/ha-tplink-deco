@@ -213,11 +213,27 @@ class TplinkDecoWirelessBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self.entity_description = description
         self._attr_unique_id = f"{master_deco.mac}_wifi_{description.key}"
 
+    async def async_added_to_hass(self) -> None:
+        """Listen for master changes independently of wireless updates."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self._deco_coordinator.async_add_listener(self._handle_deco_update)
+        )
+
+    @callback
+    def _handle_deco_update(self) -> None:
+        """Re-evaluate availability when the master Deco changes."""
+        self.async_write_ha_state()
+
     @property
     def available(self) -> bool:
-        """Report unsupported/removed firmware networks as unavailable."""
+        """Require both the original master and a supported current network."""
+        deco_data = self._deco_coordinator.data
+        active_master = getattr(deco_data, "master_deco", None)
         return (
-            super().available
+            active_master is not None
+            and active_master.mac == self._master_deco.mac
+            and super().available
             and isinstance(self.coordinator.data, dict)
             and self.entity_description.key in self.coordinator.data
         )
