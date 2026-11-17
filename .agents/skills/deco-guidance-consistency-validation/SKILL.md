@@ -53,6 +53,21 @@ Keep `AI_POLICY.md` unchanged unless governing policy itself changes.
   the current PR head and newly arrived threads before reporting,
   continue using available code inspection and required CI, and
   document unverified review coverage without inventing outcomes.
+- **PR #53 contract-driven test and guide drift (2026-11-17):** an
+  `invalid-client-ip` rejection test failed on Python 3.14 because the
+  current `filter_invalid_ip` intentionally returns `None` for an
+  invalid address; the negative test had invented a stricter contract
+  than production. An actionable review found the mismatch and the
+  final PR uses a malformed client name instead. Before documenting
+  input validation as a failure, inspect the actual decoder, tolerant
+  normalizers and model update, then test both rejected inputs and
+  supported degraded-data outcomes. The same audit found older text
+  still presenting merged fork PRs #35 and #40 as future work.
+  Cross-check all open/merged labels against actual PR metadata and
+  the current `main` implementation before documenting behavior;
+  label unmerged PR #53 features as proposed, not deployed. A
+  documentation correction creates a new head needing all five CI
+  checks even when previous application tests were green.
 - **PR #51 repeated Markdown anchors (2026-11-17):** updating the
   upstream-sync skill and integration guide initially encountered two
   adjacent copies of the same `Keep tests for unimplemented features`
