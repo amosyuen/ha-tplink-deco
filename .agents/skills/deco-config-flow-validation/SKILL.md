@@ -24,9 +24,16 @@ description: "Validate TP-Link Deco setup, options and reauthentication flows, i
   unlabeled. The fork previously shipped 19 missing Dutch canonical
   labels for timeout/TLS/name options and reauthentication/errors.
   Run `tests/test_translation_key_parity.py` to assert canonical
-  nested key coverage and the real runtime selector key. Preserve
-  existing Dutch titles, legacy metadata and validation errors;
-  do **not** add unimplemented upstream syslog fields to obtain parity.
+  nested key coverage and the real runtime selector key. The Slovak and
+  Swedish locale parity review found seven missing keys per locale,
+  including `device_list_interval`, both interval errors in setup and
+  options, and the options reauthentication abort. The matrix now
+  requires complete source-key parity for `en`, `nl`, `sk`, `sv`;
+  keep other incomplete locales out of a *full-parity* claim until
+  their remaining fields are genuinely translated. Preserve
+  existing localized values, Dutch titles, legacy metadata and
+  validation errors; do **not** add unimplemented upstream syslog
+  fields to obtain parity.
 
 5. Validate submitted values in **both setup and options flows** before
    credential checks, API traffic or data mutation. For **numeric**
