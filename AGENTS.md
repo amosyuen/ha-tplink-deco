@@ -1178,7 +1178,12 @@ policy for AI-assisted development.
 - **Atomic WLAN failure handling (PR #42):** parse both boolean flags and
   optional SSID names within the same guarded refresh; do not replace the
   cached names, declare a successful poll or reset retry backoff until
-  both parsers succeed. For optional decode errors, preserve cached
+  both parsers succeed. Retry budgets belong to the observed master
+  generation: a switch clears the prior master's failure count and
+  five-minute cooldown; errors from a request started under an earlier
+  generation must not count against the new master, including A -> B -> A.
+  A repeated update for the same master must **not** reset its backoff.
+  For optional decode errors, preserve cached
   status/names and use the established sanitized `UpdateFailed` and
   two-failure/five-minute retry budget. Raise the fixed error **after**
   leaving `except` so its `__context__` cannot retain a private upstream
