@@ -24,6 +24,7 @@ from .const import CONF_CLIENT_PREFIX
 from .const import CONF_DECO_POSTFIX
 from .const import CONF_DECO_PREFIX
 from .const import CONF_DEVICE_LIST_INTERVAL
+from .const import CONF_EXPOSE_WIFI_SSIDS
 from .const import CONF_LINK_CLIENT_DEVICES
 from .const import CONF_TIMEOUT_ERROR_RETRIES
 from .const import CONF_TIMEOUT_SECONDS
@@ -33,6 +34,7 @@ from .const import COORDINATOR_DECOS_KEY
 from .const import COORDINATOR_WIRELESS_KEY
 from .const import DEFAULT_CONSIDER_HOME
 from .const import DEFAULT_DECO_POSTFIX
+from .const import DEFAULT_EXPOSE_WIFI_SSIDS
 from .const import DEFAULT_LINK_CLIENT_DEVICES
 from .const import DEFAULT_SCAN_INTERVAL
 from .const import DEFAULT_TIMEOUT_ERROR_RETRIES
@@ -96,6 +98,11 @@ def _normalize_device_list_interval(data: dict[str, Any]) -> bool:
     return True
 
 
+def _valid_ssid_choice(data: dict[str, Any]) -> bool:
+    """Reject non-boolean SSID consent before network access or persistence."""
+    return CONF_EXPOSE_WIFI_SSIDS not in data or type(data[CONF_EXPOSE_WIFI_SSIDS]) is bool
+
+
 def _get_auth_schema(data: dict[str:Any]):
     if data is None:
         data = {}
@@ -155,6 +162,10 @@ def _get_schema(data: dict[str:Any]):
             vol.Required(
                 CONF_LINK_CLIENT_DEVICES,
                 default=data.get(CONF_LINK_CLIENT_DEVICES, DEFAULT_LINK_CLIENT_DEVICES),
+            ): bool,
+            vol.Required(
+                CONF_EXPOSE_WIFI_SSIDS,
+                default=data.get(CONF_EXPOSE_WIFI_SSIDS, DEFAULT_EXPOSE_WIFI_SSIDS) is True,
             ): bool,
             vol.Optional(
                 CONF_CLIENT_PREFIX,
@@ -246,6 +257,8 @@ class TplinkDecoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 self._errors = {
                     CONF_DEVICE_LIST_INTERVAL: "invalid_device_list_interval"
                 }
+            elif not _valid_ssid_choice(user_input):
+                self._errors = {CONF_EXPOSE_WIFI_SSIDS: "invalid_expose_wifi_ssids"}
             else:
                 self._errors = await _async_test_credentials(self.hass, user_input)
             if not self._errors:
@@ -315,6 +328,8 @@ class TplinkDecoOptionsFlowHandler(config_entries.OptionsFlow):
                 self._errors = {
                     CONF_DEVICE_LIST_INTERVAL: "invalid_device_list_interval"
                 }
+            elif not _valid_ssid_choice(user_input):
+                self._errors = {CONF_EXPOSE_WIFI_SSIDS: "invalid_expose_wifi_ssids"}
             else:
                 _ensure_user_input_optionals(user_input)
                 self.data.update(user_input)
