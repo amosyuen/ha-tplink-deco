@@ -106,6 +106,17 @@ policy for AI-assisted development.
   deleting distinct historical context. Formatter success does not
   detect duplicated or contradictory prose. Follow the
   [guidance consistency skill](.agents/skills/deco-guidance-consistency-validation/SKILL.md).
+- **Review coverage versus automation availability (PR #51):** a
+  CodeRabbit quota warning is **not** a completed review or a
+  "no findings" verdict. A separate Codex code-review result only
+  covers the reviewed commit and review type; an absent security-review
+  result remains **not run**, even if no GitHub review threads are open.
+  Record each available review source, its scope, status and head SHA
+  independently of required CI success and mergeability. Do not
+  manufacture review findings or delay a user-requested workflow for
+  a bot quota reset; perform a verified code/CI check and report
+  the missing review coverage honestly.
+  Follow the [guidance consistency skill](.agents/skills/deco-guidance-consistency-validation/SKILL.md).
 - Report unverified tests and incomplete work accurately. Do not mark a
   review thread resolved or a tracking-issue task complete merely because
   its lesson has been documented.
