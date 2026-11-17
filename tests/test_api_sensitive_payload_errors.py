@@ -124,9 +124,7 @@ async def test_malformed_device_or_client_lists_never_log_raw_payload(
     api.async_login_if_needed = AsyncMock()
     api._async_post = AsyncMock(return_value={"data": "ciphertext"})
     api._encode_payload = MagicMock(return_value="form-data")
-    api._decrypt_data = MagicMock(
-        return_value={"result": {"private_name": SECRET}}
-    )
+    api._decrypt_data = MagicMock(return_value={"result": {"private_name": SECRET}})
 
     with caplog.at_level(logging.DEBUG):
         with pytest.raises(KeyError, match=missing_key):
@@ -154,9 +152,7 @@ async def test_invalid_login_metadata_never_logs_raw_router_response(
 ) -> None:
     """Keep an invalid login-metadata exception type without logging secrets."""
     api, _ = _api()
-    api._async_post = AsyncMock(
-        return_value={"result": {"private_secret": SECRET}}
-    )
+    api._async_post = AsyncMock(return_value={"result": {"private_secret": SECRET}})
 
     with caplog.at_level(logging.DEBUG):
         with pytest.raises(KeyError):
