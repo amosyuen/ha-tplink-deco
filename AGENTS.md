@@ -661,10 +661,57 @@ policy for AI-assisted development.
   invalid values, defaults from older config entries, string-to-int
   conversion, initial setup, options updates and preservation of other
   configuration fields.
-- Keep the scan-interval control separate from any future independent Deco
-  device-list polling interval. Port only upstream behavior that applies to
-  the current fork, and test against each supported Home Assistant version
+- Keep the scan-interval control separate from the **existing**
+  independent Deco `device_list_interval` (merged in fork PR #34).
+  Preserve startup-only `0`, the >=10-second independent interval and
+  legacy fallback behavior. Port only upstream behavior that applies to the
+  current fork, and test against each supported Home Assistant version
   because form serialization internals can differ across releases.
+
+## Config-flow error boundaries and settings preservation (PRs #48/#49)
+
+- **Keep flow contracts distinct:** setup and explicit options submissions may
+  normalize missing naming fields, but credentials-only reauthentication must
+  merge only submitted credentials into a copy of the persisted entry.
+  Do not silently blank Deco/client prefixes or postfixes, or reset scan
+  intervals, SSID consent, MAC linking or other existing settings.
+- **Classify without disclosure:** `_async_test_credentials` maps
+  `TimeoutException` and `asyncio.TimeoutError` to `timeout_connect`,
+  `ConfigEntryAuthFailed` to `invalid_auth`, and
+  `ConfigEntryNotReady` / `aiohttp.ClientConnectionError` to
+  `invalid_host`; unexpected ordinary failures use the existing
+  `unknown` form error. Log fixed messages or controlled exception
+  type names, **never** upstream exception text, private URLs, tokens,
+  credentials or raw traceback data. Do not blanket-catch
+  `asyncio.CancelledError`; preserve Home Assistant cancellation.
+- **Treat validation as a transaction:** first validate submitted values,
+  then verify credentials against a staged copy. On success, write that
+  copy through `hass.config_entries.async_update_entry` **before**
+  adopting it as the options handler's `self.data`. A rejected
+  submission, failed API check or failed persistence must leave the
+  handler's previous settings intact. Do not treat a mocked update call
+  as proof of real Home Assistant persistence.
+- **Release temporary resources:** successful credential verification
+  includes shutting down all temporary mandatory and optional
+  coordinators. Sanitize cleanup failures and ensure they cannot be
+  reported as valid credentials; preserve cancellation semantics.
+- **Test the real Home Assistant access path:** for a successful
+  `TplinkDecoOptionsFlowHandler` submission, instantiate the real
+  handler, set `flow.handler = entry.entry_id` and configure
+  `flow.hass.config_entries.async_get_known_entry.return_value = entry`.
+  The inherited `OptionsFlow.config_entry` property uses this lookup:
+  passing a `SimpleNamespace` into the constructor alone is insufficient
+  (verified review failure in PR #49). Assert the *exact* config-entry
+  update payload, failure rollback, and no writes/reloads on invalid
+  credentials or reauthentication errors.
+- **CI and review:** run adversarial secret-bearing error, cleanup,
+  cancellation, success, rejection and storage-failure regressions on
+  both supported Python/HA matrices. Check the actual Pre-commit Black,
+  isort, Flake8 and Prettier results; fix only demonstrated formatter
+  differences and require all five required checks on the **final**
+  head SHA. Resolve review comments only after verifying the fix.
+  Follow [config-flow validation](.agents/skills/deco-config-flow-validation/SKILL.md)
+  for fixture setup and the test-outcome matrix.
 
 ## Client tracker hostname and device naming (upstream PR #600)
 
