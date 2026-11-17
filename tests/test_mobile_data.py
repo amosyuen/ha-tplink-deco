@@ -10,11 +10,13 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 import pytest
 
+from custom_components.tplink_deco import async_setup_entry, async_unload_entry
 from custom_components.tplink_deco.api import TplinkDecoApi
 from custom_components.tplink_deco.const import COORDINATOR_CLIENTS_KEY
 from custom_components.tplink_deco.const import COORDINATOR_DECOS_KEY
 from custom_components.tplink_deco.const import COORDINATOR_MOBILE_KEY
 from custom_components.tplink_deco.const import DOMAIN
+from custom_components.tplink_deco.const import PLATFORMS
 from custom_components.tplink_deco.coordinator import TpLinkDeco
 from custom_components.tplink_deco.coordinator import TpLinkDecoData
 from custom_components.tplink_deco.exceptions import LoginInvalidException
@@ -365,6 +367,11 @@ async def test_mobile_diagnostics_never_export_usage_or_credentials() -> None:
     clients.health = deco_coord.health
     clients.update_interval = None
     clients.has_successful_refresh = False
+    clients.client_query_mode = "per_node"
+    clients.remaining_backoff_seconds = 0
+    clients.last_update_success = True
+    deco_coord.paused = False
+    deco_coord.last_update_success = True
     mobile = MagicMock()
     mobile.data = DATA_USAGE
     mobile.last_update_success = True
@@ -384,3 +391,88 @@ async def test_mobile_diagnostics_never_export_usage_or_credentials() -> None:
     assert snapshot["mobile_data_coordinator"]["update_interval_seconds"] is None
     assert str(DATA_USAGE) not in json.dumps(snapshot)
     assert PRIVATE_VALUE not in json.dumps(snapshot)
+
+@pytest.mark.asyncio
+async def test_mobile_initial_refresh_is_nonblocking_and_entry_owned() -> None:
+    """Schedule client and mobile reads only after platform forwarding."""
+    events: list[str] = []
+    scheduled: list[object] = []
+    hass = MagicMock()
+    hass.data = {}
+    entry = MagicMock()
+    entry.entry_id = "mobile-background"
+
+    async def forward(*args: object) -> None:
+        """Record that all platforms are loaded first."""
+        events.append("forwarded")
+
+    def capture_background(
+        target_hass: MagicMock, coroutine: object, *, name: str
+    ) -> None:
+        """Capture but do not execute an entry-owned coroutine."""
+        assert target_hass is hass
+        assert events and events[0] == "forwarded"
+        scheduled.append((name, coroutine))
+
+    hass.config_entries.async_forward_entry_setups = AsyncMock(side_effect=forward)
+    entry.async_create_background_task.side_effect = capture_background
+    client = MagicMock()
+    client.async_refresh = AsyncMock()
+    mobile = MagicMock()
+    mobile.async_refresh = AsyncMock()
+    data = {
+        COORDINATOR_DECOS_KEY: MagicMock(),
+        COORDINATOR_CLIENTS_KEY: client,
+        COORDINATOR_MOBILE_KEY: mobile,
+    }
+    with patch(
+        "custom_components.tplink_deco.async_create_config_data",
+        new=AsyncMock(return_value=data),
+    ):
+        assert await async_setup_entry(hass, entry) is True
+
+    hass.config_entries.async_forward_entry_setups.assert_awaited_once_with(
+        entry, PLATFORMS
+    )
+    assert [name for name, _ in scheduled] == [
+        "tplink_deco initial client refresh",
+        "tplink_deco initial mobile data refresh",
+    ]
+    client.async_refresh.assert_not_awaited()
+    mobile.async_refresh.assert_not_awaited()
+    for _, coroutine in scheduled:
+        await coroutine
+    mobile.async_refresh.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_mobile_coordinator_shutdown_does_not_call_custom_close() -> None:
+    """Unload platforms before shutting down the optional mobile coordinator."""
+    entry = SimpleNamespace(entry_id="mobile-unload")
+    deco = MagicMock()
+    deco.async_shutdown = AsyncMock()
+    deco.async_close = AsyncMock()
+    deco.api.async_logout = AsyncMock()
+    clients = MagicMock()
+    clients.async_shutdown = AsyncMock()
+    clients.async_close = AsyncMock()
+    mobile = SimpleNamespace(async_shutdown=AsyncMock())
+    hass = MagicMock()
+    hass.data = {
+        DOMAIN: {
+            entry.entry_id: {
+                COORDINATOR_DECOS_KEY: deco,
+                COORDINATOR_CLIENTS_KEY: clients,
+                COORDINATOR_MOBILE_KEY: mobile,
+            }
+        }
+    }
+    hass.config_entries.async_forward_entry_unload = AsyncMock(return_value=True)
+
+    assert await async_unload_entry(hass, entry) is True
+    assert hass.config_entries.async_forward_entry_unload.await_count == len(PLATFORMS)
+    mobile.async_shutdown.assert_awaited_once()
+    deco.async_close.assert_awaited_once()
+    clients.async_close.assert_awaited_once()
+    deco.api.async_logout.assert_awaited_once()
+    assert entry.entry_id not in hass.data[DOMAIN]
