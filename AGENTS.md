@@ -818,7 +818,7 @@ policy for AI-assisted development.
   failures against both Home Assistant versions. Use the
   [client backoff validation skill](.agents/skills/deco-client-backoff-validation/SKILL.md).
 - **Global client-list fallback (upstream #527):** one HTTP 5xx
-  per-node failure may trigger a *single* `device_mac=default` query.
+  per-node failure may trigger a _single_ `device_mac=default` query.
   A successful global reply maps live clients to the real master MAC,
   not to a fictional `default` device; the diagnostic query mode
   changes to `global`. Continue one global query per scheduled poll
