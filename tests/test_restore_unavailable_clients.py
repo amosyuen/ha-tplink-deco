@@ -508,7 +508,9 @@ async def test_first_deco_refresh_reconciles_clients_before_client_setup() -> No
         result = await async_create_and_refresh_coordinators(
             hass=MagicMock(),
             config_data={},
-            config_entry=SimpleNamespace(entry_id="mesh-one"),
+            config_entry=SimpleNamespace(
+                entry_id="mesh-one", async_on_unload=MagicMock()
+            ),
             deco_data=restored_deco,
             client_data=clients,
         )
