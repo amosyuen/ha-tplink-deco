@@ -178,9 +178,7 @@ async def test_invalid_client_ip_normalizes_without_rejecting_valid_peer(
     assert coordinator.health.last_successful_update is not None
     assert CLIENT_MAC not in caplog.text
     assert PRIVATE_VALUE not in caplog.text
-    api.async_list_clients.assert_awaited_once_with(
-        MASTER_MAC, timeout_error_retries=0
-    )
+    api.async_list_clients.assert_awaited_once_with(MASTER_MAC, timeout_error_retries=0)
 
 
 @pytest.mark.asyncio
