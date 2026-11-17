@@ -378,8 +378,17 @@ class TplinkDecoApi:
             ):
                 return None
         try:
-            parsed = json.loads(body)
-        except (ValueError, TypeError):
+            if declared_json:
+                parsed = json.loads(body)
+            else:
+                # Only a single JSON object can be a firmware error envelope.
+                # A second JSON Lines record is ordinary log content, even
+                # when the first record contains a nested error-code field.
+                log_text = body.decode("utf-8").lstrip()
+                parsed, end_index = json.JSONDecoder().raw_decode(log_text)
+                if log_text[end_index:].strip():
+                    return None
+        except (UnicodeError, ValueError, TypeError):
             raise UnexpectedApiException("System log response is malformed") from None
         if not isinstance(parsed, dict):
             if declared_json:

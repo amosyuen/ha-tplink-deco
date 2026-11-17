@@ -612,10 +612,12 @@ lines without firmware error fields and retains one authentication
 re-login, while setting manual-download timeout and transient retry
 budgets to zero. Normal Deco API retry defaults remain unchanged.
 **These fixes are not on `main` until PR #46 is merged.**
-An unresolved PR #46 review finding concerns JSON Lines log text:
-a nested `errorcode` field can be mistaken for a standalone
-firmware error by the proposed parser. Preserve such log text in
-a regression test before claiming that the follow-up is complete.
+The PR #46 follow-up also distinguishes standalone firmware-error
+JSON from multi-record JSON Lines log text, including nested
+`errorcode` fields. A complete first JSON record with trailing
+log records is not a standalone firmware error, while truncated
+standalone firmware error envelopes remain rejected. These changes
+remain pending until PR #46 is merged.
 Legacy S7 sessions and syslog forwarding
 (#666) remain unimplemented. Physical firmware/Windows ACL tests,
 the parent-symlink race and best-effort cleanup remain unverified.

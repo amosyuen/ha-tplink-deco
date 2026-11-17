@@ -53,9 +53,12 @@ description: "Use when changing authenticated manual Deco system-log downloads, 
    is not a top-level standalone firmware error: test at least
    two newline-separated records, one with nested `errorcode`,
    and retain the whole log. Also test a truncated standalone
-   firmware error to ensure it is still rejected. The PR #46
-   CodeRabbit finding remains open until code and test changes
-   demonstrate this distinction; documentation alone is not a fix.
+   firmware error to ensure it is still rejected. For mismatched
+   plain-text/binary MIME types, check whether a complete parsed
+   JSON object is the **only** document before applying top-level
+   firmware error keys; trailing JSON Lines records remain valid log
+   content. Verify the focused regression and final-head CI before
+   resolving the corresponding review thread.
 6. For tar decoding, prefer the exact `syslog.log` basename among
    **regular** archive members; otherwise use the first regular
    member. Ignore symbolic/hard links, directories and device

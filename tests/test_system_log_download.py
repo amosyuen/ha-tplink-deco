@@ -498,6 +498,51 @@ async def test_valid_json_log_line_without_errorcode_is_preserved() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "snapshot",
+    [
+        b'{"event":"rpc","detail":{"errorcode":123}}\n{"event":"ready"}\n',
+        b'{"event":"rpc","detail":{"error_code":-5002}}\n',
+        b'{"errorcode":123,"event":"log-entry"}\n{"event":"ready"}\n',
+        b'{"event":"rpc","detail":{"errorcode":"timeout","token":"PRIVATE_ROUTER_TOKEN_123"}}\n{"event":"ready"}\n',
+    ],
+)
+async def test_nested_error_keys_in_json_log_records_are_preserved(
+    snapshot: bytes,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Keep JSON Lines log records distinct from standalone firmware errors."""
+    api, session = _api_and_session()
+    session.post.return_value = _response(snapshot, content_type="text/plain")
+
+    with caplog.at_level(logging.DEBUG):
+        assert await api.async_get_system_log() == snapshot.decode("utf-8")
+
+    api._async_post.assert_awaited_once()
+    session.post.assert_awaited_once()
+    session.post.return_value.release.assert_called_once()
+    assert SECRET not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_truncated_firmware_error_with_preceding_field_is_rejected() -> None:
+    """Reject an incomplete standalone error envelope without a raw-data leak."""
+    api, session = _api_and_session()
+    session.post.return_value = _response(
+        b'{"message":"PRIVATE_ROUTER_TOKEN_123","errorcode":"timeout",',
+        content_type="text/plain",
+    )
+    with pytest.raises(
+        UnexpectedApiException, match="System log response is malformed"
+    ) as caught:
+        await api.async_get_system_log()
+
+    assert SECRET not in "".join(traceback.format_exception(caught.value))
+    session.post.assert_awaited_once()
+    session.post.return_value.release.assert_called_once()
+
+
+@pytest.mark.asyncio
 async def test_manual_system_log_incomplete_response_does_not_retry() -> None:
     """Avoid rebuilding the expensive manual snapshot after truncated transport."""
     api, session = _api_and_session()

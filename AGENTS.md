@@ -1225,8 +1225,12 @@ policy for AI-assisted development.
   rejecting truncated **standalone** firmware error objects.
   Test malformed and recognized error payloads with synthetic
   secrets in DEBUG logs, tracebacks and service responses.
-  **PR #46 review follow-up:** this regression is not fixed until
-  a corresponding code change and focused test are verified.
+  **PR #46 review lesson:** use single-document JSON decoding
+  only to recognize a standalone firmware error envelope. If
+  additional content follows the first parsed document, keep the
+  response as log text instead of rejecting a JSON Lines stream.
+  Validate both nested and top-level error fields in multi-record
+  logs while preserving malformed standalone-envelope rejection.
 - **Per-call transport retry lesson (PR #46):** disabling timeout
   retries does not necessarily disable the shared helper's transient
   retries. Set both timeout and transient retries to **zero for
