@@ -42,9 +42,11 @@ description: "Use when comparing, backporting, reviewing, or implementing change
   may format a private `request_info.real_url`. Use fixed
   authentication failure diagnostics and raise the sanitized
   `ForbiddenException` outside its `except` block. Assert the
-  exception's `__cause__` and `__context__` are `None`,
-  and inspect DEBUG logs plus `traceback.format_exception` for
-  synthetic token/cookie and context secrets. Preserve existing
+  exception's `__cause__` and `__context__` are `None` **and**
+  `__suppress_context__` remains `True`, as existing mobile-WAN
+  regressions require. Inspect DEBUG logs plus
+  `traceback.format_exception` for synthetic token/cookie and
+  context secrets. Preserve existing
   HTTP 401 error type and non-auth transport retry behavior.
   See the [AGENTS HTTP 403 rules](../../../AGENTS.md).
 - Keep tests for unimplemented features (S7 outer sessions and syslog
