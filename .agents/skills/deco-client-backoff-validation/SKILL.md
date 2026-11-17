@@ -52,7 +52,7 @@ description: "Use when porting, reviewing, or debugging capped HTTP 5xx Deco cli
    calls, recovery and restart at 30 seconds, successful empty lists,
    one failed node plus a healthy peer, all nodes failing, isolated
    config entries, non-5xx propagation and the separate truncated-body
-   behavior. For global fallback, preflight *all* response entries
+   behavior. For global fallback, preflight _all_ response entries
    before changing cached clients or marking query mode successful:
    reject missing/invalid/duplicate MACs and values that cannot be
    processed by the existing client model with a fixed redacted

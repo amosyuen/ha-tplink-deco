@@ -832,7 +832,7 @@ policy for AI-assisted development.
 - **Validate global payloads before mutation (PR #40 review):** a later
   missing, empty, non-string or duplicate client MAC can otherwise
   raise after earlier cached clients were mutated and `global` mode
-  was recorded. Validate the *entire* list before changing any cached
+  was recorded. Validate the _entire_ list before changing any cached
   client object, successful-poll flags or query mode. Preflight the
   established client update contract using temporary models, reject
   invalid data with a fixed privacy-safe `ValueError` and suppress
