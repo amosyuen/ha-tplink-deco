@@ -245,10 +245,14 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator[dict[str, bool]]
             if self._consecutive_failures >= WIRELESS_FAILURES_BEFORE_RETRY_DELAY:
                 self._next_retry = now + WIRELESS_RETRY_INTERVAL_SECONDS
             _LOGGER.debug("Optional wireless request failed (%s)", type(error).__name__)
-            raise UpdateFailed("Unable to read optional wireless status") from None
+        else:
+            # Commit names and retry state only after both parsers succeed.
+            self.ssids = names
+            self.reset_retry()
+            _LOGGER.debug("Wireless network keys=%s", sorted(states))
+            return states
 
-        # Commit status and optional names only after both parsers succeed.
-        self.ssids = names
-        self.reset_retry()
-        _LOGGER.debug("Wireless network keys=%s", sorted(states))
-        return states
+        # Raise outside the except block: `from None` merely hides the
+        # original exception in a traceback but retains its private
+        # message in __context__, accessible to downstream error reporters.
+        raise UpdateFailed("Unable to read optional wireless status")
