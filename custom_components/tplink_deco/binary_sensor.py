@@ -6,14 +6,19 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import COORDINATOR_DECOS_KEY
+from .const import COORDINATOR_WIRELESS_KEY
 from .const import DOMAIN
 from .const import SIGNAL_DECO_ADDED
 from .coordinator import TpLinkDeco
 from .coordinator import TplinkDecoUpdateCoordinator
 from .device import create_device_info
+from .wireless import TplinkDecoWirelessUpdateCoordinator
+from .wireless import WIRELESS_NETWORKS
+from .wireless import WirelessNetworkDescription
 
 
 async def async_setup_entry(
@@ -56,6 +61,45 @@ async def async_setup_entry(
             hass, SIGNAL_DECO_ADDED, add_untracked_deco_binary_sensors
         )
     )
+
+
+    wireless_coordinator = data.get(COORDINATOR_WIRELESS_KEY)
+    if wireless_coordinator is None:
+        return
+
+    tracked_networks: set[tuple[str, str]] = set()
+
+    @callback
+    def add_wireless_binary_sensors() -> None:
+        """Register only supported wireless networks once per master."""
+        master_deco = coordinator_decos.data.master_deco
+        if master_deco is None or not isinstance(wireless_coordinator.data, dict):
+            return
+
+        entities = []
+        for network in WIRELESS_NETWORKS:
+            identity = (master_deco.mac, network.key)
+            if (
+                network.key in wireless_coordinator.data
+                and identity not in tracked_networks
+            ):
+                entities.append(
+                    TplinkDecoWirelessBinarySensor(
+                        wireless_coordinator, coordinator_decos, master_deco, network
+                    )
+                )
+                tracked_networks.add(identity)
+
+        if entities:
+            async_add_entities(entities)
+
+    entry.async_on_unload(
+        wireless_coordinator.async_add_listener(add_wireless_binary_sensors)
+    )
+    coordinator_decos.on_close(
+        async_dispatcher_connect(hass, SIGNAL_DECO_ADDED, add_wireless_binary_sensors)
+    )
+    add_wireless_binary_sensors()
 
 
 class TplinkDecoInternetOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity):
@@ -148,4 +192,46 @@ class TplinkDecoOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity):
             deco,
             self.coordinator.data.master_deco,
             self.coordinator,
+        )
+
+
+class TplinkDecoWirelessBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Read-only enabled state for a known Deco WiFi network."""
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: TplinkDecoWirelessUpdateCoordinator,
+        deco_coordinator: TplinkDecoUpdateCoordinator,
+        master_deco: TpLinkDeco,
+        description: WirelessNetworkDescription,
+    ) -> None:
+        """Associate the network with the actual master Deco device."""
+        super().__init__(coordinator)
+        self._deco_coordinator = deco_coordinator
+        self._master_deco = master_deco
+        self.entity_description = description
+        self._attr_unique_id = f"{master_deco.mac}_wifi_{description.key}"
+
+    @property
+    def available(self) -> bool:
+        """Report unsupported/removed firmware networks as unavailable."""
+        return (
+            super().available
+            and isinstance(self.coordinator.data, dict)
+            and self.entity_description.key in self.coordinator.data
+        )
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return the latest recognized enable flag."""
+        data = self.coordinator.data
+        return data.get(self.entity_description.key) if isinstance(data, dict) else None
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Re-use the master Deco's stable device-registry identity."""
+        return create_device_info(
+            self._master_deco, self._master_deco, self._deco_coordinator
         )
