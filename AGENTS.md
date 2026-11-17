@@ -842,9 +842,11 @@ policy for AI-assisted development.
   network-failure session retention, other retries and cancellation.
 - **No retained sensitive exception context:** raise the sanitized 403
   exception only **after leaving** the `except aiohttp.ClientResponseError`
-  block so both `__cause__` and `__context__` are `None`. Merely
-  using `raise ... from None` suppresses traceback formatting but
-  does not remove the original `__context__` object.
+  block so both `__cause__` and `__context__` are `None`.
+  Raise it `from None` outside the handler to **also** retain the
+  established `__suppress_context__ = True` contract (mobile tests).
+  Using `raise ... from None` *inside* the handler suppresses traceback
+  formatting but does not remove the original `__context__` object.
 - **Bound-request regression:** drive the real `async_list_devices`
   and `_async_post` methods with mocked `aiohttp.ClientSession.post`
   responses. Assert **both** requests' exact LuCI token URLs, form data
