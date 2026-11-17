@@ -597,12 +597,12 @@ class TplinkDecoApi:
             self._sign_rsa_n = int(auth_key[0], 16)
             _LOGGER.debug("Deco request signing key received")
             self._sign_rsa_e = int(auth_key[1], 16)
-
-
             self._seq = auth_result["seq"]
 
         except Exception as err:
-            _LOGGER.error("Deco signing parameters parsing failed (%s)", type(err).__name__)
+            _LOGGER.error(
+                "Deco signing parameters parsing failed (%s)", type(err).__name__
+            )
             raise
 
     async def async_login_if_needed(self):
