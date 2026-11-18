@@ -96,6 +96,88 @@ async def test_unexpected_coordinator_shutdown_failure_returns_safe_error(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "failure",
+    [
+        TimeoutException(SECRET),
+        ConfigEntryAuthFailed(SECRET),
+        RuntimeError(SECRET),
+    ],
+)
+async def test_failed_shutdown_awaits_other_coordinators_and_sanitizes_error(
+    failure: Exception,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Finish independent cleanup despite one failing temporary shutdown."""
+    completed = asyncio.Event()
+
+    async def _finish_other_shutdown() -> None:
+        """Mark completion after yielding to a failing sibling."""
+        await asyncio.sleep(0)
+        completed.set()
+
+    failed = SimpleNamespace(async_shutdown=AsyncMock(side_effect=failure))
+    healthy = SimpleNamespace(
+        async_shutdown=AsyncMock(side_effect=_finish_other_shutdown)
+    )
+    coordinators = {
+        COORDINATOR_DECOS_KEY: failed,
+        COORDINATOR_CLIENTS_KEY: healthy,
+    }
+
+    with (
+        patch.object(
+            config_flow,
+            "async_create_and_refresh_coordinators",
+            new=AsyncMock(return_value=coordinators),
+        ),
+        caplog.at_level(logging.DEBUG, logger=config_flow.__name__),
+    ):
+        errors = await config_flow._async_test_credentials(MagicMock(), CONFIG_DATA)
+
+    assert errors == {"base": "unknown"}
+    failed.async_shutdown.assert_awaited_once_with()
+    healthy.async_shutdown.assert_awaited_once_with()
+    assert completed.is_set()
+    assert SECRET not in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_cancelled_shutdown_still_finishes_siblings_before_propagating() -> None:
+    """Propagate cancellation only after other temporary shutdowns complete."""
+    completed = asyncio.Event()
+
+    async def _finish_other_shutdown() -> None:
+        """Finish another coordinator shutdown after an event-loop turn."""
+        await asyncio.sleep(0)
+        completed.set()
+
+    cancelled = SimpleNamespace(
+        async_shutdown=AsyncMock(side_effect=asyncio.CancelledError())
+    )
+    healthy = SimpleNamespace(
+        async_shutdown=AsyncMock(side_effect=_finish_other_shutdown)
+    )
+    coordinators = {
+        COORDINATOR_DECOS_KEY: cancelled,
+        COORDINATOR_CLIENTS_KEY: healthy,
+    }
+
+    with patch.object(
+        config_flow,
+        "async_create_and_refresh_coordinators",
+        new=AsyncMock(return_value=coordinators),
+    ):
+        with pytest.raises(asyncio.CancelledError):
+            await config_flow._async_test_credentials(MagicMock(), CONFIG_DATA)
+
+    cancelled.async_shutdown.assert_awaited_once_with()
+    healthy.async_shutdown.assert_awaited_once_with()
+    assert completed.is_set()
+
+
+@pytest.mark.asyncio
 async def test_successful_credential_check_shuts_down_all_known_coordinators() -> None:
     """Close each temporary coordinator before reporting valid credentials."""
     coordinators = {
