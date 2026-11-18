@@ -45,6 +45,14 @@ description: "Validate TP-Link Deco setup, options and reauthentication flows, i
    matching `strings.json` and translation keys.
 6. Keep the main client/performance polling interval distinct from the independent Deco `device_list_interval`. Preserve existing values, unique IDs and the original scan-interval selector. For the new field accept integer 0 (startup-only) or >=10 seconds; use a continuous serializable schema and validate the disjoint constraint at the flow layer in both setup and options, including rejected 1–9 without authentication.
 7. Parameterize regressions across supported values, legacy defaults and invalid inputs. Mock authentication/network operations and verify that invalid inputs do **not** invoke them or update config entries. Cover successful integer persistence in both flows, other config fields remaining unchanged, and JSON serialization.
+   **Upstream config-flow recovery parity (issue #2):** using the same
+   setup/options flow instance, submit an invalid independent Deco
+   interval (1–9) or unsupported main scan interval, then resubmit
+   a supported value. Assert a field-specific error and JSON-serializable
+   form before any authentication or write, followed by exactly one
+   credential check and integer persistence after correction. Keep
+   the existing config-entry data unchanged in the mocked manager.
+   Do not copy upstream syslog settings that this fork does not support.
 8. For any config-entry version migration, check the actual `ConfigEntry`
    API in **both supported Home Assistant versions** before choosing how to
    update version or data. The PR #24 review found that directly assigning
