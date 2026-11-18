@@ -22,16 +22,19 @@ description: "Validate TP-Link Deco setup, options and reauthentication flows, i
   `interval_seconds`, not `scan_interval`. Run
   `tests/test_translation_key_parity.py` for canonical nested-key
   coverage and both setup/options selector labels in `en`, `nl`,
-  `sk`, `sv`, `fr` and `nb`. Existing merged translations cover
-  Dutch (19 formerly absent keys), Slovak and Swedish (seven each),
-  and French (39); the Norwegian Bokmål PR #57 adds 39 missing paths
-  but is not deployed until merged. Validate the **exact original
-  values of all 16 Norwegian text leaves**, including credential and
-  reauthentication labels, not just key presence or opt-in labels.
-  Preserve legacy titles, all previously translated values and validation
-  errors. Portuguese coverage remains incomplete; do not claim
-  all-language parity. Do **not** copy unimplemented upstream syslog
-  options merely to satisfy translation parity.
+  `sk`, `sv`, `fr`, `nb`, `pt` and `pt-BR`. Existing merged
+  translations cover Dutch (19 formerly absent keys), Slovak and Swedish
+  (seven each), and French (39). PR #57 proposes Norwegian Bokmål
+  completion (39 keys) plus Portuguese and Brazilian Portuguese
+  completion (31 keys each), none deployed until that PR merges.
+  Validate the **exact original values of all 16 Norwegian text leaves**,
+  including credential and reauthentication labels, not just key
+  presence. Preserve all existing Portuguese regional values and
+  their legacy `options.step.user` leaves; add labels to the actual
+  `options.step.init` path and assert nonempty canonical text for
+  both variants. Structural parity does not replace native-language
+  proofreading. Do **not** copy unimplemented upstream syslog options
+  merely to satisfy translation parity.
 
 5. Validate submitted values in **both setup and options flows** before
    credential checks, API traffic or data mutation. For **numeric**
