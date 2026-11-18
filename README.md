@@ -30,7 +30,7 @@ This integration provides local polling control and diagnostics for TP-Link Deco
 **Deco diagnostic and coordinator-health sensors are disabled by default.**
 In Home Assistant, open **Settings → Devices & services → TP-Link Deco →
 Devices**, select a Deco, show disabled entities, and enable the
-diagnostics you want. Enabling them does not cause a router API call.
+diagnostics you want.
 
 Per-Deco diagnostics are created only when the firmware has supplied a
 nonempty value for that field, even if that first happens on a later refresh.
