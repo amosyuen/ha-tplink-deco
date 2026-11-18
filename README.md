@@ -378,6 +378,15 @@ Device trackers are added for both decos and clients. The device tracker state m
 | device_type     | client, deco                     |
 | connection_type | wired, band5, band2_4            |
 
+**Device Type** is the existing `device_type` **state attribute** on
+each `device_tracker`, not a separate `sensor.device_type` entity.
+It is set to `deco` for Deco nodes and `client` for connected-client
+trackers (including restored clients). To inspect it, open
+**Developer Tools → States**, select the corresponding `device_tracker`,
+and check the attributes. Automations can use
+`state_attr('device_tracker.your_deco', 'device_type')`.
+The original tracker MAC-based unique IDs are unchanged.
+
 #### Client Attributes
 
 | Attribute            | Example Values (comma separated) |
