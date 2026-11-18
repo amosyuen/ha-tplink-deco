@@ -22,9 +22,7 @@ SATELLITE_MAC = "02:00:00:00:60:02"
 def _sensor_ids(added: MagicMock) -> list[str]:
     """Collect every registered unique ID in registration order."""
     return [
-        entity.unique_id
-        for call in added.call_args_list
-        for entity in call.args[0]
+        entity.unique_id for call in added.call_args_list for entity in call.args[0]
     ]
 
 
@@ -61,14 +59,14 @@ async def _setup_sensor_platform() -> tuple[TpLinkDeco, MagicMock, MagicMock]:
         "custom_components.tplink_deco.sensor.async_dispatcher_connect",
         return_value=MagicMock(),
     ):
-        await async_setup_entry(
-            hass, SimpleNamespace(entry_id="mesh-one"), added
-        )
+        await async_setup_entry(hass, SimpleNamespace(entry_id="mesh-one"), added)
     return master, deco_coordinator, added
 
 
 @pytest.mark.asyncio
-async def test_late_diagnostic_values_register_once_without_placeholder_entities() -> None:
+async def test_late_diagnostic_values_register_once_without_placeholder_entities() -> (
+    None
+):
     """Publish optional metrics on later polls, retaining their original IDs."""
     master, coordinator, added = await _setup_sensor_platform()
     callback = coordinator.async_add_listener.call_args_list[0].args[0]
@@ -108,11 +106,15 @@ async def test_late_diagnostic_values_register_once_without_placeholder_entities
     keys = [entity.entity_description.key for entity in _diagnostics(added)]
     assert keys == ["ip_address", "cpu_usage", "bssid_2_4ghz"]
     assert len(_sensor_ids(added)) == len(set(_sensor_ids(added)))
-    assert all(key in {item.key for item in DIAGNOSTIC_SENSOR_DESCRIPTIONS} for key in keys)
+    assert all(
+        key in {item.key for item in DIAGNOSTIC_SENSOR_DESCRIPTIONS} for key in keys
+    )
 
 
 @pytest.mark.asyncio
-async def test_delayed_satellite_discovery_keeps_per_node_ids_and_no_duplicates() -> None:
+async def test_delayed_satellite_discovery_keeps_per_node_ids_and_no_duplicates() -> (
+    None
+):
     """Handle a newly committed node and its subsequent optional fields."""
     master, coordinator, added = await _setup_sensor_platform()
     callback = coordinator.async_add_listener.call_args_list[0].args[0]
