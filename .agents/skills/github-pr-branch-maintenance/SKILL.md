@@ -48,6 +48,38 @@ rewrite later made it `rebaseable=true` without changing its file tree.
    Never retry a rejected lease blindly; fetch the new head and
    reconcile first. Do not use an unconditional force push.
 
+### Verified GitHub-only linearization (PR #57, 2026-11-18)
+
+- **Diagnosis first:** PR #57 had `mergeable=true`,
+  `mergeable_state=clean`, `rebaseable=false` and zero commits
+  behind `main`. Its history contained a merge-from-main commit,
+  not an unresolved file conflict. Only an explicit user-authorized
+  force-rebase justified rewriting this otherwise mergeable branch.
+- **Reconstruct deliberately:** list the original commits, their
+  parent SHAs and actual changed paths before writing objects. With
+  GitHub's Git data APIs, build each replacement tree from the preceding
+  tree and the intended file blob SHAs; create single-parent commits in
+  content-change order on the verified latest `main`. Omit an obsolete
+  merge commit only after confirming the needed changes are already in
+  the base or preserved by the replay. Never assume every commit changes
+  exactly one file without inspecting it.
+- **Prove tree equivalence before the ref update:** PR #57 replaced an
+  18-commit history with 17 linear content commits. Both final Git tree
+  SHAs were exactly `8da031565776eca38d64a55cdbbef4724cb6d8a7`.
+  Compare the full intended changed-path set and require zero commits
+  behind `main`; abort on a tree mismatch or any unexpected path.
+  Re-fetch branch/base SHAs immediately before using `update_ref`
+  with `force=true` **and** `expected_sha` matching the old head.
+- **Revalidate the rewritten SHA:** GitHub's initial
+  `mergeable_state=unstable` reflected running CI, not a merge
+  conflict. All five required jobs passed on the new SHA before a
+  merge-ready claim. During the last status check PR #57 became
+  `merged=true` (merge commit `cf90deaa`); verify the real merge
+  commit and `main` tree, then update the tracked issue from
+  *open* to *merged* without checking unrelated acceptance criteria.
+  Never claim a merge was performed by the assistant when the
+  external repository state changed during verification.
+
 ## Verification and handoff
 
 7. Fetch the PR again and check its current head, target base, compare
