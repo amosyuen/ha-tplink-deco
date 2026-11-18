@@ -239,6 +239,7 @@ async def async_setup_entry(
     )
 
     tracked_macs: set[str] = set()
+    tracked_diagnostics: set[tuple[str, str]] = set()
     tracked_client_count_macs: set[str] = set()
 
     def _build_entities_for_deco(deco: TpLinkDeco | None) -> list[SensorEntity]:
@@ -273,32 +274,41 @@ async def async_setup_entry(
             ),
         ]
 
-        if deco is not None:
-            entities.extend(
-                TplinkDecoDiagnosticSensor(
-                    coordinator_decos=coordinator_decos,
-                    deco_mac=deco.mac,
-                    description=description,
-                )
-                for description in DIAGNOSTIC_SENSOR_DESCRIPTIONS
-                if not _is_empty(description.value_fn(deco))
-            )
-
         return entities
 
     @callback
     def _add_untracked_deco_sensors() -> None:
-        """Add sensor entities for any decos not yet tracked."""
+        """Discover new Deco throughput and newly supported diagnostic sensors."""
         new_entities: list[SensorEntity] = []
         for mac, deco in coordinator_decos.data.decos.items():
-            if mac in tracked_macs:
-                continue
-            _LOGGER.debug("Adding sensors for deco mac=%s", mac)
-            new_entities.extend(_build_entities_for_deco(deco))
-            tracked_macs.add(mac)
+            if mac not in tracked_macs:
+                _LOGGER.debug("Adding sensors for deco mac=%s", mac)
+                new_entities.extend(_build_entities_for_deco(deco))
+                tracked_macs.add(mac)
+
+            for description in DIAGNOSTIC_SENSOR_DESCRIPTIONS:
+                sensor_key = (mac, description.key)
+                if sensor_key in tracked_diagnostics or _is_empty(
+                    description.value_fn(deco)
+                ):
+                    continue
+                new_entities.append(
+                    TplinkDecoDiagnosticSensor(
+                        coordinator_decos=coordinator_decos,
+                        deco_mac=mac,
+                        description=description,
+                    )
+                )
+                tracked_diagnostics.add(sensor_key)
 
         if new_entities:
             async_add_entities(new_entities)
+
+    # The initial inventory can omit optional fields which appear on later
+    # device-list/performance updates. Retry only unregistered diagnostics.
+    coordinator_decos.on_close(
+        coordinator_decos.async_add_listener(_add_untracked_deco_sensors)
+    )
 
     total_sensors_added = False
 

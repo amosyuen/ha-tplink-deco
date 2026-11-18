@@ -145,7 +145,14 @@ Their physical-firmware validation remains a separate limitation.
   snapshot is published to `coordinator.data` _before_ signaling, so
   synchronous `@callback` handlers see newly added MACs immediately.
   Tracker, binary-sensor and per-node sensor platforms avoid adding the
-  same known MAC twice. Master-dependent **network-total** sensors
+  same known MAC twice. Per-Deco throughput sensors register once per node.
+  **Diagnostic sensors are disabled by default** and register individually
+  when their optional firmware value first becomes available, including after
+  a later coordinator refresh. An initially absent value does not permanently
+  prevent discovery; repeated updates do not duplicate entities. Registered
+  diagnostics keep their MAC-based unique IDs and can later report
+  `None` without being removed. Firmware fields that never appear do not
+  create placeholder entities. Master-dependent **network-total** sensors
   continue to use the coordinator's normal **post-update listener**,
   which registers totals once per entry. Keep known offline nodes.
 - **Client tracker discovery (merged in PR #27):** `SIGNAL_CLIENT_ADDED`
