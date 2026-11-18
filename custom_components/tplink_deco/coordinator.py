@@ -159,6 +159,7 @@ class TpLinkDeco:
         self.hw_version = None
         self.sw_version = None
         self.device_model = None
+        self.device_type: str | None = None
 
         self.name = None
         self.ip_address = None
@@ -195,6 +196,10 @@ class TpLinkDeco:
         self.hw_version = data.get("hardware_ver")
         self.sw_version = data.get("software_ver")
         self.device_model = data.get("device_model")
+        device_type = data.get("device_type")
+        self.device_type = (
+            device_type if isinstance(device_type, str) and device_type.strip() else None
+        )
 
         custom_nickname = data.get("custom_nickname")
         nickname = data.get("nickname")

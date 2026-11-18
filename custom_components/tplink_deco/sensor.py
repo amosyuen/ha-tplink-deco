@@ -54,6 +54,13 @@ class TplinkCoordinatorHealthSensorDescription(SensorEntityDescription):
 
 DIAGNOSTIC_SENSOR_DESCRIPTIONS: tuple[TplinkDecoDiagnosticSensorDescription, ...] = (
     TplinkDecoDiagnosticSensorDescription(
+        key="device_type",
+        name="Device Type",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=lambda deco: deco.device_type,
+    ),
+    TplinkDecoDiagnosticSensorDescription(
         key="ip_address",
         name="IP address",
         entity_category=EntityCategory.DIAGNOSTIC,

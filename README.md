@@ -26,6 +26,8 @@ This integration provides local polling control and diagnostics for TP-Link Deco
 - CPU usage (raw + smoothed)
 - Memory usage (raw + smoothed)
 - Backhaul and network diagnostics
+- **Device Type** from the Deco firmware when reported, with the original
+  `extra` branch unique ID `<deco_mac>_device_type`
 
 **Deco diagnostic and coordinator-health sensors are disabled by default.**
 In Home Assistant, open **Settings → Devices & services → TP-Link Deco →
@@ -37,7 +39,9 @@ nonempty value for that field, even if that first happens on a later refresh.
 Unsupported fields are not exposed as placeholder sensors. Network-wide
 throughput totals require a known master Deco, while the per-Deco
 **Connected clients** sensor requires a successful client-list poll for that
-node.
+node. **Device Type** is a separate read-only `sensor` entity, not the
+`device_type` attribute on `device_tracker` (which identifies `deco` versus
+`client`). It is available only if firmware supplies a nonempty string.
 
 ### Optional mobile WAN data usage (upstream #631)
 

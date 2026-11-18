@@ -144,3 +144,63 @@ async def test_delayed_satellite_discovery_keeps_per_node_ids_and_no_duplicates(
     assert len(ids) == len(set(ids))
     assert len([value for value in ids if value.endswith("_total_down")]) == 1
     assert len([value for value in ids if value.endswith("_total_up")]) == 1
+
+@pytest.mark.parametrize(
+    "reported_value",
+    [None, "", "  ", True, False, 123, {"unexpected": "object"}],
+)
+def test_device_type_ignores_missing_or_malformed_firmware_values(
+    reported_value: object,
+) -> None:
+    """Avoid exposing malformed values as a Home Assistant sensor state."""
+    deco = TpLinkDeco(MASTER_MAC)
+    deco.update({"device_type": reported_value})
+
+    assert deco.device_type is None
+
+
+@pytest.mark.asyncio
+async def test_extra_device_type_sensor_keeps_identity_and_late_discovery() -> None:
+    """Restore the extra-branch sensor without changing tracker identifiers."""
+    master, coordinator, added = await _setup_sensor_platform()
+    callback = coordinator.async_add_listener.call_args_list[0].args[0]
+
+    assert master.device_type is None
+    assert all(
+        entity.entity_description.key != "device_type"
+        for entity in _diagnostics(added)
+    )
+
+    master.update({"role": "master", "nickname": "Main", "device_type": "router"})
+    callback()
+
+    sensors = [
+        entity
+        for entity in _diagnostics(added)
+        if entity.entity_description.key == "device_type"
+    ]
+    assert len(sensors) == 1
+    device_type_sensor = sensors[0]
+    assert device_type_sensor.unique_id == f"{MASTER_MAC}_device_type"
+    assert device_type_sensor.entity_description.name == "Device Type"
+    assert device_type_sensor.entity_description.entity_registry_enabled_default is False
+    assert device_type_sensor.native_value == "router"
+
+    master.update({"role": "master", "nickname": "Main", "device_type": "mesh"})
+    callback()
+    assert device_type_sensor.native_value == "mesh"
+
+    satellite = TpLinkDeco(SATELLITE_MAC)
+    satellite.update({"role": "slave", "nickname": "Other", "device_type": "satellite"})
+    coordinator.data.decos[SATELLITE_MAC] = satellite
+    callback()
+    callback()
+    ids = _sensor_ids(added)
+    assert ids.count(f"{MASTER_MAC}_device_type") == 1
+    assert ids.count(f"{SATELLITE_MAC}_device_type") == 1
+    assert len(ids) == len(set(ids))
+
+    master.update({"role": "master", "nickname": "Main"})
+    assert device_type_sensor.native_value is None
+    callback()
+    assert _sensor_ids(added).count(f"{MASTER_MAC}_device_type") == 1

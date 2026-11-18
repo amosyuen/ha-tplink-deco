@@ -352,10 +352,16 @@ Their physical-firmware validation remains a separate limitation.
   to `false` on new and existing installations.
 - `sensor` exposes Down/Up totals per node and across the network,
   per-node `Connected clients` diagnostics and optional diagnostic
-  readings (IP address, BSSIDs, backhaul type/rate and CPU/memory).
-  Diagnostic entities are created when their initial values are present
-  and are disabled by default in the registry. No new diagnostics should
-  implicitly delete existing entities.
+  readings (firmware Device Type, IP address, BSSIDs, backhaul type/rate and
+  CPU/memory). The restored `extra` Device Type sensor uses the firmware's
+  `device_type` string, the original per-Deco `<deco_mac>_device_type`
+  unique ID, and the existing per-node device association. It is distinct
+  from the `device_tracker` `device_type` attribute (`deco`/`client`).
+  Diagnostic entities are registered when their firmware values first
+  become available, including after later refreshes, and are disabled by
+  default in the registry. Empty, missing and malformed firmware values do
+  not create new diagnostics; existing registered entities remain stable.
+  No new diagnostics should implicitly delete existing entities.
 - **Coordinator health diagnostics (merged in PR #30):** attach eight
   disabled-by-default read-only sensors to the master Deco: last successful
   update, API response time and last error for each existing Deco/client
