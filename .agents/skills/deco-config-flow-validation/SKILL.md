@@ -45,21 +45,6 @@ description: "Validate TP-Link Deco setup, options and reauthentication flows, i
    matching `strings.json` and translation keys.
 6. Keep the main client/performance polling interval distinct from the independent Deco `device_list_interval`. Preserve existing values, unique IDs and the original scan-interval selector. For the new field accept integer 0 (startup-only) or >=10 seconds; use a continuous serializable schema and validate the disjoint constraint at the flow layer in both setup and options, including rejected 1–9 without authentication.
 7. Parameterize regressions across supported values, legacy defaults and invalid inputs. Mock authentication/network operations and verify that invalid inputs do **not** invoke them or update config entries. Cover successful integer persistence in both flows, other config fields remaining unchanged, and JSON serialization.
-   **Upstream config-flow recovery parity (issue #2):** using the same
-   setup/options flow instance, submit an invalid independent Deco
-   interval (1–9) or unsupported main scan interval, then resubmit
-   a supported value. Assert a field-specific error and JSON-serializable
-   form before any authentication or write, followed by exactly one
-   credential check and integer persistence after correction. Keep
-   the existing config-entry data unchanged in the mocked manager.
-   **Input-ownership regression (PR #59):** `_normalize_scan_interval`
-   and `_normalize_device_list_interval` mutate their argument, so
-   call them on a new shallow copy of each submitted mapping. Test that
-   invalid independent polling or SSID consent does not partially
-   normalize the caller's main scan interval. Preserve submitted values
-   on rejected credentials, successful recovery and options persistence
-   errors; assert staged values are integers when checked and saved.
-   Do not copy upstream syslog settings that this fork does not support.
 8. For any config-entry version migration, check the actual `ConfigEntry`
    API in **both supported Home Assistant versions** before choosing how to
    update version or data. The PR #24 review found that directly assigning
@@ -129,10 +114,15 @@ description: "Validate TP-Link Deco setup, options and reauthentication flows, i
   a mocked manager call is not evidence of persisted Home Assistant state.
 - **Privacy and failure matrix:** inject synthetic secrets into auth,
   timeout, host, malformed/unexpected and coordinator-shutdown exceptions.
-  Assert the existing fixed form error code and secret-free DEBUG logs
-  with no raw traceback/exception message. Confirm valid temporary
-  coordinators shut down, ordinary failures do not save data, and
-  `asyncio.CancelledError` propagates rather than becoming a form error.
+  Assert fixed form error codes and secret-free DEBUG logs with no raw
+  traceback/exception message. Keep coordinator **creation/auth**
+  classifications separate from **shutdown/cleanup** errors. Await all
+  temporary coordinator shutdowns even if one returns a failure; report
+  any ordinary shutdown failure as sanitized `unknown`, regardless of
+  its upstream exception class. Prioritize `asyncio.CancelledError`
+  after all sibling shutdowns complete rather than returning a form
+  error. Assert successful cleanup, completion of slower siblings,
+  unchanged stored settings and no writes after cleanup failure.
   On failed options persistence, the handler must retain its prior data;
   the failure is not silently labeled a successful save.
 - **CI verification:** start with the relevant focused tests, then run both
