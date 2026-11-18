@@ -121,8 +121,11 @@ description: "Validate TP-Link Deco setup, options and reauthentication flows, i
   any ordinary shutdown failure as sanitized `unknown`, regardless of
   its upstream exception class. Prioritize `asyncio.CancelledError`
   after all sibling shutdowns complete rather than returning a form
-  error. Assert successful cleanup, completion of slower siblings,
-  unchanged stored settings and no writes after cleanup failure.
+  error. Prove that slower sibling cleanup is actually **awaited**:
+  gate it with an `asyncio.Event`, assert the parent credential-check
+  task remains pending before releasing the gate, then assert completion.
+  A single `asyncio.sleep(0)` is not enough to detect fail-fast cleanup.
+  Check unchanged stored settings and no writes after cleanup failure.
   On failed options persistence, the handler must retain its prior data;
   the failure is not silently labeled a successful save.
 - **CI verification:** start with the relevant focused tests, then run both
