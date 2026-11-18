@@ -113,7 +113,7 @@ async def test_invalid_interval_rejects_before_authentication(
     assert result["errors"] == {
         CONF_DEVICE_LIST_INTERVAL: "invalid_device_list_interval"
     }
-    credentials.assert_not_awaited()
+    credentials.assert_not_called()
     flow.async_create_entry.assert_not_called()
     hass.config_entries.async_update_entry.assert_not_called()
 
@@ -148,6 +148,7 @@ async def test_invalid_interval_can_be_corrected_in_same_flow(
     flow, hass = _flow(kind)
     entry = hass.config_entries.async_get_known_entry.return_value
     original_data = dict(entry.data)
+    original_flow_data = dict(flow.data) if kind == "options" else None
     invalid_data = _values()
     invalid_data[field_name] = invalid_value
     valid_data = _values()
@@ -155,9 +156,17 @@ async def test_invalid_interval_can_be_corrected_in_same_flow(
     original_invalid_data = dict(invalid_data)
     original_valid_data = dict(valid_data)
     step = flow.async_step_user if kind == "setup" else flow.async_step_init
+    credential_payloads: list[dict[str, object]] = []
+
+    async def _check_credentials(
+        _hass_instance: object, candidate_data: dict[str, object]
+    ) -> dict[str, str]:
+        """Capture the credential payload before the flow can mutate it."""
+        credential_payloads.append(dict(candidate_data))
+        return {}
 
     with patch.object(
-        config_flow, "_async_test_credentials", AsyncMock(return_value={})
+        config_flow, "_async_test_credentials", AsyncMock(side_effect=_check_credentials)
     ) as credentials:
         invalid_result = await step(invalid_data)
 
@@ -172,26 +181,39 @@ async def test_invalid_interval_can_be_corrected_in_same_flow(
         )
         assert json.dumps(form_json)
         assert any(field["name"] == field_name for field in form_json["data_schema"])
-        credentials.assert_not_awaited()
+        credentials.assert_not_called()
         flow.async_create_entry.assert_not_called()
         hass.config_entries.async_update_entry.assert_not_called()
         assert entry.data == original_data
+        if kind == "options":
+            assert flow.data == original_flow_data
 
         valid_result = await step(valid_data)
 
     assert valid_data == original_valid_data
     assert valid_result["type"] == "create_entry"
+    credentials.assert_called_once()
     credentials.assert_awaited_once()
+    assert len(credential_payloads) == 1
     flow.async_create_entry.assert_called_once()
     if kind == "setup":
         hass.config_entries.async_update_entry.assert_not_called()
         saved = flow.async_create_entry.call_args.kwargs["data"]
+        assert set(credential_payloads[0]) == set(original_valid_data)
     else:
         hass.config_entries.async_update_entry.assert_called_once()
+        assert hass.config_entries.async_update_entry.call_args.kwargs["entry"] is entry
         saved = hass.config_entries.async_update_entry.call_args.kwargs["data"]
         flow.async_create_entry.assert_called_once_with(data={})
 
-    assert credentials.await_args.args[1] == saved
+    checked = credential_payloads[0]
+    for name in (CONF_HOST, CONF_USERNAME, CONF_PASSWORD):
+        assert checked[name] == original_valid_data[name]
+        assert saved[name] == checked[name]
+    assert checked[CONF_SCAN_INTERVAL] == saved[CONF_SCAN_INTERVAL]
+    assert checked[CONF_DEVICE_LIST_INTERVAL] == saved[CONF_DEVICE_LIST_INTERVAL]
+    assert type(checked[CONF_SCAN_INTERVAL]) is int
+    assert type(checked[CONF_DEVICE_LIST_INTERVAL]) is int
     assert saved[CONF_HOST] == original_data[CONF_HOST]
     assert saved[CONF_USERNAME] == original_data[CONF_USERNAME]
     assert saved[CONF_SCAN_INTERVAL] == (
@@ -200,8 +222,9 @@ async def test_invalid_interval_can_be_corrected_in_same_flow(
     assert saved[CONF_DEVICE_LIST_INTERVAL] == (
         int(corrected_value) if field_name == CONF_DEVICE_LIST_INTERVAL else 0
     )
+    assert type(saved[CONF_SCAN_INTERVAL]) is int
+    assert type(saved[CONF_DEVICE_LIST_INTERVAL]) is int
     assert entry.data == original_data
-
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("kind", ["setup", "options"])
@@ -223,7 +246,7 @@ async def test_invalid_ssid_consent_does_not_normalize_submitted_intervals(
 
     assert result["errors"] == {CONF_EXPOSE_WIFI_SSIDS: "invalid_expose_wifi_ssids"}
     assert submitted_data == original_data
-    credentials.assert_not_awaited()
+    credentials.assert_not_called()
     flow.async_create_entry.assert_not_called()
     hass.config_entries.async_update_entry.assert_not_called()
 
