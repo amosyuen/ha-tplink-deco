@@ -358,7 +358,12 @@ Configurable:
 
 ## Functionality
 
-This integration is a local polling integration that logs into the admin web UI for TP-Link Deco routers. Currently the only feature implemented is device trackers for active devices.
+This integration polls TP-Link Deco routers through their local admin web
+interface. It provides Deco and client device trackers, throughput and
+diagnostic sensors, online and WiFi status binary sensors, polling controls,
+a manual refresh button, and an on-demand system-log export action. Optional
+WiFi/mobile features depend on router firmware. Some diagnostics are disabled
+by default; see [Diagnostics](#diagnostics).
 
 ### Device Trackers
 
