@@ -455,17 +455,15 @@ Their physical-firmware validation remains a separate limitation.
   and unexpected ordinary failures. Router exception messages and secret-bearing
   URLs are not logged; a cancellation still propagates. Temporary coordinators
   must finish their shutdown before a successful credential check is accepted.
+  **Proposed in the focused issue #2 coordinator-cleanup PR:** if a
+  temporary coordinator shutdown fails, await its siblings before
+  returning the sanitized `unknown` error; do not mistake shutdown
+  exceptions for credential failures. Propagate cancellation after
+  sibling cleanup. No stored settings, entity IDs or translations change.
   Options changes are staged in a copy, saved only after verification,
   and adopted by the handler only after Home Assistant accepts the write.
   Failed verification or persistence cannot change the handler's in-memory
   settings; failed verification does not change the stored entry.
-  **Proposed in PR #59 (not on `main` until merged):** setup and options
-  normalize form values only in a shallow copy of the submitted mapping.
-  Rejected polling intervals, invalid SSID consent, failed credentials and
-  failed options persistence no longer modify the original caller-owned
-  input; corrected submissions can complete on the same flow instance
-  with canonical integer interval values. This changes only in-memory
-  input ownership, not stored data, error keys or entity identifiers.
   Reauthentication still merges credentials into the existing settings
   without blanking optional names.
 - Legacy MAC-only client device registrations may be removed manually
