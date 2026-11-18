@@ -462,7 +462,7 @@ Their physical-firmware validation remains a separate limitation.
   input can complete on the same flow instance. Persisted intervals
   remain integers. The options handler adopts staged data only
   after Home Assistant accepts the config-entry update.
-- **Proposed in PR #60 (not yet merged):** once credential creation
+- **Merged in PR #60 (2026-11-18; `8aada29`):** once credential creation
   succeeds, await all recognized temporary coordinator shutdowns
   even when one fails; report a sanitized `unknown` for ordinary
   cleanup exceptions rather than misclassifying them as login or

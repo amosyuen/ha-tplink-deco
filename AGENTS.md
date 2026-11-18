@@ -758,7 +758,7 @@ policy for AI-assisted development.
   adopting them as `self.data`. Verify canonical integer interval
   types at authentication and persistence boundaries; a mocked update
   call does not establish real Home Assistant persistence.
-- **Release temporary resources (proposed PR #60):** successful
+- **Release temporary resources (merged PR #60; 2026-11-18):** successful
   credential verification requires shutting down all temporary
   mandatory and optional coordinators. Await **all** recognized
   shutdowns even when one fails; do not report success or return a
