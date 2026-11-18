@@ -42,6 +42,7 @@ class TplinkDecoDiagnosticSensorDescription(SensorEntityDescription):
     """Description of a TP-Link Deco diagnostic sensor."""
 
     value_fn: Callable[[TpLinkDeco], Any]
+    requires_value: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -50,6 +51,45 @@ class TplinkCoordinatorHealthSensorDescription(SensorEntityDescription):
 
     coordinator_key: str
     value_fn: Callable[[Any], Any]
+
+
+def _restored_diagnostic_description(
+    key: str, name: str
+) -> TplinkDecoDiagnosticSensorDescription:
+    """Keep the extra branch's sensor identity with validated optional values."""
+    return TplinkDecoDiagnosticSensorDescription(
+        key=key,
+        name=name,
+        translation_key=key,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        requires_value=True,
+        value_fn=lambda deco: deco.diagnostic_values.get(key),
+    )
+
+
+RESTORED_DIAGNOSTIC_SENSOR_DESCRIPTIONS = tuple(
+    _restored_diagnostic_description(key, name)
+    for key, name in (
+        ("group_status", "Group Status"),
+        ("inet", "Internet Status"),
+        ("nickname", "Nickname"),
+        ("role", "Role"),
+        ("master", "Master Deco"),
+        ("slave", "Slave Deco"),
+        ("standalone", "Standalone Master"),
+        ("signal_level", "Signal level"),
+        ("signal_level24", "Signal level 2.4Ghz"),
+        ("signal_level5", "Signal level 5Ghz"),
+        ("interface", "Interface"),
+        ("previous", "MAC of upstream node"),
+        ("client_mesh", "Client mesh"),
+        ("bssid_sta_2g", "BSSID 2.4 GHz (Station)"),
+        ("bssid_sta_5g", "BSSID 5 GHz (Station)"),
+        ("set_gateway_support", "Set gateway support"),
+        ("topology", "Topology"),
+    )
+)
 
 
 DIAGNOSTIC_SENSOR_DESCRIPTIONS: tuple[TplinkDecoDiagnosticSensorDescription, ...] = (
@@ -144,6 +184,7 @@ DIAGNOSTIC_SENSOR_DESCRIPTIONS: tuple[TplinkDecoDiagnosticSensorDescription, ...
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda deco: deco.mem_usage_raw,
     ),
+    *RESTORED_DIAGNOSTIC_SENSOR_DESCRIPTIONS,
 )
 
 
@@ -289,7 +330,7 @@ async def async_setup_entry(
         new_entities: list[SensorEntity] = []
         for mac, deco in coordinator_decos.data.decos.items():
             if mac not in tracked_macs:
-                _LOGGER.debug("Adding sensors for deco mac=%s", mac)
+                _LOGGER.debug("Adding sensors for a discovered Deco node")
                 new_entities.extend(_build_entities_for_deco(deco))
                 tracked_macs.add(mac)
 
@@ -639,12 +680,19 @@ class TplinkDecoDiagnosticSensor(CoordinatorEntity, SensorEntity):
         self._attr_unique_id = f"{deco_mac}_{description.key}"
 
     @property
-    def _deco(self) -> TpLinkDeco:
+    def _deco(self) -> TpLinkDeco | None:
         """Return the current deco object."""
-        return self.coordinator.data.decos[self._deco_mac]
+        return self.coordinator.data.decos.get(self._deco_mac)
 
     @property
-    def device_info(self) -> DeviceInfo:
+    def available(self) -> bool:
+        """Keep restored diagnostics unavailable without a live, usable value."""
+        return super().available and (
+            not self.entity_description.requires_value or self.native_value is not None
+        )
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
         """Return device info."""
         return create_device_info(
             self._deco, self.coordinator.data.master_deco, self.coordinator
@@ -653,5 +701,8 @@ class TplinkDecoDiagnosticSensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self) -> Any:
         """Return the sensor value, or None if absent."""
-        value = self.entity_description.value_fn(self._deco)
+        deco = self._deco
+        if deco is None:
+            return None
+        value = self.entity_description.value_fn(deco)
         return None if _is_empty(value) else value

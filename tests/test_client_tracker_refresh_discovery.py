@@ -46,8 +46,11 @@ def _registered_clients(add_entities: MagicMock) -> list[TplinkDecoClientDeviceT
 
 
 @pytest.mark.asyncio
-async def test_post_refresh_client_discovery_is_idempotent() -> None:
+async def test_post_refresh_client_discovery_is_idempotent(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     """Recover from early dispatcher delivery and keep separate meshes isolated."""
+    caplog.set_level("DEBUG", logger="custom_components.tplink_deco")
     hass = MagicMock()
     hass.data = {DOMAIN: {}}
     post_refresh_callbacks: dict[str, Callable[[], None]] = {}
@@ -150,3 +153,6 @@ async def test_post_refresh_client_discovery_is_idempotent() -> None:
         for coordinator in client_coordinators.values():
             coordinator.async_add_listener.assert_called_once()
             assert coordinator.on_close.call_count == 2
+    assert all(
+        mac not in caplog.text for mac in (FIRST_MAC, SECOND_MAC, OTHER_ENTRY_MAC)
+    )

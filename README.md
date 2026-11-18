@@ -28,6 +28,8 @@ This integration provides local polling control and diagnostics for TP-Link Deco
 - Backhaul and network diagnostics
 - **Device Type** from the Deco firmware when reported, with the original
   `extra` branch unique ID `<deco_mac>_device_type`
+- Optional mesh status, firmware nickname, role, signal, upstream station and
+  gateway-capability sensors restored from `extra`, with their original IDs
 
 **Deco diagnostic and coordinator-health sensors are disabled by default.**
 In Home Assistant, open **Settings → Devices & services → TP-Link Deco →
@@ -42,6 +44,31 @@ throughput totals require a known master Deco, while the per-Deco
 node. **Device Type** is a separate read-only `sensor` entity, not the
 `device_type` attribute on `device_tracker` (which identifies `deco` versus
 `client`). It is available only if firmware supplies a nonempty string.
+
+The additional read-only diagnostics retain `<deco_mac>_<key>` unique IDs:
+
+| Diagnostics                                 | Original keys                                     |
+| ------------------------------------------- | ------------------------------------------------- |
+| Group / Internet status                     | `group_status`, `inet`                            |
+| Firmware nickname / role                    | `nickname`, `role`                                |
+| Master / satellite / standalone master      | `master`, `slave`, `standalone`                   |
+| Signal summary / 2.4 GHz / 5 GHz            | `signal_level`, `signal_level24`, `signal_level5` |
+| Interface / upstream MAC / client mesh      | `interface`, `previous`, `client_mesh`            |
+| Station BSSID, 2.4 GHz / 5 GHz              | `bssid_sta_2g`, `bssid_sta_5g`                    |
+| Gateway configuration capability / topology | `set_gateway_support`, `topology`                 |
+
+**Set gateway support** only reports a firmware capability; it does not change
+the gateway. **Nickname** shows the firmware nickname, independently of the
+Home Assistant device name. False flags and zero signal levels are valid.
+These sensors become unavailable if polling fails, their node disappears, or
+the firmware stops reporting the value. An explicitly offline node can still
+report its group status. Each sensor recovers with its original unique ID and
+registry settings. A single master with a known offline satellite still reports
+a multi-node mesh.
+
+Upstream MACs, station BSSIDs, topology targets and nicknames are private network
+metadata. Enabling their sensors can store values in Recorder, backups and
+exports. Discovery logs and the downloadable diagnostics omit these values.
 
 ### Optional mobile WAN data usage (upstream #631)
 
@@ -178,6 +205,10 @@ Configurable:
 ## 📝 Changelog
 
 ### Unreleased — upstream sync (issue #2)
+
+- Restore 17 optional per-Deco diagnostics from `extra`, including Master Deco
+  and Set gateway support, with their original registry IDs and translations
+  in all eight shipped languages.
 
 - Recover client tracking on firmware where a per-node query returns
   HTTP 5xx by trying one global client-list query. Live clients from
@@ -382,9 +413,9 @@ Device trackers are added for both decos and clients. The device tracker state m
 | device_type     | client, deco                     |
 | connection_type | wired, band5, band2_4            |
 
-**Device Type** is the existing `device_type` **state attribute** on
-each `device_tracker`, not a separate `sensor.device_type` entity.
-It is set to `deco` for Deco nodes and `client` for connected-client
+The `device_type` **state attribute** on each `device_tracker` is distinct from
+the optional firmware **Device Type** diagnostic sensor described above.
+The tracker attribute is set to `deco` for Deco nodes and `client` for connected-client
 trackers (including restored clients). To inspect it, open
 **Developer Tools → States**, select the corresponding `device_tracker`,
 and check the attributes. Automations can use

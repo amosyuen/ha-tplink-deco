@@ -105,7 +105,7 @@ def _async_setup_decos(
     # Register the master before satellites so its device registry ID exists.
     master_deco = coordinator.data.master_deco
     if master_deco is not None:
-        _LOGGER.debug("_async_setup_decos: Adding master deco mac=%s", master_deco.mac)
+        _LOGGER.debug("Adding tracker for the master Deco")
         tracked_decos.add(master_deco.mac)
         async_add_entities(
             [
@@ -124,7 +124,7 @@ def _async_setup_decos(
             if mac in tracked_decos:
                 continue
 
-            _LOGGER.debug("add_untracked_decos: Adding deco mac=%s", deco.mac)
+            _LOGGER.debug("Adding tracker for a discovered Deco node")
             new_entities.append(
                 TplinkDecoDeviceTracker(coordinator, deco, deco_prefix, deco_postfix)
             )
@@ -159,7 +159,7 @@ def _async_setup_clients(
             if mac in tracked_clients:
                 continue
 
-            _LOGGER.debug("add_untracked_clients: Adding client mac=%s", client.mac)
+            _LOGGER.debug("Adding tracker for a discovered Deco client")
             new_entities.append(
                 TplinkDecoClientDeviceTracker(
                     coordinator_decos,

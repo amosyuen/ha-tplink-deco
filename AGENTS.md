@@ -310,6 +310,20 @@ policy for AI-assisted development.
 - Test changes against incomplete firmware responses, offline devices,
   multiple Decos, and multiple configuration entries where relevant.
 
+## Optional extra-branch diagnostic restoration (issue #64)
+
+- **Verified gaps:** `extra` described an `inet` sensor without updating
+  that model field, left node-level standalone unset, and invented `fixed`
+  when topology data was absent. Restore sensor contracts from their actual
+  firmware sources, rather than copying these fallback bugs. Keep original
+  MAC/key unique IDs and validate optional diagnostic scalars separately
+  from established tracker and numeric telemetry contracts.
+- Do not infer standalone from the current response length alone: retained
+  offline satellites still belong to the known mesh. Require exactly one
+  current master; cover missing/ambiguous masters, late fields, false/zero,
+  offline recovery, reload identities and multiple entries in regression
+  tests. Never retain or expose raw internet error messages as sensor states.
+
 ## Restored unavailable client identity (upstream #619)
 
 - **Observed failure:** Home Assistant can persist an unavailable device
@@ -810,9 +824,10 @@ policy for AI-assisted development.
 - Treat `bssid_sta_2g` and `bssid_sta_5g` from the Deco device list as
   optional wireless backhaul metadata, distinct from `bssid_2g` and `bssid_5g`
   used for the existing access-point BSSID attributes.
-- Expose supported backhaul identifiers only as read-only Deco tracker state
-  attributes. Missing fields must remain `None`, not cause startup failures
-  or change MAC-based device identity, parent relationships, sensors or polling.
+- Preserve the read-only Deco tracker attributes introduced by #595. The
+  separate issue #64 sensors reuse the firmware fields with their own stable
+  IDs. Keep missing tracker values `None` and preserve MAC-based device
+  identity, parent relationships and polling.
 - Test master and satellite entries, missing/one/both bands, subsequent
   updates that remove a band, and preservation of existing BSSID attributes.
   Avoid logging raw wireless identifiers or other sensitive network metadata.

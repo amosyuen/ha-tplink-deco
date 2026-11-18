@@ -82,6 +82,57 @@
     "sensor": {
       "mobile_data_usage": {
         "name": "Spotreba mobilných dát"
+      },
+      "group_status": {
+        "name": "Stav skupiny"
+      },
+      "inet": {
+        "name": "Stav internetu"
+      },
+      "nickname": {
+        "name": "Prezývka"
+      },
+      "role": {
+        "name": "Rola"
+      },
+      "master": {
+        "name": "Hlavné Deco"
+      },
+      "slave": {
+        "name": "Satelitné Deco"
+      },
+      "standalone": {
+        "name": "Samostatné hlavné zariadenie"
+      },
+      "signal_level": {
+        "name": "Úroveň signálu"
+      },
+      "signal_level24": {
+        "name": "Úroveň signálu 2,4 GHz"
+      },
+      "signal_level5": {
+        "name": "Úroveň signálu 5 GHz"
+      },
+      "interface": {
+        "name": "Rozhranie"
+      },
+      "previous": {
+        "name": "MAC nadradeného uzla"
+      },
+      "client_mesh": {
+        "name": "Klientska mesh sieť"
+      },
+      "bssid_sta_2g": {
+        "name": "BSSID 2,4 GHz (stanica)"
+      },
+      "bssid_sta_5g": {
+        "name": "BSSID 5 GHz (stanica)"
+      },
+      "set_gateway_support": {
+        "name": "Podpora nastavenia brány"
+      },
+      "topology": {
+        "name": "Topológia"
       }
     }
   }

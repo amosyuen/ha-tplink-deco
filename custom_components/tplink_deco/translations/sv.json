@@ -82,6 +82,57 @@
     "sensor": {
       "mobile_data_usage": {
         "name": "Mobildataanvändning"
+      },
+      "group_status": {
+        "name": "Gruppstatus"
+      },
+      "inet": {
+        "name": "Internetstatus"
+      },
+      "nickname": {
+        "name": "Smeknamn"
+      },
+      "role": {
+        "name": "Roll"
+      },
+      "master": {
+        "name": "Huvud-Deco"
+      },
+      "slave": {
+        "name": "Satellit-Deco"
+      },
+      "standalone": {
+        "name": "Fristående huvudenhet"
+      },
+      "signal_level": {
+        "name": "Signalnivå"
+      },
+      "signal_level24": {
+        "name": "Signalnivå 2,4 GHz"
+      },
+      "signal_level5": {
+        "name": "Signalnivå 5 GHz"
+      },
+      "interface": {
+        "name": "Gränssnitt"
+      },
+      "previous": {
+        "name": "MAC-adress för överordnad nod"
+      },
+      "client_mesh": {
+        "name": "Klientmesh"
+      },
+      "bssid_sta_2g": {
+        "name": "BSSID 2,4 GHz (station)"
+      },
+      "bssid_sta_5g": {
+        "name": "BSSID 5 GHz (station)"
+      },
+      "set_gateway_support": {
+        "name": "Stöd för att ange gateway"
+      },
+      "topology": {
+        "name": "Topologi"
       }
     }
   }

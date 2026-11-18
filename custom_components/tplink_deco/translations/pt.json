@@ -96,6 +96,57 @@
     "sensor": {
       "mobile_data_usage": {
         "name": "Utilização de dados móveis"
+      },
+      "group_status": {
+        "name": "Estado do grupo"
+      },
+      "inet": {
+        "name": "Estado da Internet"
+      },
+      "nickname": {
+        "name": "Alcunha"
+      },
+      "role": {
+        "name": "Função"
+      },
+      "master": {
+        "name": "Deco principal"
+      },
+      "slave": {
+        "name": "Deco satélite"
+      },
+      "standalone": {
+        "name": "Principal autónomo"
+      },
+      "signal_level": {
+        "name": "Nível de sinal"
+      },
+      "signal_level24": {
+        "name": "Nível de sinal de 2,4 GHz"
+      },
+      "signal_level5": {
+        "name": "Nível de sinal de 5 GHz"
+      },
+      "interface": {
+        "name": "Interface"
+      },
+      "previous": {
+        "name": "MAC do nó a montante"
+      },
+      "client_mesh": {
+        "name": "Malha de clientes"
+      },
+      "bssid_sta_2g": {
+        "name": "BSSID de 2,4 GHz (estação)"
+      },
+      "bssid_sta_5g": {
+        "name": "BSSID de 5 GHz (estação)"
+      },
+      "set_gateway_support": {
+        "name": "Configuração de gateway suportada"
+      },
+      "topology": {
+        "name": "Topologia"
       }
     }
   }

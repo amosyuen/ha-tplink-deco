@@ -362,6 +362,34 @@ Their physical-firmware validation remains a separate limitation.
   default in the registry. Empty, missing and malformed firmware values do
   not create new diagnostics; existing registered entities remain stable.
   No new diagnostics should implicitly delete existing entities.
+- **Restored diagnostics on the issue #64 PR branch:** 17 additional
+  read-only sensors retain the `extra` branch's `<deco_mac>_<sensor_key>`
+  unique IDs: `group_status`, `inet`, `nickname`, `role`, `master`, `slave`,
+  `standalone`, `signal_level`, `signal_level24`, `signal_level5`, `interface`,
+  `previous`, `client_mesh`, `bssid_sta_2g`, `bssid_sta_5g`,
+  `set_gateway_support` and `topology`. They reuse the existing late-value
+  discovery and remain disabled by default, preserving existing registry
+  choices. `node_diagnostics.py` selects bounded scalar values independently
+  of existing tracker/backhaul fields; missing or malformed optional values
+  do not produce false states or placeholder sensors. `inet` reads
+  `inet_status`; the raw nickname remains separate from the display name.
+  Master/slave flags require a recognized role. Standalone requires exactly
+  one current master and includes retained offline nodes in the mesh size.
+  Missing/ambiguous masters leave standalone unknown. An explicit automatic
+  flag reports `auto`. An explicit manual flag reports the validated target
+  or `fixed` when the firmware supplies no target. Missing or invalid modes
+  leave topology unknown. Signal summaries
+  prefer a valid 2.4 GHz measurement, including zero, then 5 GHz, without
+  changing the firmware scale. A failed refresh or a node missing from the
+  latest inventory makes the new sensors unavailable. A node explicitly
+  reporting offline can still publish its group status. Missing group status
+  permits other valid readings. All of these transitions preserve registry IDs.
+  Station BSSIDs, upstream MACs, topology targets and nicknames may enter
+  Recorder when enabled. The allowlisted diagnostics download and discovery
+  logs omit these values. Raw `inet_error_msg` is deliberately unimplemented.
+  This scoped PR adds no polling or reboot controls and does not implement
+  the separate speed aliases, multi-connection or global batch proposals.
+  Physical firmware validation remains unverified.
 - **Coordinator health diagnostics (merged in PR #30):** attach eight
   disabled-by-default read-only sensors to the master Deco: last successful
   update, API response time and last error for each existing Deco/client

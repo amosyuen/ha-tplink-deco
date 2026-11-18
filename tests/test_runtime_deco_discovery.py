@@ -118,8 +118,11 @@ async def test_new_node_is_committed_before_discovery_notification(
 
 
 @pytest.mark.asyncio
-async def test_discovery_creates_trackers_binary_sensors_and_node_sensors() -> None:
+async def test_discovery_creates_trackers_binary_sensors_and_node_sensors(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     """Discover a new satellite across all existing platforms exactly once."""
+    caplog.set_level("DEBUG", logger="custom_components.tplink_deco")
     hass = MagicMock()
     master = TpLinkDeco(MASTER_MAC)
     master.update(_payload(MASTER_MAC, master=True))
@@ -241,6 +244,8 @@ async def test_discovery_creates_trackers_binary_sensors_and_node_sensors() -> N
         ):
             assert _unique_ids(add) == previous
         assert notifications.count(SIGNAL_DECO_ADDED) == 2
+    assert MASTER_MAC not in caplog.text
+    assert SATELLITE_MAC not in caplog.text
 
 
 @pytest.mark.asyncio

@@ -35,6 +35,8 @@ from .exceptions import LoginForbiddenException
 from .exceptions import LoginInvalidException
 from .exceptions import TimeoutException
 from .exceptions import TransientConnectionException
+from .node_diagnostics import DiagnosticValue
+from .node_diagnostics import parse_node_diagnostics
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 CLIENT_BACKOFF_INITIAL_SECONDS = 30
@@ -160,6 +162,7 @@ class TpLinkDeco:
         self.sw_version = None
         self.device_model = None
         self.device_type: str | None = None
+        self.diagnostic_values: dict[str, DiagnosticValue] = {}
 
         self.name = None
         self.ip_address = None
@@ -193,6 +196,7 @@ class TpLinkDeco:
             # Validate before mutating any cached node fields.
             raise ValueError("Deco inventory contains invalid signal data")
 
+        self.diagnostic_values = parse_node_diagnostics(data)
         self.hw_version = data.get("hardware_ver")
         self.sw_version = data.get("software_ver")
         self.device_model = data.get("device_model")
@@ -430,6 +434,7 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
 
         old_decos = self.data.decos
         master_deco = None
+        master_count = 0
         deco_added = False
         decos: dict[str, TpLinkDeco] = {}
         for new_deco in new_decos:
@@ -443,6 +448,7 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
             decos[mac] = deco
             if deco.master:
                 master_deco = deco
+                master_count += 1
 
         for mac, old_deco in old_decos.items():
             if mac not in decos:
@@ -451,7 +457,14 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
                 )
                 old_deco.online = False
                 old_deco.internet_online = False
+                old_deco.diagnostic_values.clear()
                 decos[mac] = old_deco
+
+        # An absent but previously known satellite still belongs to this mesh.
+        if master_count == 1:
+            for deco in decos.values():
+                if "master" in deco.diagnostic_values:
+                    deco.diagnostic_values["standalone"] = len(decos) == 1
 
         # Discovery handlers inspect coordinator.data synchronously.
         self.data = TpLinkDecoData(master_deco, decos)
