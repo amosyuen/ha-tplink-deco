@@ -696,13 +696,18 @@ policy for AI-assisted development.
   `sv` and `fr`, respectively. PR #57 proposes `nb` parity and is
   **not deployed on `main` until merged**. Require complete canonical
   nested leaf-key coverage for `en`, `nl`, `sk`, `sv`, `fr` and `nb`
-  in the PR test matrix. Guard the **exact values** of all 16 original
+  in the PR test matrix, and include both Portuguese variants
+  (`pt`, `pt-BR`) after the verified follow-up audit found 31 missing
+  canonical paths in each. Guard the **exact values** of all 16 original
   Norwegian Bokmål text leaves, including setup/options/reauthentication
   credentials, titles, consent strings and mobile usage; mere key presence
-  does not prove preserved translations. Portuguese catalogs still lack
-  keys, so do **not** claim complete coverage of all shipped languages.
-  Retain existing valid localized values; do not add upstream syslog
-  settings unless that feature exists in the fork.
+  does not prove preserved translations. For Portuguese, preserve every
+  existing text value and legacy `options.step.user` labels while filling
+  the actual `options.step.init` form. Test native regional vocabulary,
+  all canonical leaf values as nonempty text, and real form selector keys.
+  Structural parity does **not** establish a native-language review or
+  real device compatibility. Retain valid localized values; do not add
+  upstream syslog settings unless that feature exists in the fork.
 - Regression coverage should include form serialization, supported and
   invalid values, defaults from older config entries, string-to-int
   conversion, initial setup, options updates and preservation of other
