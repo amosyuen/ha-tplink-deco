@@ -17,6 +17,7 @@ import voluptuous as vol
 
 from custom_components.tplink_deco import config_flow
 from custom_components.tplink_deco.const import CONF_DEVICE_LIST_INTERVAL
+from custom_components.tplink_deco.const import CONF_EXPOSE_WIFI_SSIDS
 from custom_components.tplink_deco.const import DOMAIN
 
 
@@ -99,13 +100,16 @@ async def test_invalid_interval_rejects_before_authentication(
 ) -> None:
     """Do not attempt router login or change persisted values on bad input."""
     flow, hass = _flow(kind)
+    submitted_data = _values(value)
+    original_data = dict(submitted_data)
     with patch.object(
         config_flow, "_async_test_credentials", AsyncMock(return_value={})
     ) as credentials:
         if kind == "setup":
-            result = await flow.async_step_user(_values(value))
+            result = await flow.async_step_user(submitted_data)
         else:
-            result = await flow.async_step_init(_values(value))
+            result = await flow.async_step_init(submitted_data)
+    assert submitted_data == original_data
     assert result["errors"] == {
         CONF_DEVICE_LIST_INTERVAL: "invalid_device_list_interval"
     }
@@ -148,6 +152,8 @@ async def test_invalid_interval_can_be_corrected_in_same_flow(
     invalid_data[field_name] = invalid_value
     valid_data = _values()
     valid_data[field_name] = corrected_value
+    original_invalid_data = dict(invalid_data)
+    original_valid_data = dict(valid_data)
     step = flow.async_step_user if kind == "setup" else flow.async_step_init
 
     with patch.object(
@@ -155,6 +161,7 @@ async def test_invalid_interval_can_be_corrected_in_same_flow(
     ) as credentials:
         invalid_result = await step(invalid_data)
 
+        assert invalid_data == original_invalid_data
         assert invalid_result["type"] == FlowResultType.FORM
         assert invalid_result["errors"] == {field_name: error_code}
         form_json = _BaseFlowManagerView(MagicMock())._prepare_result_json(
@@ -172,6 +179,7 @@ async def test_invalid_interval_can_be_corrected_in_same_flow(
 
         valid_result = await step(valid_data)
 
+    assert valid_data == original_valid_data
     assert valid_result["type"] == "create_entry"
     credentials.assert_awaited_once()
     flow.async_create_entry.assert_called_once()
@@ -193,3 +201,102 @@ async def test_invalid_interval_can_be_corrected_in_same_flow(
         int(corrected_value) if field_name == CONF_DEVICE_LIST_INTERVAL else 0
     )
     assert entry.data == original_data
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["setup", "options"])
+async def test_invalid_ssid_consent_does_not_normalize_submitted_intervals(
+    kind: str,
+) -> None:
+    """Reject invalid consent without modifying the submitted field values."""
+    flow, hass = _flow(kind)
+    submitted_data = _values("10")
+    submitted_data[CONF_SCAN_INTERVAL] = "60"
+    submitted_data[CONF_EXPOSE_WIFI_SSIDS] = "yes"
+    original_data = dict(submitted_data)
+    step = flow.async_step_user if kind == "setup" else flow.async_step_init
+
+    with patch.object(
+        config_flow, "_async_test_credentials", AsyncMock(return_value={})
+    ) as credentials:
+        result = await step(submitted_data)
+
+    assert result["errors"] == {
+        CONF_EXPOSE_WIFI_SSIDS: "invalid_expose_wifi_ssids"
+    }
+    assert submitted_data == original_data
+    credentials.assert_not_awaited()
+    flow.async_create_entry.assert_not_called()
+    hass.config_entries.async_update_entry.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["setup", "options"])
+async def test_auth_failure_and_retry_preserve_submitted_mapping(kind: str) -> None:
+    """Retry a rejected login without modifying caller-owned interval values."""
+    flow, hass = _flow(kind)
+    entry = hass.config_entries.async_get_known_entry.return_value
+    previous_data = dict(entry.data)
+    submitted_data = _values("10")
+    submitted_data[CONF_SCAN_INTERVAL] = "60"
+    original_data = dict(submitted_data)
+    step = flow.async_step_user if kind == "setup" else flow.async_step_init
+
+    with patch.object(
+        config_flow,
+        "_async_test_credentials",
+        AsyncMock(side_effect=[{"base": "invalid_auth"}, {}]),
+    ) as credentials:
+        failed_result = await step(submitted_data)
+        assert failed_result["errors"] == {"base": "invalid_auth"}
+        assert submitted_data == original_data
+        assert entry.data == previous_data
+        flow.async_create_entry.assert_not_called()
+        hass.config_entries.async_update_entry.assert_not_called()
+
+        successful_result = await step(submitted_data)
+
+    assert successful_result["type"] == "create_entry"
+    assert submitted_data == original_data
+    assert credentials.await_count == 2
+    for credential_call in credentials.await_args_list:
+        checked_data = credential_call.args[1]
+        assert checked_data[CONF_SCAN_INTERVAL] == 60
+        assert checked_data[CONF_DEVICE_LIST_INTERVAL] == 10
+
+    if kind == "setup":
+        saved = flow.async_create_entry.call_args.kwargs["data"]
+        hass.config_entries.async_update_entry.assert_not_called()
+    else:
+        saved = hass.config_entries.async_update_entry.call_args.kwargs["data"]
+        hass.config_entries.async_update_entry.assert_called_once()
+    assert saved[CONF_SCAN_INTERVAL] == 60
+    assert saved[CONF_DEVICE_LIST_INTERVAL] == 10
+    assert entry.data == previous_data
+
+
+@pytest.mark.asyncio
+async def test_options_storage_failure_preserves_submitted_mapping() -> None:
+    """Leave submitted values and handler state intact on persistence failure."""
+    flow, hass = _flow("options")
+    entry = hass.config_entries.async_get_known_entry.return_value
+    previous_data = dict(entry.data)
+    submitted_data = _values("10")
+    submitted_data[CONF_SCAN_INTERVAL] = "60"
+    original_data = dict(submitted_data)
+    hass.config_entries.async_update_entry.side_effect = RuntimeError(
+        "simulated storage failure"
+    )
+
+    with patch.object(
+        config_flow, "_async_test_credentials", AsyncMock(return_value={})
+    ) as credentials:
+        with pytest.raises(RuntimeError, match="simulated storage failure"):
+            await flow.async_step_init(submitted_data)
+
+    credentials.assert_awaited_once()
+    hass.config_entries.async_update_entry.assert_called_once()
+    flow.async_create_entry.assert_not_called()
+    assert submitted_data == original_data
+    assert flow.data == previous_data
+    assert entry.data == previous_data
