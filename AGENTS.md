@@ -747,13 +747,17 @@ policy for AI-assisted development.
   type names, **never** upstream exception text, private URLs, tokens,
   credentials or raw traceback data. Do not blanket-catch
   `asyncio.CancelledError`; preserve Home Assistant cancellation.
-- **Treat validation as a transaction:** first validate submitted values,
-  then verify credentials against a staged copy. On success, write that
-  copy through `hass.config_entries.async_update_entry` **before**
-  adopting it as the options handler's `self.data`. A rejected
-  submission, failed API check or failed persistence must leave the
-  handler's previous settings intact. Do not treat a mocked update call
-  as proof of real Home Assistant persistence.
+- **Treat validation as a transaction:** copy caller-owned form input
+  **before** normalizing scan or device-list intervals and before filling
+  optional naming keys. Validate the copy, then verify credentials against
+  staged values. Invalid numeric inputs, invalid boolean consent, failed
+  authentication and failed persistence must not mutate the original
+  submitted dictionary; a later valid submission must still succeed
+  within the same flow instance. On success, write the staged options
+  through `hass.config_entries.async_update_entry` **before** adopting
+  them as the handler's `self.data`. Rejected input, failed API checks
+  or failed persistence must leave previous settings intact. Do not
+  treat a mocked update call as proof of real Home Assistant persistence.
 - **Release temporary resources:** successful credential verification
   includes shutting down all temporary mandatory and optional
   coordinators. Sanitize cleanup failures and ensure they cannot be
