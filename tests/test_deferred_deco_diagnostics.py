@@ -145,6 +145,7 @@ async def test_delayed_satellite_discovery_keeps_per_node_ids_and_no_duplicates(
     assert len([value for value in ids if value.endswith("_total_down")]) == 1
     assert len([value for value in ids if value.endswith("_total_up")]) == 1
 
+
 @pytest.mark.parametrize(
     "reported_value",
     [None, "", "  ", True, False, 123, {"unexpected": "object"}],
@@ -167,8 +168,7 @@ async def test_extra_device_type_sensor_keeps_identity_and_late_discovery() -> N
 
     assert master.device_type is None
     assert all(
-        entity.entity_description.key != "device_type"
-        for entity in _diagnostics(added)
+        entity.entity_description.key != "device_type" for entity in _diagnostics(added)
     )
 
     master.update({"role": "master", "nickname": "Main", "device_type": "router"})
@@ -183,7 +183,9 @@ async def test_extra_device_type_sensor_keeps_identity_and_late_discovery() -> N
     device_type_sensor = sensors[0]
     assert device_type_sensor.unique_id == f"{MASTER_MAC}_device_type"
     assert device_type_sensor.entity_description.name == "Device Type"
-    assert device_type_sensor.entity_description.entity_registry_enabled_default is False
+    assert (
+        device_type_sensor.entity_description.entity_registry_enabled_default is False
+    )
     assert device_type_sensor.native_value == "router"
 
     master.update({"role": "master", "nickname": "Main", "device_type": "mesh"})

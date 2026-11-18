@@ -198,7 +198,9 @@ class TpLinkDeco:
         self.device_model = data.get("device_model")
         device_type = data.get("device_type")
         self.device_type = (
-            device_type if isinstance(device_type, str) and device_type.strip() else None
+            device_type
+            if isinstance(device_type, str) and device_type.strip()
+            else None
         )
 
         custom_nickname = data.get("custom_nickname")
