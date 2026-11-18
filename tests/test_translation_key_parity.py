@@ -36,7 +36,7 @@ def _leaf_paths(
     return paths
 
 
-@pytest.mark.parametrize("locale", ["en", "nl", "sk", "sv", "fr"])
+@pytest.mark.parametrize("locale", ["en", "nl", "sk", "sv", "nb", "fr"])
 def test_canonical_translation_keys_are_present_in_locale(locale: str) -> None:
     """Avoid silently falling back on missing setup, options or entity labels."""
     source = _load_labels("strings.json")
@@ -64,6 +64,7 @@ def test_scan_interval_translation_matches_real_home_assistant_form_key(
         "translations/nl.json",
         "translations/sk.json",
         "translations/sv.json",
+        "translations/nb.json",
         "translations/fr.json",
     ):
         labels = _load_labels(file_name)
@@ -87,6 +88,25 @@ def test_dutch_legacy_labels_and_validation_messages_remain_available() -> None:
         assert "invalid_expose_wifi_ssids" in dutch[section_name]["error"]
 
 
+def test_norwegian_existing_labels_and_metadata_are_retained() -> None:
+    """Preserve shipped Norwegian consent text, titles and mobile sensor name."""
+    norwegian = _load_labels("translations/nb.json")
+
+    assert norwegian["config"]["step"]["user"]["title"] == "TP-Link Deco"
+    assert norwegian["config"]["step"]["reauth_confirm"]["title"] == "TP-Link Deco"
+    assert norwegian["options"]["step"]["init"]["title"] == "TP-Link Deco"
+    assert norwegian["entity"]["sensor"]["mobile_data_usage"]["name"] == "Mobildatabruk"
+
+    for section_name, step_name in (("config", "user"), ("options", "init")):
+        labels = norwegian[section_name]["step"][step_name]["data"]
+        assert labels["link_client_devices"] == (
+            "Koble klientsporere til enheter via MAC-adresse"
+        )
+        assert labels["expose_wifi_ssids"] == (
+            "Vis Wi-Fi-nettverksnavn på Wi-Fi-statussensorene"
+        )
+        assert norwegian[section_name]["error"]["invalid_expose_wifi_ssids"] == (
+            "Velg på eller av for å vise Wi-Fi-nettverksnavn."
 def test_french_existing_labels_and_metadata_are_retained() -> None:
     """Preserve existing French consent labels, titles and sensor names."""
     french = _load_labels("translations/fr.json")
