@@ -92,6 +92,9 @@
       "inet": {
         "name": "Internetstatus"
       },
+      "inet_error_msg": {
+        "name": "Internetfoutmelding"
+      },
       "nickname": {
         "name": "Bijnaam"
       },
@@ -136,6 +139,14 @@
       },
       "topology": {
         "name": "Topologie"
+      }
+    },
+    "button": {
+      "reboot": {
+        "name": "Opnieuw opstarten"
+      },
+      "reboot_all": {
+        "name": "Alle Deco’s opnieuw opstarten"
       }
     }
   }

@@ -2,6 +2,8 @@
 
 import re
 
+from homeassistant.const import MAX_LENGTH_STATE_STATE
+
 DiagnosticValue = str | bool | int
 
 _MAC_PATTERN = re.compile(
@@ -14,7 +16,7 @@ def _text_value(value: object) -> str | None:
     """Accept nonempty, printable text that fits a Home Assistant state."""
     if (
         isinstance(value, str)
-        and 0 < len(value) <= 255
+        and 0 < len(value) <= MAX_LENGTH_STATE_STATE
         and value.isprintable()
         and value.strip()
     ):
@@ -70,7 +72,7 @@ def _topology_value(value: object) -> str | None:
 
 
 def parse_node_diagnostics(data: dict[str, object]) -> dict[str, DiagnosticValue]:
-    """Select usable optional scalars; never retain raw internet error messages."""
+    """Select usable optional firmware values for the opt-in entity states."""
     values: dict[str, DiagnosticValue] = {}
     group_status = _text_value(data.get("group_status"))
     if group_status is not None:
@@ -81,6 +83,12 @@ def parse_node_diagnostics(data: dict[str, object]) -> dict[str, DiagnosticValue
         text = _text_value(data.get(key))
         if text is not None:
             values[key] = text
+
+    message = data.get("inet_error_msg")
+    if isinstance(message, str):
+        text = _text_value(" ".join(message.split())[:MAX_LENGTH_STATE_STATE])
+        if text is not None:
+            values["inet_error_msg"] = text
 
     internet = data.get("inet_status")
     if (text := _text_value(internet)) is not None:

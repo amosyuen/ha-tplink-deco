@@ -89,6 +89,9 @@
       "inet": {
         "name": "Stav internetu"
       },
+      "inet_error_msg": {
+        "name": "Chybové hlásenie internetu"
+      },
       "nickname": {
         "name": "Prezývka"
       },
@@ -133,6 +136,14 @@
       },
       "topology": {
         "name": "Topológia"
+      }
+    },
+    "button": {
+      "reboot": {
+        "name": "Reštartovať"
+      },
+      "reboot_all": {
+        "name": "Reštartovať všetky zariadenia Deco"
       }
     }
   }

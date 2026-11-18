@@ -92,6 +92,9 @@
       "inet": {
         "name": "Internettstatus"
       },
+      "inet_error_msg": {
+        "name": "Feilmelding for internett"
+      },
       "nickname": {
         "name": "Kallenavn"
       },
@@ -136,6 +139,14 @@
       },
       "topology": {
         "name": "Topologi"
+      }
+    },
+    "button": {
+      "reboot": {
+        "name": "Start på nytt"
+      },
+      "reboot_all": {
+        "name": "Start alle Deco-enheter på nytt"
       }
     }
   }

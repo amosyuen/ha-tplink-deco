@@ -89,6 +89,9 @@
       "inet": {
         "name": "Internet Status"
       },
+      "inet_error_msg": {
+        "name": "Internet error message"
+      },
       "nickname": {
         "name": "Nickname"
       },
@@ -133,6 +136,14 @@
       },
       "topology": {
         "name": "Topology"
+      }
+    },
+    "button": {
+      "reboot": {
+        "name": "Reboot"
+      },
+      "reboot_all": {
+        "name": "Reboot All"
       }
     }
   }

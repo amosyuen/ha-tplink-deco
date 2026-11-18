@@ -92,6 +92,9 @@
       "inet": {
         "name": "État Internet"
       },
+      "inet_error_msg": {
+        "name": "Message d’erreur Internet"
+      },
       "nickname": {
         "name": "Surnom"
       },
@@ -136,6 +139,14 @@
       },
       "topology": {
         "name": "Topologie"
+      }
+    },
+    "button": {
+      "reboot": {
+        "name": "Redémarrer"
+      },
+      "reboot_all": {
+        "name": "Redémarrer tous les Deco"
       }
     }
   }

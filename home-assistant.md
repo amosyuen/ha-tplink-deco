@@ -322,9 +322,11 @@ Their physical-firmware validation remains a separate limitation.
   requests. A cross-host redirect must not rewrite the configured router
   endpoint or its persisted config-entry data.
 - Device lists, per-node client lists, performance reads and Deco reboot
-  use the existing encrypted authenticated API methods. Only a reboot
-  service action should submit a router reboot; read-only discovery and
-  diagnostics must not write router configuration.
+  use the existing encrypted authenticated API methods. An explicit reboot
+  service call or button press can submit a restart. A timeout, disconnect
+  or missing encrypted acknowledgment can follow an accepted command, so
+  the reboot API does not replay it. Explicit session expiry can reauthenticate
+  and retry once. Discovery and diagnostics only read router data.
 - Logout is best effort on successful entry teardown, and local auth
   state is cleared afterwards. Home Assistant's shared aiohttp session
   belongs to Home Assistant and must not be closed by this integration.
@@ -362,7 +364,7 @@ Their physical-firmware validation remains a separate limitation.
   default in the registry. Empty, missing and malformed firmware values do
   not create new diagnostics; existing registered entities remain stable.
   No new diagnostics should implicitly delete existing entities.
-- **Restored diagnostics on the issue #64 PR branch:** 17 additional
+- **Restored diagnostics (issue #64):** PR #65 restored 17 additional
   read-only sensors retain the `extra` branch's `<deco_mac>_<sensor_key>`
   unique IDs: `group_status`, `inet`, `nickname`, `role`, `master`, `slave`,
   `standalone`, `signal_level`, `signal_level24`, `signal_level5`, `interface`,
@@ -386,10 +388,12 @@ Their physical-firmware validation remains a separate limitation.
   permits other valid readings. All of these transitions preserve registry IDs.
   Station BSSIDs, upstream MACs, topology targets and nicknames may enter
   Recorder when enabled. The allowlisted diagnostics download and discovery
-  logs omit these values. Raw `inet_error_msg` is deliberately unimplemented.
-  This scoped PR adds no polling or reboot controls and does not implement
-  the separate speed aliases, multi-connection or global batch proposals.
-  Physical firmware validation remains unverified.
+  logs omit these values. The eighteenth opt-in sensor, `inet_error_msg`,
+  displays printable firmware text, normalizing whitespace and limiting the state
+  to 255 characters. An empty or unusable message has no state. Recorder and
+  backups may retain private text from an enabled entity. The diagnostic export
+  and integration logs omit the message. Speed aliases and multi-connection
+  handling remain separate issue #64 items.
 - **Coordinator health diagnostics (merged in PR #30):** attach eight
   disabled-by-default read-only sensors to the master Deco: last successful
   update, API response time and last error for each existing Deco/client
@@ -425,6 +429,14 @@ Their physical-firmware validation remains a separate limitation.
   from Home Assistant diagnostics.
 - `switch` controls polling. `select` chooses the main polling interval
   and persists the selected integer in the config entry before reload.
+- The button platform restores `<deco_mac>_reboot` for each node and
+  `<config_entry_id>_reboot_all` for a multi-node mesh with an identified master.
+  The mesh button follows master changes in the entity registry. Before a write
+  the button forces an inventory refresh and checks the active entry and every
+  selected device's registry ownership and online status. One press issues
+  one batch to the owning entry's API. Overlapping presses on that mesh are
+  rejected while the request is in flight. Recovery uses subsequent inventory
+  observations and preserves the user's polling settings.
 - The three existing per-entry services are `tplink_deco.reboot_deco`,
   `tplink_deco.pause_polling` and `tplink_deco.resume_polling`.
   PR #44 added a separate integration-wide, once-registered

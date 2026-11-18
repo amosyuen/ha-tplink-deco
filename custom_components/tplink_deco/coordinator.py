@@ -272,11 +272,19 @@ class TpLinkDecoData:
 
     def __init__(
         self,
-        master_deco: TpLinkDeco = None,
-        decos: dict[str:TpLinkDeco] = None,
+        master_deco: TpLinkDeco | None = None,
+        decos: dict[str, TpLinkDeco] | None = None,
+        *,
+        unique_master: bool = False,
     ) -> None:
+        """Keep the known nodes and identify an unambiguous online reboot target."""
         self.master_deco = master_deco
         self.decos = {} if decos is None else decos
+        self.confirmed_online_master = (
+            master_deco
+            if unique_master and master_deco and master_deco.online
+            else None
+        )
 
 
 class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
@@ -467,7 +475,7 @@ class TplinkDecoUpdateCoordinator(DataUpdateCoordinator):
                     deco.diagnostic_values["standalone"] = len(decos) == 1
 
         # Discovery handlers inspect coordinator.data synchronously.
-        self.data = TpLinkDecoData(master_deco, decos)
+        self.data = TpLinkDecoData(master_deco, decos, unique_master=master_count == 1)
         if deco_added:
             async_dispatcher_send(self.hass, SIGNAL_DECO_ADDED)
 

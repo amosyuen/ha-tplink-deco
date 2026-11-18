@@ -213,14 +213,19 @@ class TplinkDecoApi:
 
     # Reboot decos.
     async def async_reboot_decos(self, deco_macs: list[str]) -> None:
-        """Reboot Deco devices, retrying once if an authenticated session expires."""
-        await self._async_call_with_retry(self._async_reboot_decos, deco_macs)
+        """Retry rejected authentication once, never an unconfirmed reboot."""
+        await self._async_call_with_retry(
+            self._async_reboot_decos,
+            deco_macs,
+            timeout_error_retries=0,
+            transient_error_retries=0,
+        )
 
     async def _async_reboot_decos(self, deco_macs: list[str]) -> None:
         """Submit a reboot request with the current authenticated session."""
         await self.async_login_if_needed()
 
-        context = f"Reboot Decos {deco_macs}"
+        context = "Reboot Decos"
         client_payload = {
             "operation": "reboot",
             "params": {"mac_list": [{"mac": mac} for mac in deco_macs]},
@@ -232,7 +237,13 @@ class TplinkDecoApi:
             data=self._encode_payload(client_payload),
         )
 
-        data = self._decrypt_data(context, response_json["data"])
+        encrypted = (
+            response_json.get("data") if isinstance(response_json, dict) else None
+        )
+        if not isinstance(encrypted, str) or not encrypted:
+            # Firmware may disconnect after accepting the write.
+            raise UnexpectedApiException("Deco did not confirm the reboot")
+        data = self._decrypt_data(context, encrypted)
         self._check_authenticated_data_error_code(context, data)
         _LOGGER.debug("Deco reboot request accepted")
 

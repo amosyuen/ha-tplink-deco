@@ -322,7 +322,9 @@ policy for AI-assisted development.
   offline satellites still belong to the known mesh. Require exactly one
   current master; cover missing/ambiguous masters, late fields, false/zero,
   offline recovery, reload identities and multiple entries in regression
-  tests. Never retain or expose raw internet error messages as sensor states.
+  tests. The opt-in `inet_error_msg` sensor is the explicit exception for firmware
+  error text. Test its bounded display, unavailable state when cleared, and
+  absence from integration logs and the config-entry diagnostics download.
 
 ## Restored unavailable client identity (upstream #619)
 
@@ -540,6 +542,13 @@ policy for AI-assisted development.
 - Regressions must exercise both identifier extraction and the actual service
   handler: a valid Deco identifier alongside other identifiers, multiple
   selected Decos, missing devices and invalid identifiers.
+- The reboot buttons use their owning coordinator's authenticated API. Test a
+  fresh inventory and registry ownership before the write, including a missing
+  last target and a master handover with a user-named mesh button. Use the
+  entry-scoped device-registry identifier lookup where available; check
+  membership explicitly on Home Assistant 2025.12. A lost reply
+  can follow an accepted reboot. Assert that only explicit authentication
+  rejection can replay the write, never timeout or disconnect.
 
 ## Independent device-list cadence (upstream #616/#669/#670)
 

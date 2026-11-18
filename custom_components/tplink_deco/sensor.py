@@ -73,6 +73,7 @@ RESTORED_DIAGNOSTIC_SENSOR_DESCRIPTIONS = tuple(
     for key, name in (
         ("group_status", "Group Status"),
         ("inet", "Internet Status"),
+        ("inet_error_msg", "Internet error message"),
         ("nickname", "Nickname"),
         ("role", "Role"),
         ("master", "Master Deco"),

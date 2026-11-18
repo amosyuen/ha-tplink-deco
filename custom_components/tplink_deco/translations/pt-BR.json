@@ -103,6 +103,9 @@
       "inet": {
         "name": "Status da Internet"
       },
+      "inet_error_msg": {
+        "name": "Mensagem de erro da internet"
+      },
       "nickname": {
         "name": "Apelido"
       },
@@ -147,6 +150,14 @@
       },
       "topology": {
         "name": "Topologia"
+      }
+    },
+    "button": {
+      "reboot": {
+        "name": "Reiniciar"
+      },
+      "reboot_all": {
+        "name": "Reiniciar todos os Decos"
       }
     }
   }

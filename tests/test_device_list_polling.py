@@ -1,7 +1,6 @@
 """Test independently scheduled and manually requested Deco inventory polls."""
 
 from datetime import timedelta
-from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -163,7 +162,7 @@ def test_legacy_config_defaults(saved: object, expected: int) -> None:
 
 @pytest.mark.asyncio
 async def test_manual_button_is_entry_scoped_and_linked_to_master() -> None:
-    """Expose a single button with a stable entry ID and master association."""
+    """Preserve the refresh button's stable entry ID and master association."""
     coordinator = _coordinator(0)
     with patch("custom_components.tplink_deco.coordinator.async_dispatcher_send"):
         await coordinator._async_update_data()
@@ -171,9 +170,13 @@ async def test_manual_button_is_entry_scoped_and_linked_to_master() -> None:
     hass = MagicMock()
     hass.data = {DOMAIN: {"mesh-one": {COORDINATOR_DECOS_KEY: coordinator}}}
     add = MagicMock()
-    await async_setup_entry(hass, SimpleNamespace(entry_id="mesh-one"), add)
-    button = add.call_args.args[0][0]
-    assert isinstance(button, DecoRefreshStatusButton)
+    await async_setup_entry(hass, coordinator.config_entry, add)
+    (button,) = (
+        entity
+        for call in add.call_args_list
+        for entity in call.args[0]
+        if isinstance(entity, DecoRefreshStatusButton)
+    )
     assert button.unique_id == "mesh-one_refresh_deco_status"
     assert button.device_info["identifiers"] == {(DOMAIN, MASTER)}
     await button.async_press()

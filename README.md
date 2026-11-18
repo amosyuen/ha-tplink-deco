@@ -50,6 +50,7 @@ The additional read-only diagnostics retain `<deco_mac>_<key>` unique IDs:
 | Diagnostics                                 | Original keys                                     |
 | ------------------------------------------- | ------------------------------------------------- |
 | Group / Internet status                     | `group_status`, `inet`                            |
+| Internet error message                      | `inet_error_msg`                                  |
 | Firmware nickname / role                    | `nickname`, `role`                                |
 | Master / satellite / standalone master      | `master`, `slave`, `standalone`                   |
 | Signal summary / 2.4 GHz / 5 GHz            | `signal_level`, `signal_level24`, `signal_level5` |
@@ -69,6 +70,13 @@ a multi-node mesh.
 Upstream MACs, station BSSIDs, topology targets and nicknames are private network
 metadata. Enabling their sensors can store values in Recorder, backups and
 exports. Discovery logs and the downloadable diagnostics omit these values.
+
+**Internet error message** shows the text the firmware supplies. It is
+disabled by default. If you enable it, anyone who can read the entity can
+see that text, which may include network names, addresses or credentials.
+Recorder can retain it in history and backups. The sensor displays up to
+255 characters on one line and becomes unavailable when the message clears.
+The integration omits the message from its logs and diagnostics download.
 
 ### Optional mobile WAN data usage (upstream #631)
 
@@ -205,6 +213,9 @@ Configurable:
 ## 📝 Changelog
 
 ### Unreleased — upstream sync (issue #2)
+
+- Restore the per-Deco **Reboot** and per-mesh **Reboot All** buttons and
+  the optional **Internet error message** sensor with their original IDs.
 
 - Restore 17 optional per-Deco diagnostics from `extra`, including Master Deco
   and Set gateway support, with their original registry IDs and translations
@@ -396,7 +407,7 @@ Configurable:
 This integration polls TP-Link Deco routers through their local admin web
 interface. It provides Deco and client device trackers, throughput and
 diagnostic sensors, online and WiFi status binary sensors, polling controls,
-a manual refresh button, and an on-demand system-log export action. Optional
+refresh and reboot buttons, and an on-demand system-log export action. Optional
 WiFi/mobile features depend on router firmware. Some diagnostics are disabled
 by default; see [Diagnostics](#diagnostics).
 
@@ -453,6 +464,19 @@ Note: `deco_device` and `deco_mac` will only be set for non-master decos.
 ### Devices
 
 A device is created for each deco. Each device contains the device_tracker entities for itself and any clients connected to it. Non-master deco devices will indicate that they are connected via the master deco device.
+
+### Reboot buttons
+
+Press **Reboot** on a Deco's device page to restart that unit, including a
+standalone master. **Reboot All** appears on the master of a multi-node mesh
+and restarts the nodes in that configuration. A press refreshes the inventory
+first. The master and every selected node must be online and registered to
+the entry. A missing satellite makes **Reboot All** unavailable; individual
+online nodes can still be restarted.
+
+The next inventory refresh reports when devices return. With startup-only
+or paused polling, press **Refresh Deco status** to check. If the router
+disconnects before acknowledging a reboot, check its status before retrying.
 
 ### Services
 

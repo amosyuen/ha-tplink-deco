@@ -28,7 +28,6 @@ from custom_components.tplink_deco.coordinator import CoordinatorHealth
 from custom_components.tplink_deco.coordinator import TplinkDecoUpdateCoordinator
 from custom_components.tplink_deco.diagnostics import async_get_config_entry_diagnostics
 from custom_components.tplink_deco.node_diagnostics import parse_node_diagnostics
-from custom_components.tplink_deco.sensor import DIAGNOSTIC_SENSOR_DESCRIPTIONS
 from custom_components.tplink_deco.sensor import TplinkDecoDiagnosticSensor
 from custom_components.tplink_deco.sensor import async_setup_entry
 
@@ -39,6 +38,7 @@ PRIVATE_ERROR = "PRIVATE-SSID PASSWORD=private-password TOKEN=private-token"
 RESTORED_KEYS = {
     "group_status",
     "inet",
+    "inet_error_msg",
     "nickname",
     "role",
     "master",
@@ -149,6 +149,7 @@ async def test_original_sensor_keys_values_and_read_only_device_association() ->
     expected = {
         "group_status": "connected",
         "inet": "offline",
+        "inet_error_msg": PRIVATE_ERROR,
         "nickname": "firmware_name",
         "role": "master",
         "master": True,
@@ -176,9 +177,6 @@ async def test_original_sensor_keys_values_and_read_only_device_association() ->
         assert entity.entity_description.entity_registry_enabled_default is False
         assert entity.device_info["identifiers"] == {(DOMAIN, MASTER)}
     assert coordinator.data.master_deco.name == "User display name"
-    assert not any(
-        item.key == "inet_error_msg" for item in DIAGNOSTIC_SENSOR_DESCRIPTIONS
-    )
     coordinator.api.async_list_devices.assert_not_called()
     coordinator.api.async_get_performance.assert_not_called()
 
@@ -205,6 +203,12 @@ def test_internet_status_uses_the_real_firmware_field(internet: object) -> None:
         ({"inet_status": []}, "inet"),
         ({"inet_status": 2}, "inet"),
         ({"inet_status": 1.0}, "inet"),
+        ({"inet_error_msg": None}, "inet_error_msg"),
+        ({"inet_error_msg": []}, "inet_error_msg"),
+        ({"inet_error_msg": {"error": PRIVATE_ERROR}}, "inet_error_msg"),
+        ({"inet_error_msg": True}, "inet_error_msg"),
+        ({"inet_error_msg": " \n\t "}, "inet_error_msg"),
+        ({"inet_error_msg": "invalid\0message"}, "inet_error_msg"),
         ({"client_mesh": "false"}, "client_mesh"),
         ({"set_gateway_support": "0"}, "set_gateway_support"),
         ({"set_gateway_support": 1.0}, "set_gateway_support"),
@@ -238,7 +242,10 @@ def test_malformed_optional_fields_never_create_invented_states(
 def test_missing_fields_flags_and_signal_fallback() -> None:
     """Keep unknown fields absent and accept explicit false and zero values."""
     assert parse_node_diagnostics({}) == {}
-    assert parse_node_diagnostics({"inet_error_msg": PRIVATE_ERROR}) == {}
+    message = PRIVATE_ERROR + "\r\n" + "é" * 255
+    assert parse_node_diagnostics({"inet_error_msg": message}) == {
+        "inet_error_msg": (PRIVATE_ERROR + " " + "é" * 255)[:255]
+    }
     assert parse_node_diagnostics({"previous": "020000006401"}) == {
         "previous": "020000006401"
     }
@@ -281,7 +288,7 @@ async def test_late_fields_offline_nodes_missing_values_and_reload_keep_identity
     sensors = _sensors(added)
     master = coordinator.data.decos[MASTER]
     satellite = coordinator.data.decos[SATELLITE]
-    assert len(sensors) == 34
+    assert len(sensors) == 2 * len(RESTORED_KEYS)
     assert sensors[f"{SATELLITE}_master"].native_value is False
     assert sensors[f"{SATELLITE}_slave"].native_value is True
     assert sensors[f"{MASTER}_standalone"].native_value is False
@@ -314,12 +321,12 @@ async def test_late_fields_offline_nodes_missing_values_and_reload_keep_identity
     assert coordinator.data.decos[MASTER] is master
     assert not sensors[f"{MASTER}_master"].available
     assert sensors[f"{MASTER}_master"].native_value is None
-    assert len(_sensors(added)) == 34
+    assert len(_sensors(added)) == 2 * len(RESTORED_KEYS)
 
     _inventory(coordinator, [_node(), _node(SATELLITE, "slave")])
     notify()
     assert sensors[f"{MASTER}_master"].available
-    assert len(_sensors(added)) == 34
+    assert len(_sensors(added)) == 2 * len(RESTORED_KEYS)
     _, reloaded, _ = await _platform(coordinator)
     assert set(_sensors(reloaded)) == set(sensors)
     assert all(
@@ -360,12 +367,15 @@ async def test_actual_refresh_privacy_failure_recovery_and_config_entry_isolatio
     master = coordinator.data.master_deco
     hass, added, notify = await _platform(coordinator)
     entity = _sensors(added)[f"{MASTER}_master"]
+    error_sensor = _sensors(added)[f"{MASTER}_inet_error_msg"]
+    assert error_sensor.native_value == PRIVATE_ERROR
 
     coordinator.api.async_list_devices.side_effect = TimeoutError("synthetic failure")
     with pytest.raises(HomeAssistantError, match="Unable to refresh Deco status"):
         await coordinator.async_request_device_refresh()
     assert coordinator.last_update_success is False
     assert not entity.available
+    assert not error_sensor.available
     assert coordinator.data.master_deco is master
     assert entity.native_value is True
     coordinator.api.async_list_devices.side_effect = None
@@ -373,6 +383,7 @@ async def test_actual_refresh_privacy_failure_recovery_and_config_entry_isolatio
     assert coordinator.last_update_success is True
     notify()
     assert entity.available
+    assert error_sensor.available
 
     second = _coordinator("mesh-two")
     _inventory(second, [_node(SATELLITE, "slave")])
@@ -396,6 +407,7 @@ async def test_actual_refresh_privacy_failure_recovery_and_config_entry_isolatio
         assert secret not in caplog.text
         assert secret not in exported
     assert "diagnostic_values" not in exported
+    assert "inet_error_msg" not in exported
     assert coordinator.api.async_list_devices.await_count == 3
     assert coordinator.api.async_get_performance.await_count == 2
 
@@ -411,11 +423,18 @@ def test_restored_sensor_names_are_translated_in_every_shipped_locale(
     )
     for key in RESTORED_KEYS:
         assert labels["entity"]["sensor"][key]["name"].strip()
+    for key in ("reboot", "reboot_all"):
+        assert labels["entity"]["button"][key]["name"].strip()
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("restored_key", "state"), [("master", "True"), ("inet_error_msg", PRIVATE_ERROR)]
+)
 async def test_legacy_enabled_sensor_reclaims_custom_entity_and_device(
     tmp_path: Path,
+    restored_key: str,
+    state: str,
 ) -> None:
     """Exercise Home Assistant's registry and state machine after a sparse startup."""
     hass = HomeAssistant(str(tmp_path))
@@ -448,7 +467,7 @@ async def test_legacy_enabled_sensor_reclaims_custom_entity_and_device(
     prior = registry.async_get_or_create(
         "sensor",
         DOMAIN,
-        f"{MASTER}_master",
+        f"{MASTER}_{restored_key}",
         config_entry=entry,
         device_id=device.id,
         suggested_object_id="my_custom_master",
@@ -470,17 +489,20 @@ async def test_legacy_enabled_sensor_reclaims_custom_entity_and_device(
         _, added, notify = await _platform(coordinator)
         assert not _sensors(added)
         assert registry.async_get(prior.entity_id).device_id == device.id
-        _inventory(coordinator, [{"mac": MASTER, "role": "master"}])
+        _inventory(
+            coordinator,
+            [{"mac": MASTER, "role": "master", "inet_error_msg": PRIVATE_ERROR}],
+        )
         notify()
         sensors = _sensors(added)
         await platform.async_add_entities(
-            [sensors[f"{MASTER}_master"], sensors[f"{MASTER}_slave"]]
+            [sensors[f"{MASTER}_{restored_key}"], sensors[f"{MASTER}_slave"]]
         )
         current = registry.async_get(prior.entity_id)
         assert current.id == prior.id and current.device_id == device.id
         assert current.config_entry_id == entry.entry_id
         assert current.disabled_by is None
-        assert hass.states.get(prior.entity_id).state == "True"
+        assert hass.states.get(prior.entity_id).state == state
         new_id = registry.async_get_entity_id("sensor", DOMAIN, f"{MASTER}_slave")
         assert (
             registry.async_get(new_id).disabled_by

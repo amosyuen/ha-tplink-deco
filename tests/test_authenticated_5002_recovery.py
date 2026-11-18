@@ -3,12 +3,15 @@
 import logging
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
+from unittest.mock import call
 
 import aiohttp
 import pytest
 
 from custom_components.tplink_deco.api import TplinkDecoApi
 from custom_components.tplink_deco.exceptions import EmptyDataException
+from custom_components.tplink_deco.exceptions import TimeoutException
+from custom_components.tplink_deco.exceptions import TransientConnectionException
 from custom_components.tplink_deco.exceptions import UnexpectedApiException
 
 HOST = "http://192.0.2.1"
@@ -67,6 +70,71 @@ def _mock_relogin(api: TplinkDecoApi) -> AsyncMock:
         await _relogin(api)
 
     return AsyncMock(side_effect=_perform_relogin)
+
+
+def _reboot_post(api: TplinkDecoApi, token: str, cookie: str) -> tuple:
+    """Build the expected authenticated transport arguments for one reboot."""
+    return call(
+        f"{HOST}/cgi-bin/luci/;stok={token}/admin/device",
+        params={"form": "system"},
+        data="synthetic-payload",
+        headers={"Content-Type": "application/json"},
+        cookies={"sysauth": cookie.split("=", 1)[1]},
+        ssl=api._ssl_context,
+    )
+
+
+@pytest.mark.asyncio
+async def test_reboot_reauth_posts_same_targets_with_new_session(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Replay an explicitly rejected reboot once without logging its targets."""
+    api, post = _api()
+    mac = "02:00:00:00:65:01"
+    post.side_effect = [_response({"error_code": -5002}), _response({"data": "reply"})]
+    api._decrypt_data = MagicMock(return_value={"error_code": 0})
+    api.async_login = _mock_relogin(api)
+    with caplog.at_level(logging.DEBUG):
+        await api.async_reboot_decos([mac])
+    assert post.await_args_list == [
+        _reboot_post(api, OLD_TOKEN, OLD_COOKIE),
+        _reboot_post(api, NEW_TOKEN, NEW_COOKIE),
+    ]
+    payload = {"operation": "reboot", "params": {"mac_list": [{"mac": mac}]}}
+    assert api._encode_payload.call_args_list == [call(payload), call(payload)]
+    api.async_login.assert_awaited_once_with()
+    assert all(
+        value not in caplog.text
+        for value in (mac, OLD_TOKEN, NEW_TOKEN, OLD_COOKIE, NEW_COOKIE)
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("reply", "expected"),
+    [
+        (TimeoutError(), TimeoutException),
+        (aiohttp.ServerDisconnectedError(), TransientConnectionException),
+        ({}, UnexpectedApiException),
+        ({"data": ""}, UnexpectedApiException),
+        ({"data": []}, UnexpectedApiException),
+    ],
+)
+async def test_unconfirmed_reboot_is_never_replayed(
+    reply: Exception | dict, expected: type[Exception]
+) -> None:
+    """A lost write response must not replay the command even with retries enabled."""
+    api, post = _api()
+    api._timeout_error_retries = 3
+    api.async_login = AsyncMock()
+    if isinstance(reply, Exception):
+        post.side_effect = reply
+    else:
+        post.return_value = _response(reply)
+    with pytest.raises(expected):
+        await api.async_reboot_decos(["02:00:00:00:65:01"])
+    assert post.await_args_list == [_reboot_post(api, OLD_TOKEN, OLD_COOKIE)]
+    api.async_login.assert_not_awaited()
 
 
 @pytest.mark.asyncio
