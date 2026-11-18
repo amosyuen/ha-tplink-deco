@@ -416,6 +416,19 @@ Their physical-firmware validation remains a separate limitation.
   reauthentication and host-error labels while retaining legacy
   translated titles and validation messages. This affects only displayed
   form text, not persisted config-entry keys or migration behavior.
+- **Merged in fork PR #55 (2026-11-17):** `sk` and `sv` now include
+  the existing `device_list_interval` labels, both polling-interval
+  errors in setup/options and the options reauthentication-success
+  message. The canonical-key regression covers `en`, `nl`, `sk`
+  and `sv` on `main` (merge commit `522d4d3`).
+- **Proposed in the issue #2 Norwegian Bokmål parity PR:** add the 39
+  missing canonical setup/options, error and reauthentication paths
+  to `nb`, preserving the 16 existing Norwegian text values.
+  Extend canonical-key and form-selector tests to `nb`; this scope
+  remains on its PR branch until a verified merge. French is proposed
+  separately in open PR #56 and is not yet on `main`; Portuguese
+  translations are still incomplete. These localization changes do
+  not affect configuration storage, runtime settings or entity IDs.
 - **Merged in fork PR #55 (2026-11-17):** the already-supported
   `device_list_interval` labels, setup/options polling-interval errors
   and options reauthentication success message are translated in `sk`
