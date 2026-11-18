@@ -416,32 +416,23 @@ Their physical-firmware validation remains a separate limitation.
   reauthentication and host-error labels while retaining legacy
   translated titles and validation messages. This affects only displayed
   form text, not persisted config-entry keys or migration behavior.
-- **Merged in fork PR #55 (2026-11-17):** `sk` and `sv` now include
-  the existing `device_list_interval` labels, both polling-interval
-  errors in setup/options and the options reauthentication-success
-  message. The canonical-key regression covers `en`, `nl`, `sk`
-  and `sv` on `main` (merge commit `522d4d3`).
-- **Proposed in the issue #2 Norwegian Bokmål parity PR:** add the 39
-  missing canonical setup/options, error and reauthentication paths
-  to `nb`, preserving the 16 existing Norwegian text values.
-  Extend canonical-key and form-selector tests to `nb`; this scope
-  remains on its PR branch until a verified merge. French is proposed
-  separately in open PR #56 and is not yet on `main`; Portuguese
-  translations are still incomplete. These localization changes do
-  not affect configuration storage, runtime settings or entity IDs.
-- **Merged in fork PR #55 (2026-11-17):** the already-supported
-  `device_list_interval` labels, setup/options polling-interval errors
-  and options reauthentication success message are translated in `sk`
-  and `sv`. The nested-key parity regression covers `en`, `nl`,
-  `sk` and `sv` on `main` (merge commit `522d4d3`).
-- **Proposed in the current issue #2 French parity PR:** the `fr`
-  catalog gains its 39 missing canonical setup/options, authentication,
-  polling, abort and error labels without changing any of the 16
-  previously shipped French text values. The same parity regression
-  is extended to French. No new settings, persistence or entity IDs
-  are introduced; the French completion remains a PR-branch change
-  until its merge is verified on `main`. Norwegian and Portuguese
-  catalogs remain incomplete and outside this PR.
+- **Merged in fork PR #55 (2026-11-17; `522d4d3`):** Slovak and
+  Swedish setup/options translations cover the existing
+  `device_list_interval`, polling-interval validation and
+  reauthentication abort keys. Their canonical-key regression is on
+  `main` alongside `en` and `nl`.
+- **Merged in fork PR #56 (2026-11-18; `b2e4f98`):** French now
+  includes 39 formerly missing canonical setup/options,
+  authentication, error and abort keys while retaining its 16
+  existing strings. The French parity regression is on `main`.
+- **Proposed in fork PR #57 (not yet merged):** Norwegian Bokmål
+  gains 39 missing canonical setup/options and error keys, preserving
+  the **exact** 16 original text values. The PR regression checks
+  nested-key parity in `nb`, real `interval_seconds` labels in
+  setup/options and all original credential, reauthentication,
+  consent, title and sensor strings. Portuguese still has incomplete
+  translation coverage. No runtime settings, config entry storage,
+  existing entity identifiers or migrations change in this PR.
 - Existing config-entry fields include host, username/password,
   connection timeout, bounded timeout retry count, TLS verification,
   `consider_home`, optional Deco/client name prefixes/postfixes and
