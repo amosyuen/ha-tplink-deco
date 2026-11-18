@@ -52,6 +52,13 @@ description: "Validate TP-Link Deco setup, options and reauthentication flows, i
    form before any authentication or write, followed by exactly one
    credential check and integer persistence after correction. Keep
    the existing config-entry data unchanged in the mocked manager.
+   **Input-ownership regression (PR #59):** `_normalize_scan_interval`
+   and `_normalize_device_list_interval` mutate their argument, so
+   call them on a new shallow copy of each submitted mapping. Test that
+   invalid independent polling or SSID consent does not partially
+   normalize the caller's main scan interval. Preserve submitted values
+   on rejected credentials, successful recovery and options persistence
+   errors; assert staged values are integers when checked and saved.
    Do not copy upstream syslog settings that this fork does not support.
 8. For any config-entry version migration, check the actual `ConfigEntry`
    API in **both supported Home Assistant versions** before choosing how to
