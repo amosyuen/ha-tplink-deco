@@ -76,7 +76,7 @@ rewrite later made it `rebaseable=true` without changing its file tree.
   merge-ready claim. During the last status check PR #57 became
   `merged=true` (merge commit `cf90deaa`); verify the real merge
   commit and `main` tree, then update the tracked issue from
-  *open* to *merged* without checking unrelated acceptance criteria.
+  _open_ to _merged_ without checking unrelated acceptance criteria.
   Never claim a merge was performed by the assistant when the
   external repository state changed during verification.
 
