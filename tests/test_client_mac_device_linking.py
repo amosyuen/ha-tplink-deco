@@ -20,6 +20,7 @@ from custom_components.tplink_deco import async_migrate_entry
 from custom_components.tplink_deco import async_remove_config_entry_device
 from custom_components.tplink_deco import config_flow
 from custom_components.tplink_deco.const import ATTR_DEVICE_TYPE
+from custom_components.tplink_deco.const import ATTR_MASTER
 from custom_components.tplink_deco.const import CONF_LINK_CLIENT_DEVICES
 from custom_components.tplink_deco.const import COORDINATOR_CLIENTS_KEY
 from custom_components.tplink_deco.const import COORDINATOR_DECOS_KEY
@@ -91,6 +92,33 @@ def test_deco_device_tracker_mac_is_unchanged() -> None:
     assert tracker.mac_address == MASTER_MAC
     assert tracker.unique_id == MASTER_MAC
     assert tracker.extra_state_attributes[ATTR_DEVICE_TYPE] == DEVICE_TYPE_DECO
+    assert tracker.extra_state_attributes[ATTR_MASTER] is True
+
+
+@pytest.mark.parametrize(
+    ("role", "expected_master"),
+    [("master", True), ("slave", False)],
+)
+def test_deco_tracker_master_role_attribute_is_preserved(
+    role: str, expected_master: bool
+) -> None:
+    """Preserve the legacy master role on Deco trackers, not a new sensor."""
+    deco = TpLinkDeco(MASTER_MAC)
+    deco.update({"role": role, "nickname": "Mesh"})
+    coordinator = MagicMock()
+    coordinator.data = TpLinkDecoData(
+        deco if expected_master else None, {MASTER_MAC: deco}
+    )
+    tracker = TplinkDecoDeviceTracker(coordinator, deco, "", "Deco")
+
+    assert tracker.extra_state_attributes[ATTR_MASTER] is expected_master
+    assert tracker.unique_id == MASTER_MAC
+
+    # The stable attribute must track firmware role changes without new IDs.
+    deco.update({"role": "slave" if expected_master else "master", "nickname": "Mesh"})
+    tracker._update_from_deco()
+    assert tracker.extra_state_attributes[ATTR_MASTER] is not expected_master
+    assert tracker.unique_id == MASTER_MAC
 
 
 def _device(
