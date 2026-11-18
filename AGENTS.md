@@ -267,6 +267,18 @@ policy for AI-assisted development.
   approvals and _all_ required CI jobs again. A running or skipped check
   is not a passed check; `mergeable_state=unstable` while CI runs is not
   proof of a content conflict.
+- **PR #57 verified force-rebase (2026-11-18):** an authorized
+  GitHub-object rewrite removed a redundant merge commit while retaining
+  17 individual content commits. Before the lease-protected ref update,
+  the rebuilt final tree was verified to equal the original tree SHA
+  (`8da031565776eca38d64a55cdbbef4724cb6d8a7`); branch
+  comparison showed zero commits behind `main`. This exact-tree
+  verification is mandatory when reconstructing history through
+  GitHub's tree/commit APIs, not a reason to force-update an already
+  clean PR without authorization. After all five new-head checks passed,
+  PR #57 was merged during final verification. Re-fetch the PR's live
+  `merged`/`merged_at` and `main` file tree before updating the
+  tracking issue; do not preserve a stale open/mergeable status.
 - Automated reviewers may edit PR descriptions or append outdated
   summaries after a push. Re-read the live PR body and issue tracker
   before reporting completion; correct only verified stale claims about
@@ -692,13 +704,13 @@ policy for AI-assisted development.
   `scan_interval`; test the real field in both setup and options forms.
   The Dutch audit found 19 missing canonical fields/errors; the Slovak
   and Swedish audits found seven each; the French and Norwegian Bokmål
-  audits found 39 each. Merged PRs #52, #55 and #56 cover `nl`, `sk`/
-  `sv` and `fr`, respectively. PR #57 proposes `nb` parity and is
-  **not deployed on `main` until merged**. Require complete canonical
-  nested leaf-key coverage for `en`, `nl`, `sk`, `sv`, `fr` and `nb`
-  in the PR test matrix, and include both Portuguese variants
-  (`pt`, `pt-BR`) after the verified follow-up audit found 31 missing
-  canonical paths in each. Guard the **exact values** of all 16 original
+  audits found 39 each. Merged PRs #52, #55, #56 and #57 now cover
+  `nl`, `sk`/`sv`, `fr` and `nb`/`pt`/`pt-BR`, respectively.
+  Require complete canonical nested leaf-key coverage for **all eight**
+  shipped locales (`en`, `nl`, `sk`, `sv`, `fr`, `nb`, `pt`,
+  `pt-BR`) in the test matrix. The Portuguese follow-up in PR #57
+  filled 31 canonical paths in each variant. Guard the **exact values**
+  of all 16 original
   Norwegian Bokmål text leaves, including setup/options/reauthentication
   credentials, titles, consent strings and mobile usage; mere key presence
   does not prove preserved translations. For Portuguese, preserve every
