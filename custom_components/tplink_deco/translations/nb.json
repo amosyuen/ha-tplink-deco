@@ -7,19 +7,41 @@
           "username": "Brukernavn",
           "password": "Passord",
           "link_client_devices": "Koble klientsporere til enheter via MAC-adresse",
-          "expose_wifi_ssids": "Vis Wi-Fi-nettverksnavn på Wi-Fi-statussensorene"
-        }
+          "expose_wifi_ssids": "Vis Wi-Fi-nettverksnavn på Wi-Fi-statussensorene",
+          "host": "Vert",
+          "interval_seconds": "Sekunder mellom oppdateringer",
+          "device_list_interval": "Sekunder mellom oppdateringer av Deco-status (0 = bare ved oppstart)",
+          "consider_home": "Antall sekunder før en enhet markeres som borte etter at den sist ble oppdaget",
+          "timeout_seconds": "Tidsavbrudd i sekunder",
+          "timeout_error_retries": "Antall nye forsøk ved tidsavbrudd",
+          "verify_ssl": "Kontroller at SSL-sertifikatet er gyldig",
+          "client_prefix": "Prefiks for klientnavn",
+          "client_postfix": "Suffiks for klientnavn",
+          "deco_prefix": "Prefiks for Deco-navn",
+          "deco_postfix": "Suffiks for Deco-navn"
+        },
+        "description": "Bruk påloggingsopplysningene for administratorens nettgrensesnitt. Se dokumentasjonen for oppsett."
       },
       "reauth_confirm": {
         "title": "TP-Link Deco",
         "data": {
           "username": "Brukernavn",
           "password": "Passord"
-        }
+        },
+        "description": "Det oppstod et problem med påloggingsopplysningene. Dette kan skje hvis du har logget på fra en annen enhet. Se dokumentasjonen for pålogging."
       }
     },
     "error": {
-      "invalid_expose_wifi_ssids": "Velg på eller av for å vise Wi-Fi-nettverksnavn."
+      "invalid_expose_wifi_ssids": "Velg på eller av for å vise Wi-Fi-nettverksnavn.",
+      "invalid_auth": "Ugyldig autentisering",
+      "invalid_host": "Kan ikke koble til verten",
+      "timeout_connect": "Tidsavbrudd ved tilkobling",
+      "unknown": "Uventet feil",
+      "invalid_scan_interval": "Velg et oppdateringsintervall på 10, 30, 60 eller 120 sekunder.",
+      "invalid_device_list_interval": "Angi 0 for oppdatering bare ved oppstart, eller minst 10 sekunder for Deco-status."
+    },
+    "abort": {
+      "reauth_successful": "Autentisering på nytt var vellykket"
     }
   },
   "options": {
@@ -30,12 +52,33 @@
           "username": "Brukernavn",
           "password": "Passord",
           "link_client_devices": "Koble klientsporere til enheter via MAC-adresse",
-          "expose_wifi_ssids": "Vis Wi-Fi-nettverksnavn på Wi-Fi-statussensorene"
-        }
+          "expose_wifi_ssids": "Vis Wi-Fi-nettverksnavn på Wi-Fi-statussensorene",
+          "host": "Vert",
+          "interval_seconds": "Sekunder mellom oppdateringer",
+          "device_list_interval": "Sekunder mellom oppdateringer av Deco-status (0 = bare ved oppstart)",
+          "consider_home": "Antall sekunder før en enhet markeres som borte etter at den sist ble oppdaget",
+          "timeout_seconds": "Tidsavbrudd i sekunder",
+          "timeout_error_retries": "Antall nye forsøk ved tidsavbrudd",
+          "verify_ssl": "Kontroller at SSL-sertifikatet er gyldig",
+          "client_prefix": "Prefiks for klientnavn",
+          "client_postfix": "Suffiks for klientnavn",
+          "deco_prefix": "Prefiks for Deco-navn",
+          "deco_postfix": "Suffiks for Deco-navn"
+        },
+        "description": "Bruk påloggingsopplysningene for administratorens nettgrensesnitt. Se dokumentasjonen for oppsett."
       }
     },
     "error": {
-      "invalid_expose_wifi_ssids": "Velg på eller av for å vise Wi-Fi-nettverksnavn."
+      "invalid_expose_wifi_ssids": "Velg på eller av for å vise Wi-Fi-nettverksnavn.",
+      "invalid_auth": "Ugyldig autentisering",
+      "invalid_host": "Kan ikke koble til verten",
+      "timeout_connect": "Tidsavbrudd ved tilkobling",
+      "unknown": "Uventet feil",
+      "invalid_scan_interval": "Velg et oppdateringsintervall på 10, 30, 60 eller 120 sekunder.",
+      "invalid_device_list_interval": "Angi 0 for oppdatering bare ved oppstart, eller minst 10 sekunder for Deco-status."
+    },
+    "abort": {
+      "reauth_successful": "Autentisering på nytt var vellykket"
     }
   },
   "entity": {
