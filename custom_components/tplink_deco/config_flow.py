@@ -213,19 +213,6 @@ async def _async_test_credentials(
     """Check credentials and expose only sanitized form errors."""
     try:
         coordinators = await async_create_and_refresh_coordinators(hass, data)
-        await asyncio.gather(
-            *(
-                coordinator.async_shutdown()
-                for key, coordinator in coordinators.items()
-                if key
-                in (
-                    COORDINATOR_DECOS_KEY,
-                    COORDINATOR_CLIENTS_KEY,
-                    COORDINATOR_MOBILE_KEY,
-                    COORDINATOR_WIRELESS_KEY,
-                )
-            )
-        )
     except (TimeoutException, asyncio.TimeoutError):
         _LOGGER.debug("Deco credential check timed out")
         return {"base": "timeout_connect"}
@@ -241,6 +228,34 @@ async def _async_test_credentials(
             "Unexpected Deco credential check failure (%s)", type(err).__name__
         )
         return {"base": "unknown"}
+
+    shutdown_results = await asyncio.gather(
+        *(
+            coordinator.async_shutdown()
+            for key, coordinator in coordinators.items()
+            if key
+            in (
+                COORDINATOR_DECOS_KEY,
+                COORDINATOR_CLIENTS_KEY,
+                COORDINATOR_MOBILE_KEY,
+                COORDINATOR_WIRELESS_KEY,
+            )
+        ),
+        return_exceptions=True,
+    )
+    for result in shutdown_results:
+        if isinstance(result, asyncio.CancelledError):
+            raise result
+
+    for result in shutdown_results:
+        if isinstance(result, BaseException):
+            if not isinstance(result, Exception):
+                raise result
+            _LOGGER.error(
+                "Unexpected Deco temporary coordinator shutdown failure (%s)",
+                type(result).__name__,
+            )
+            return {"base": "unknown"}
     return {}
 
 
