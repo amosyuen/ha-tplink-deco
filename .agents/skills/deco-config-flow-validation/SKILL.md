@@ -29,6 +29,15 @@ description: "Validate TP-Link Deco setup, options and reauthentication flows, i
   including `device_list_interval`, both interval errors in setup and
   options, and the options reauthentication abort. The matrix now
   requires complete source-key parity for `en`, `nl`, `sk`, `sv`
+  and `nb`: a separate Norwegian Bokmål audit found 39 missing nested
+  paths, despite 16 existing consent, title and sensor labels. Add
+  genuine text for missing fields, retain all earlier Norwegian values
+  and test their preservation alongside the canonical-key and actual
+  form-selector checks. French parity is proposed separately in open
+  PR #56; keep other incomplete locales out of a _full-parity_ claim
+  until independently verified. Preserve existing localized values,
+  Dutch titles, legacy metadata and validation errors; do **not**
+  introduce unimplemented upstream syslog options for parity.
   and `fr`: a subsequent French audit found 39 missing canonical
   paths, despite 16 already present legacy and consent/usage labels.
   Add genuine French texts only for missing keys, retain all existing
