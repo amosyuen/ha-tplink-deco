@@ -259,20 +259,21 @@ class TplinkDecoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._errors = {}
 
         if user_input is not None:
-            if not _normalize_scan_interval(user_input):
+            candidate_data = dict(user_input)
+            if not _normalize_scan_interval(candidate_data):
                 self._errors = {CONF_SCAN_INTERVAL: "invalid_scan_interval"}
-            elif not _normalize_device_list_interval(user_input):
+            elif not _normalize_device_list_interval(candidate_data):
                 self._errors = {
                     CONF_DEVICE_LIST_INTERVAL: "invalid_device_list_interval"
                 }
-            elif not _valid_ssid_choice(user_input):
+            elif not _valid_ssid_choice(candidate_data):
                 self._errors = {CONF_EXPOSE_WIFI_SSIDS: "invalid_expose_wifi_ssids"}
             else:
-                self._errors = await _async_test_credentials(self.hass, user_input)
+                self._errors = await _async_test_credentials(self.hass, candidate_data)
             if not self._errors:
-                _ensure_user_input_optionals(user_input)
+                _ensure_user_input_optionals(candidate_data)
                 return self.async_create_entry(
-                    title=user_input[CONF_HOST], data=user_input
+                    title=candidate_data[CONF_HOST], data=candidate_data
                 )
 
         return self.async_show_form(
@@ -329,17 +330,18 @@ class TplinkDecoOptionsFlowHandler(config_entries.OptionsFlow):
         self._errors = {}
 
         if user_input is not None:
-            if not _normalize_scan_interval(user_input):
+            submitted_data = dict(user_input)
+            if not _normalize_scan_interval(submitted_data):
                 self._errors = {CONF_SCAN_INTERVAL: "invalid_scan_interval"}
-            elif not _normalize_device_list_interval(user_input):
+            elif not _normalize_device_list_interval(submitted_data):
                 self._errors = {
                     CONF_DEVICE_LIST_INTERVAL: "invalid_device_list_interval"
                 }
-            elif not _valid_ssid_choice(user_input):
+            elif not _valid_ssid_choice(submitted_data):
                 self._errors = {CONF_EXPOSE_WIFI_SSIDS: "invalid_expose_wifi_ssids"}
             else:
-                _ensure_user_input_optionals(user_input)
-                candidate_data = {**self.data, **user_input}
+                _ensure_user_input_optionals(submitted_data)
+                candidate_data = {**self.data, **submitted_data}
                 self._errors = await _async_test_credentials(self.hass, candidate_data)
             if not self._errors:
                 self.hass.config_entries.async_update_entry(
