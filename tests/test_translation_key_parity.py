@@ -89,24 +89,48 @@ def test_dutch_legacy_labels_and_validation_messages_remain_available() -> None:
 
 
 def test_norwegian_existing_labels_and_metadata_are_retained() -> None:
-    """Preserve shipped Norwegian consent text, titles and mobile sensor name."""
+    """Assert the exact values of all 16 original Norwegian translation leaves."""
     norwegian = _load_labels("translations/nb.json")
-
-    assert norwegian["config"]["step"]["user"]["title"] == "TP-Link Deco"
-    assert norwegian["config"]["step"]["reauth_confirm"]["title"] == "TP-Link Deco"
-    assert norwegian["options"]["step"]["init"]["title"] == "TP-Link Deco"
-    assert norwegian["entity"]["sensor"]["mobile_data_usage"]["name"] == "Mobildatabruk"
-
-    for section_name, step_name in (("config", "user"), ("options", "init")):
-        labels = norwegian[section_name]["step"][step_name]["data"]
-        assert labels["link_client_devices"] == (
+    legacy_labels: dict[tuple[str, ...], str] = {
+        ("config", "step", "user", "title"): "TP-Link Deco",
+        ("config", "step", "user", "data", "username"): "Brukernavn",
+        ("config", "step", "user", "data", "password"): "Passord",
+        ("config", "step", "user", "data", "link_client_devices"): (
             "Koble klientsporere til enheter via MAC-adresse"
-        )
-        assert labels["expose_wifi_ssids"] == (
+        ),
+        ("config", "step", "user", "data", "expose_wifi_ssids"): (
             "Vis Wi-Fi-nettverksnavn på Wi-Fi-statussensorene"
-        )
-        assert norwegian[section_name]["error"]["invalid_expose_wifi_ssids"] == (
+        ),
+        ("config", "step", "reauth_confirm", "title"): "TP-Link Deco",
+        ("config", "step", "reauth_confirm", "data", "username"): "Brukernavn",
+        ("config", "step", "reauth_confirm", "data", "password"): "Passord",
+        ("config", "error", "invalid_expose_wifi_ssids"): (
             "Velg på eller av for å vise Wi-Fi-nettverksnavn."
+        ),
+        ("options", "step", "init", "title"): "TP-Link Deco",
+        ("options", "step", "init", "data", "username"): "Brukernavn",
+        ("options", "step", "init", "data", "password"): "Passord",
+        ("options", "step", "init", "data", "link_client_devices"): (
+            "Koble klientsporere til enheter via MAC-adresse"
+        ),
+        ("options", "step", "init", "data", "expose_wifi_ssids"): (
+            "Vis Wi-Fi-nettverksnavn på Wi-Fi-statussensorene"
+        ),
+        ("options", "error", "invalid_expose_wifi_ssids"): (
+            "Velg på eller av for å vise Wi-Fi-nettverksnavn."
+        ),
+        ("entity", "sensor", "mobile_data_usage", "name"): "Mobildatabruk",
+    }
+
+    for key_path, expected_text in legacy_labels.items():
+        actual_value: Any = norwegian
+        for field_name in key_path:
+            actual_value = actual_value[field_name]
+        assert actual_value == expected_text, (
+            f"Original Norwegian label {'.'.join(key_path)} changed"
+        )
+
+
 def test_french_existing_labels_and_metadata_are_retained() -> None:
     """Preserve existing French consent labels, titles and sensor names."""
     french = _load_labels("translations/fr.json")
