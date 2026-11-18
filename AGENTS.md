@@ -686,38 +686,23 @@ policy for AI-assisted development.
 - Keep field errors in `strings.json` and relevant translations (at least
   English and Dutch). Confirm that invalid form submissions display an error
   rather than initiating an unnecessary network request.
-- **Translation key parity (issue #2):** verify the actual field names in
-  `config_flow.py` against canonical `strings.json`, `en.json` and
-  `nl.json` keys. Home Assistant's `CONF_SCAN_INTERVAL` serializes as
-  `interval_seconds`, **not** `scan_interval`; a label attached to the
-  obsolete key does not cover the real setup/options selector. The initial
-  Dutch catalog omitted 19 other canonical fields/errors, even though
-  English had them. The subsequent Slovak/Swedish audit (issue #2) found
-  seven missing canonical paths in each locale: `device_list_interval` for
-  setup/options, both polling-interval form errors in each flow and the
-  options reauthentication-success abort message. Require full canonical
-  leaf-key parity for `en`, `nl`, `sk` and `sv`, including real
-  `interval_seconds` form labels, setup/options, reauth and abort paths.
-  The Norwegian Bokmål audit found 39 additional missing canonical
-  setup/options, authentication, error and abort paths. Extend full
-  nested-key parity to `nb`, and guard the 16 pre-existing Norwegian
-  values, including legacy titles, opt-in labels and mobile usage.
-  French parity is a separate open PR #56; Portuguese catalogs remain
-  incomplete. Do **not** claim full-language coverage until their
-  missing paths are independently localized and tested. Retain valid
-  locale-specific keys rather than bulk-replacing translations; defer
-  upstream syslog settings until that feature exists in the fork.
-  The subsequent French audit found 39 missing canonical leaf keys
-  across setup/options, reauthentication and error/abort paths. Include
-  `fr` in the complete canonical-key parity matrix, preserve all
-  previously shipped French strings (including legacy titles, consent
-  labels and mobile usage sensor name), and verify new translations are
-  nonempty. Norwegian and Portuguese catalogs still have missing keys:
-  do **not** claim full-language coverage until each is localized and
-  independently regression-tested.
-  Retain existing valid locale-specific keys and errors rather than
-  bulk-replacing translation files; defer unrelated upstream syslog
-  options until that feature actually exists in the fork.
+- **Translation key parity (issue #2):** compare the actual form fields in
+  `config_flow.py` with canonical `strings.json` and shipped locale files.
+  Home Assistant's `CONF_SCAN_INTERVAL` is `interval_seconds`, **not**
+  `scan_interval`; test the real field in both setup and options forms.
+  The Dutch audit found 19 missing canonical fields/errors; the Slovak
+  and Swedish audits found seven each; the French and Norwegian Bokmål
+  audits found 39 each. Merged PRs #52, #55 and #56 cover `nl`, `sk`/
+  `sv` and `fr`, respectively. PR #57 proposes `nb` parity and is
+  **not deployed on `main` until merged**. Require complete canonical
+  nested leaf-key coverage for `en`, `nl`, `sk`, `sv`, `fr` and `nb`
+  in the PR test matrix. Guard the **exact values** of all 16 original
+  Norwegian Bokmål text leaves, including setup/options/reauthentication
+  credentials, titles, consent strings and mobile usage; mere key presence
+  does not prove preserved translations. Portuguese catalogs still lack
+  keys, so do **not** claim complete coverage of all shipped languages.
+  Retain existing valid localized values; do not add upstream syslog
+  settings unless that feature exists in the fork.
 - Regression coverage should include form serialization, supported and
   invalid values, defaults from older config entries, string-to-int
   conversion, initial setup, options updates and preservation of other
