@@ -747,22 +747,34 @@ policy for AI-assisted development.
   type names, **never** upstream exception text, private URLs, tokens,
   credentials or raw traceback data. Do not blanket-catch
   `asyncio.CancelledError`; preserve Home Assistant cancellation.
-- **Treat validation as a transaction:** first validate submitted values,
-  then verify credentials against a staged copy. On success, write that
-  copy through `hass.config_entries.async_update_entry` **before**
-  adopting it as the options handler's `self.data`. A rejected
-  submission, failed API check or failed persistence must leave the
-  handler's previous settings intact. Do not treat a mocked update call
-  as proof of real Home Assistant persistence.
-- **Release temporary resources:** successful credential verification
-  includes shutting down all temporary mandatory and optional
-  coordinators. Await **all** recognized coordinator shutdowns even when
-  one fails. Classify exceptions from credential creation separately
-  from temporary-resource cleanup: a shutdown timeout or auth exception
-  is a sanitized `unknown` cleanup error, **not** proof of invalid
-  credentials or a failed router connection. Do not log exception text
-  or tracebacks. Propagate a coordinator shutdown cancellation after
-  other shutdowns finish; preserve task cancellation semantics.
+- **Treat validation as a transaction (merged PR #59):** copy
+  caller-owned form input **before** parsing or normalizing polling
+  intervals and before filling optional naming fields. Validate and
+  authenticate only the staged mapping. Rejected values, failed
+  credentials or persistence errors must leave the submitted mapping,
+  stored config entry and in-memory options data unchanged; a corrected
+  submission must still work on the same flow instance. Save the staged
+  options through `hass.config_entries.async_update_entry` **before**
+  adopting them as `self.data`. Verify canonical integer interval
+  types at authentication and persistence boundaries; a mocked update
+  call does not establish real Home Assistant persistence.
+- **Release temporary resources (proposed PR #60):** successful
+  credential verification requires shutting down all temporary
+  mandatory and optional coordinators. Await **all** recognized
+  shutdowns even when one fails; do not report success or return a
+  form error while sibling shutdown work is still pending. Keep
+  credential-creation failures classified as `invalid_auth`,
+  `invalid_host` or `timeout_connect` as appropriate, but report
+  **ordinary cleanup failures** with the sanitized `unknown` error,
+  not a misleading authentication or transport error. Never log
+  upstream exception text, credentials, tokens or raw tracebacks.
+  Preserve `asyncio.CancelledError` and distinguish an individual
+  shutdown's cancellation from cancellation of the calling task.
+  Test the waiting invariant with an explicit `asyncio.Event` gate,
+  a shielded pending-task assertion, bounded waits and release in
+  `finally`; `asyncio.sleep(0)` alone cannot prove sibling cleanup
+  was awaited. The procedure and tested limits belong in the
+  [config-flow validation skill](.agents/skills/deco-config-flow-validation/SKILL.md).
 - **Test the real Home Assistant access path:** for a successful
   `TplinkDecoOptionsFlowHandler` submission, instantiate the real
   handler, set `flow.handler = entry.entry_id` and configure
