@@ -205,6 +205,6 @@ def test_portuguese_form_parity_preserves_regional_legacy_strings(
         text_value: Any = translated
         for field_name in path_parts:
             text_value = text_value[field_name]
-        assert isinstance(text_value, str) and text_value.strip(), (
-            f"{locale} translation missing text for {'.'.join(path_parts)}"
-        )
+        assert (
+            isinstance(text_value, str) and text_value.strip()
+        ), f"{locale} translation missing text for {'.'.join(path_parts)}"
