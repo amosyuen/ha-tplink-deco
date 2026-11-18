@@ -425,19 +425,22 @@ Their physical-firmware validation remains a separate limitation.
   includes 39 formerly missing canonical setup/options,
   authentication, error and abort keys while retaining its 16
   existing strings. The French parity regression is on `main`.
-- **Proposed in fork PR #57 (not yet merged):** Norwegian Bokmål
-  gains 39 missing canonical setup/options and error keys, preserving
-  the **exact** 16 original text values. European Portuguese (`pt`)
-  and Brazilian Portuguese (`pt-BR`) each gain 31 formerly missing
-  canonical paths, including actual `options.step.init` fields,
-  interval errors and reauthentication. The existing 31 text values
-  per Portuguese locale and legacy `options.step.user` labels remain
-  unchanged. The PR regression checks canonical key coverage for
-  all eight shipped catalogs, actual `interval_seconds` fields,
-  nonempty Portuguese translations and preserved regional labels.
-  Native-language proofreading and physical hardware checks remain
-  unverified. No runtime settings, config entry storage, existing
-  entity identifiers or migrations change in this PR.
+- **Merged in fork PR #57 (2026-11-18; `cf90deaa`):** Norwegian
+  Bokmål now includes 39 formerly missing canonical setup/options and
+  error keys, preserving the **exact** 16 original text values.
+  European Portuguese (`pt`) and Brazilian Portuguese (`pt-BR`)
+  each include 31 formerly missing canonical paths, including the
+  actual `options.step.init` fields, interval errors and
+  reauthentication. All 31 previously translated values per
+  Portuguese locale, including legacy `options.step.user` labels,
+  were preserved. On `main`, regressions check canonical key
+  coverage for all eight shipped catalogs, actual
+  `interval_seconds` fields, nonempty Portuguese text and
+  original region-specific labels. These additions affect form
+  labels only; no runtime settings, config-entry storage, existing
+  entity identifiers or migrations changed. Native-language
+  proofreading, physical Deco firmware and Windows behavior remain
+  unverified.
 - Existing config-entry fields include host, username/password,
   connection timeout, bounded timeout retry count, TLS verification,
   `consider_home`, optional Deco/client name prefixes/postfixes and
