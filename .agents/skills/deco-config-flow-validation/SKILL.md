@@ -16,37 +16,22 @@ description: "Validate TP-Link Deco setup, options and reauthentication flows, i
    submitted `"30"` as a string. Assert the persisted canonical key
    holds integer `30` in both setup and options flows.
 
-- **Localized form-key audit (issue #2):** when changing configuration
-  labels, compare the actual keys from `_get_schema` with `strings.json`,
-  `translations/en.json` and `translations/nl.json`. In particular,
-  `CONF_SCAN_INTERVAL` is `interval_seconds`; replacing that with
-  `scan_interval` in a translation silently leaves the real form field
-  unlabeled. The fork previously shipped 19 missing Dutch canonical
-  labels for timeout/TLS/name options and reauthentication/errors.
-  Run `tests/test_translation_key_parity.py` to assert canonical
-  nested key coverage and the real runtime selector key. The Slovak and
-  Swedish locale parity review found seven missing keys per locale,
-  including `device_list_interval`, both interval errors in setup and
-  options, and the options reauthentication abort. The matrix now
-  requires complete source-key parity for `en`, `nl`, `sk`, `sv`
-  and `nb`: a separate Norwegian Bokmål audit found 39 missing nested
-  paths, despite 16 existing consent, title and sensor labels. Add
-  genuine text for missing fields, retain all earlier Norwegian values
-  and test their preservation alongside the canonical-key and actual
-  form-selector checks. French parity is proposed separately in open
-  PR #56; keep other incomplete locales out of a _full-parity_ claim
-  until independently verified. Preserve existing localized values,
-  Dutch titles, legacy metadata and validation errors; do **not**
-  introduce unimplemented upstream syslog options for parity.
-  and `fr`: a subsequent French audit found 39 missing canonical
-  paths, despite 16 already present legacy and consent/usage labels.
-  Add genuine French texts only for missing keys, retain all existing
-  values and test that original titles, consent labels and mobile
-  usage sensor name survive. Keep Norwegian and Portuguese out of a
-  _full-parity_ claim until their remaining fields are genuinely
-  translated. Preserve existing localized values, Dutch titles,
-  legacy metadata and validation errors; do **not** add unimplemented
-  upstream syslog fields to obtain parity.
+- **Localized form-key audit (issue #2):** compare `_get_schema` form
+  field names with `strings.json` and checked-in translations. The
+  actual scan selector key is `CONF_SCAN_INTERVAL` /
+  `interval_seconds`, not `scan_interval`. Run
+  `tests/test_translation_key_parity.py` for canonical nested-key
+  coverage and both setup/options selector labels in `en`, `nl`,
+  `sk`, `sv`, `fr` and `nb`. Existing merged translations cover
+  Dutch (19 formerly absent keys), Slovak and Swedish (seven each),
+  and French (39); the Norwegian Bokmål PR #57 adds 39 missing paths
+  but is not deployed until merged. Validate the **exact original
+  values of all 16 Norwegian text leaves**, including credential and
+  reauthentication labels, not just key presence or opt-in labels.
+  Preserve legacy titles, all previously translated values and validation
+  errors. Portuguese coverage remains incomplete; do not claim
+  all-language parity. Do **not** copy unimplemented upstream syslog
+  options merely to satisfy translation parity.
 
 5. Validate submitted values in **both setup and options flows** before
    credential checks, API traffic or data mutation. For **numeric**
