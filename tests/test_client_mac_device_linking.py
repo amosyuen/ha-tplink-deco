@@ -19,9 +19,12 @@ import voluptuous as vol
 from custom_components.tplink_deco import async_migrate_entry
 from custom_components.tplink_deco import async_remove_config_entry_device
 from custom_components.tplink_deco import config_flow
+from custom_components.tplink_deco.const import ATTR_DEVICE_TYPE
 from custom_components.tplink_deco.const import CONF_LINK_CLIENT_DEVICES
 from custom_components.tplink_deco.const import COORDINATOR_CLIENTS_KEY
 from custom_components.tplink_deco.const import COORDINATOR_DECOS_KEY
+from custom_components.tplink_deco.const import DEVICE_TYPE_CLIENT
+from custom_components.tplink_deco.const import DEVICE_TYPE_DECO
 from custom_components.tplink_deco.const import DOMAIN
 from custom_components.tplink_deco.coordinator import TpLinkDeco
 from custom_components.tplink_deco.coordinator import TpLinkDecoClient
@@ -64,6 +67,7 @@ def test_client_tracker_identity_is_stable_across_opt_out(
     assert tracker.unique_id == CLIENT_MAC
     assert tracker.hostname == "Test Device"
     assert tracker.mac_address == (CLIENT_MAC if link_client_devices else None)
+    assert tracker.extra_state_attributes[ATTR_DEVICE_TYPE] == DEVICE_TYPE_CLIENT
     assert tracker.extra_state_attributes.get(ATTR_MAC) == (
         None if link_client_devices else CLIENT_MAC
     )
@@ -86,6 +90,7 @@ def test_deco_device_tracker_mac_is_unchanged() -> None:
 
     assert tracker.mac_address == MASTER_MAC
     assert tracker.unique_id == MASTER_MAC
+    assert tracker.extra_state_attributes[ATTR_DEVICE_TYPE] == DEVICE_TYPE_DECO
 
 
 def _device(
