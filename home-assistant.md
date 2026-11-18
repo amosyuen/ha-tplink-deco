@@ -427,12 +427,17 @@ Their physical-firmware validation remains a separate limitation.
   existing strings. The French parity regression is on `main`.
 - **Proposed in fork PR #57 (not yet merged):** Norwegian Bokmål
   gains 39 missing canonical setup/options and error keys, preserving
-  the **exact** 16 original text values. The PR regression checks
-  nested-key parity in `nb`, real `interval_seconds` labels in
-  setup/options and all original credential, reauthentication,
-  consent, title and sensor strings. Portuguese still has incomplete
-  translation coverage. No runtime settings, config entry storage,
-  existing entity identifiers or migrations change in this PR.
+  the **exact** 16 original text values. European Portuguese (`pt`)
+  and Brazilian Portuguese (`pt-BR`) each gain 31 formerly missing
+  canonical paths, including actual `options.step.init` fields,
+  interval errors and reauthentication. The existing 31 text values
+  per Portuguese locale and legacy `options.step.user` labels remain
+  unchanged. The PR regression checks canonical key coverage for
+  all eight shipped catalogs, actual `interval_seconds` fields,
+  nonempty Portuguese translations and preserved regional labels.
+  Native-language proofreading and physical hardware checks remain
+  unverified. No runtime settings, config entry storage, existing
+  entity identifiers or migrations change in this PR.
 - Existing config-entry fields include host, username/password,
   connection timeout, bounded timeout retry count, TLS verification,
   `consider_home`, optional Deco/client name prefixes/postfixes and
