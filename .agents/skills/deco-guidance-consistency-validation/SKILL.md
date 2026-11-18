@@ -41,6 +41,31 @@ Keep `AI_POLICY.md` unchanged unless governing policy itself changes.
 
 ## Failures observed and deterministic validation
 
+- **PR #60 branch guidance after PR #59 merged (2026-11-18):**
+  a PR based on an older `main` can still be clean/mergeable while
+  its `AGENTS.md`, task skill and integration guide omit a newly
+  merged prerequisite. Compare the target branch's guidance against
+  the **current** `main` and live PR status, not just against its
+  original base. PR #59's input-copying invariant was already on
+  `main`, but the pending PR #60 branch still described validation
+  as operating directly on submitted values. Merge the compatible
+  verified rules in the PR branch; do not overwrite newer guidance
+  while documenting a separate cleanup fix. Keep `merged`/deployed
+  and `proposed`/PR-only behaviors visibly distinct. A clean
+  mergeability result and green CI do not verify documentation
+  accuracy, so recheck status and cross-section wording before
+  a final handoff.
+- **PR #60 fail-fast regression review (2026-11-18):** an
+  `asyncio.sleep(0)` followed by a completion flag can pass even
+  when `asyncio.gather` returns before slower shutdowns finish.
+  For concurrency claims, use an `asyncio.Event` to gate the
+  sibling, a bounded shielded pending-parent assertion, release
+  in `finally`, and await the final outcome. Distinguish
+  cancellation raised inside a child shutdown from cancelling
+  the caller; never claim coverage the test did not exercise.
+  Treat the review finding as evidence checked against source,
+  and rerun all five checks on the final documentation SHA.
+
 - **PR #57 merge during final verification (2026-11-18):** after a
   lease-protected force-rebase and five successful new-head checks, PR #57
   changed from open/mergeable to merged while its status was being
