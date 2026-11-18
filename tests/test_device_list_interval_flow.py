@@ -221,9 +221,7 @@ async def test_invalid_ssid_consent_does_not_normalize_submitted_intervals(
     ) as credentials:
         result = await step(submitted_data)
 
-    assert result["errors"] == {
-        CONF_EXPOSE_WIFI_SSIDS: "invalid_expose_wifi_ssids"
-    }
+    assert result["errors"] == {CONF_EXPOSE_WIFI_SSIDS: "invalid_expose_wifi_ssids"}
     assert submitted_data == original_data
     credentials.assert_not_awaited()
     flow.async_create_entry.assert_not_called()
