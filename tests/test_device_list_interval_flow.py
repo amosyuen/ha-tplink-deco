@@ -166,7 +166,9 @@ async def test_invalid_interval_can_be_corrected_in_same_flow(
         return {}
 
     with patch.object(
-        config_flow, "_async_test_credentials", AsyncMock(side_effect=_check_credentials)
+        config_flow,
+        "_async_test_credentials",
+        AsyncMock(side_effect=_check_credentials),
     ) as credentials:
         invalid_result = await step(invalid_data)
 
@@ -225,6 +227,7 @@ async def test_invalid_interval_can_be_corrected_in_same_flow(
     assert type(saved[CONF_SCAN_INTERVAL]) is int
     assert type(saved[CONF_DEVICE_LIST_INTERVAL]) is int
     assert entry.data == original_data
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("kind", ["setup", "options"])
