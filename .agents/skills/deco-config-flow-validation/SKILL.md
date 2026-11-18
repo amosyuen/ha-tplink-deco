@@ -22,11 +22,11 @@ description: "Validate TP-Link Deco setup, options and reauthentication flows, i
   `interval_seconds`, not `scan_interval`. Run
   `tests/test_translation_key_parity.py` for canonical nested-key
   coverage and both setup/options selector labels in `en`, `nl`,
-  `sk`, `sv`, `fr`, `nb`, `pt` and `pt-BR`. Existing merged
-  translations cover Dutch (19 formerly absent keys), Slovak and Swedish
-  (seven each), and French (39). PR #57 proposes Norwegian Bokmål
-  completion (39 keys) plus Portuguese and Brazilian Portuguese
-  completion (31 keys each), none deployed until that PR merges.
+  `sk`, `sv`, `fr`, `nb`, `pt` and `pt-BR`. All eight
+  shipped catalogs now cover canonical nested keys on `main`, following
+  merged PRs #52 (Dutch: 19 missing keys), #55 (Slovak/Swedish:
+  seven each), #56 (French: 39) and #57 (Norwegian Bokmål: 39;
+  European/Brazilian Portuguese: 31 each, merge `cf90deaa`).
   Validate the **exact original values of all 16 Norwegian text leaves**,
   including credential and reauthentication labels, not just key
   presence. Preserve all existing Portuguese regional values and
