@@ -36,7 +36,7 @@ def _leaf_paths(
     return paths
 
 
-@pytest.mark.parametrize("locale", ["en", "nl", "sk", "sv", "nb", "fr"])
+@pytest.mark.parametrize("locale", ["en", "nl", "sk", "sv", "nb", "fr", "pt", "pt-BR"])
 def test_canonical_translation_keys_are_present_in_locale(locale: str) -> None:
     """Avoid silently falling back on missing setup, options or entity labels."""
     source = _load_labels("strings.json")
@@ -66,6 +66,8 @@ def test_scan_interval_translation_matches_real_home_assistant_form_key(
         "translations/sv.json",
         "translations/nb.json",
         "translations/fr.json",
+        "translations/pt.json",
+        "translations/pt-BR.json",
     ):
         labels = _load_labels(file_name)
         form_labels = labels[section_name]["step"][form_step]["data"]
@@ -148,4 +150,61 @@ def test_french_existing_labels_and_metadata_are_retained() -> None:
         )
         assert labels["expose_wifi_ssids"] == (
             "Afficher les noms des réseaux Wi-Fi sur les capteurs d’état Wi-Fi"
+        )
+
+
+@pytest.mark.parametrize(
+    ("locale", "username_label", "link_label", "mobile_usage_name"),
+    [
+        (
+            "pt",
+            "Nome de utilizador",
+            "Associar rastreadores de clientes a dispositivos pelo endereço MAC",
+            "Utilização de dados móveis",
+        ),
+        (
+            "pt-BR",
+            "Nome de usuário",
+            "Vincular rastreadores de clientes a dispositivos pelo endereço MAC",
+            "Uso de dados móveis",
+        ),
+    ],
+)
+def test_portuguese_form_parity_preserves_regional_legacy_strings(
+    locale: str,
+    username_label: str,
+    link_label: str,
+    mobile_usage_name: str,
+) -> None:
+    """Retain regional Portuguese labels and validate every canonical text."""
+    translated = _load_labels(f"translations/{locale}.json")
+    source = _load_labels("strings.json")
+
+    for section_name, step_name in (("config", "user"), ("options", "init")):
+        fields = translated[section_name]["step"][step_name]["data"]
+        assert fields["username"] == username_label
+        assert fields["link_client_devices"] == link_label
+        assert fields["interval_seconds"] == "Segundos entre atualizações"
+        assert fields["device_list_interval"]
+        assert fields["expose_wifi_ssids"]
+        assert translated[section_name]["error"]["invalid_device_list_interval"]
+
+    assert translated["config"]["step"]["user"]["title"] == "TP-Link Deco"
+    assert translated["config"]["step"]["reauth_confirm"]["data"]["username"] == (
+        username_label
+    )
+    assert translated["options"]["step"]["user"]["data"]["username"] == username_label
+    assert translated["options"]["step"]["user"]["data"]["link_client_devices"] == (
+        link_label
+    )
+    assert translated["entity"]["sensor"]["mobile_data_usage"]["name"] == (
+        mobile_usage_name
+    )
+
+    for path_parts in _leaf_paths(source):
+        text_value: Any = translated
+        for field_name in path_parts:
+            text_value = text_value[field_name]
+        assert isinstance(text_value, str) and text_value.strip(), (
+            f"{locale} translation missing text for {'.'.join(path_parts)}"
         )
