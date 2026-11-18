@@ -11,7 +11,15 @@
           "interval_seconds": "Segundos entre atualizações",
           "consider_home": "Segundos de espera até marcar um scan de dispositivo reconhecer como fora de casa depois de não ser visto.",
           "link_client_devices": "Associar rastreadores de clientes a dispositivos pelo endereço MAC",
-          "expose_wifi_ssids": "Mostrar nomes das redes Wi-Fi nos sensores de estado Wi-Fi"
+          "expose_wifi_ssids": "Mostrar nomes das redes Wi-Fi nos sensores de estado Wi-Fi",
+          "device_list_interval": "Segundos entre atualizações do estado Deco (0 = apenas no arranque)",
+          "timeout_seconds": "Tempo limite em segundos",
+          "timeout_error_retries": "Número de novas tentativas após atingir o tempo limite",
+          "verify_ssl": "Verificar se o certificado SSL é válido",
+          "client_prefix": "Prefixo do nome do cliente",
+          "client_postfix": "Sufixo do nome do cliente",
+          "deco_prefix": "Prefixo do nome Deco",
+          "deco_postfix": "Sufixo do nome Deco"
         }
       },
       "reauth_confirm": {
@@ -19,14 +27,21 @@
         "data": {
           "username": "Nome de utilizador",
           "password": "Senha"
-        }
+        },
+        "description": "Ocorreu um problema com as credenciais de acesso. Isto pode acontecer após iniciar sessão noutro dispositivo. Consulte a documentação sobre os requisitos de autenticação."
       }
     },
     "error": {
       "invalid_auth": "Autenticação inválida",
       "timeout_connect": "Tempo limite estabelecendo ligação",
       "unknown": "Erro inesperado",
-      "invalid_expose_wifi_ssids": "Selecione ativado ou desativado para mostrar os nomes das redes Wi-Fi."
+      "invalid_expose_wifi_ssids": "Selecione ativado ou desativado para mostrar os nomes das redes Wi-Fi.",
+      "invalid_host": "Não foi possível estabelecer ligação ao anfitrião",
+      "invalid_scan_interval": "Selecione um intervalo de atualização de 10, 30, 60 ou 120 segundos.",
+      "invalid_device_list_interval": "Introduza 0 para atualizar apenas no arranque ou, pelo menos, 10 segundos para o estado Deco."
+    },
+    "abort": {
+      "reauth_successful": "Reautenticação efetuada com sucesso"
     }
   },
   "options": {
@@ -46,15 +61,35 @@
       "init": {
         "data": {
           "link_client_devices": "Associar rastreadores de clientes a dispositivos pelo endereço MAC",
-          "expose_wifi_ssids": "Mostrar nomes das redes Wi-Fi nos sensores de estado Wi-Fi"
-        }
+          "expose_wifi_ssids": "Mostrar nomes das redes Wi-Fi nos sensores de estado Wi-Fi",
+          "host": "Host",
+          "username": "Nome de utilizador",
+          "password": "Senha",
+          "interval_seconds": "Segundos entre atualizações",
+          "device_list_interval": "Segundos entre atualizações do estado Deco (0 = apenas no arranque)",
+          "consider_home": "Segundos de espera até marcar um rastreador de dispositivo reconhecer como fora de casa depois de não ser visto.",
+          "timeout_seconds": "Tempo limite em segundos",
+          "timeout_error_retries": "Número de novas tentativas após atingir o tempo limite",
+          "verify_ssl": "Verificar se o certificado SSL é válido",
+          "client_prefix": "Prefixo do nome do cliente",
+          "client_postfix": "Sufixo do nome do cliente",
+          "deco_prefix": "Prefixo do nome Deco",
+          "deco_postfix": "Sufixo do nome Deco"
+        },
+        "description": "Utilize as credenciais do portal de administração Web. Consulte a documentação para obter instruções de configuração."
       }
     },
     "error": {
       "invalid_auth": "Autenticação inválida",
       "timeout_connect": "Tempo limite estabelecendo conexão",
       "unknown": "Erro inesperado",
-      "invalid_expose_wifi_ssids": "Selecione ativado ou desativado para mostrar os nomes das redes Wi-Fi."
+      "invalid_expose_wifi_ssids": "Selecione ativado ou desativado para mostrar os nomes das redes Wi-Fi.",
+      "invalid_host": "Não foi possível estabelecer ligação ao anfitrião",
+      "invalid_scan_interval": "Selecione um intervalo de atualização de 10, 30, 60 ou 120 segundos.",
+      "invalid_device_list_interval": "Introduza 0 para atualizar apenas no arranque ou, pelo menos, 10 segundos para o estado Deco."
+    },
+    "abort": {
+      "reauth_successful": "Reautenticação efetuada com sucesso"
     }
   },
   "entity": {
