@@ -451,21 +451,29 @@ Their physical-firmware validation remains a separate limitation.
   Preserve existing field meanings and migration paths for older
   config-entry versions.
 - Config-flow credential checks return existing translated `invalid_auth`,
-  `invalid_host`, `timeout_connect` or `unknown` form errors for expected
-  and unexpected ordinary failures. Router exception messages and secret-bearing
-  URLs are not logged; a cancellation still propagates. Temporary coordinators
-  must finish their shutdown before a successful credential check is accepted.
-  **Proposed in the focused issue #2 coordinator-cleanup PR:** if a
-  temporary coordinator shutdown fails, await its siblings before
-  returning the sanitized `unknown` error; do not mistake shutdown
-  exceptions for credential failures. Propagate cancellation after
-  sibling cleanup. No stored settings, entity IDs or translations change.
-  Options changes are staged in a copy, saved only after verification,
-  and adopted by the handler only after Home Assistant accepts the write.
-  Failed verification or persistence cannot change the handler's in-memory
-  settings; failed verification does not change the stored entry.
-  Reauthentication still merges credentials into the existing settings
-  without blanking optional names.
+  `invalid_host`, `timeout_connect` or `unknown` errors for real
+  credential, connection and ordinary unexpected failures. Raw router
+  exceptions, secret-bearing URLs and tracebacks are not logged;
+  cancellation still propagates.
+- **Merged in PR #59 (2026-11-18; `3df048f`):** setup and options
+  normalize form data in a copy, leaving the caller-owned mapping
+  unchanged on invalid polling intervals, rejected SSID consent,
+  authentication failures and options persistence errors. Corrected
+  input can complete on the same flow instance. Persisted intervals
+  remain integers. The options handler adopts staged data only
+  after Home Assistant accepts the config-entry update.
+- **Proposed in PR #60 (not yet merged):** once credential creation
+  succeeds, await all recognized temporary coordinator shutdowns
+  even when one fails; report a sanitized `unknown` for ordinary
+  cleanup exceptions rather than misclassifying them as login or
+  connection errors. Propagate a shutdown's cancellation after
+  sibling cleanup. A gated regression verifies that the credential
+  check does not finish before another shutdown completes. This
+  change does not modify stored settings, entity IDs, translations
+  or configuration migrations. Physical firmware and Windows
+  runtime behavior remain unverified.
+- Reauthentication merges submitted credentials into saved settings
+  without blanking absent optional Deco/client name fields.
 - Legacy MAC-only client device registrations may be removed manually
   when linking is disabled, but only when the device belongs exclusively
   to the requesting config entry and has no other integration identifiers.
