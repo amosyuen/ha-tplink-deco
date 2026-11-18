@@ -27,6 +27,18 @@ This integration provides local polling control and diagnostics for TP-Link Deco
 - Memory usage (raw + smoothed)
 - Backhaul and network diagnostics
 
+**Deco diagnostic and coordinator-health sensors are disabled by default.**
+In Home Assistant, open **Settings → Devices & services → TP-Link Deco →
+Devices**, select a Deco, show disabled entities, and enable the
+diagnostics you want. Enabling them does not cause a router API call.
+
+Per-Deco diagnostics are created only when the firmware has supplied a
+nonempty value for that field, even if that first happens on a later refresh.
+Unsupported fields are not exposed as placeholder sensors. Network-wide
+throughput totals require a known master Deco, while the per-Deco
+**Connected clients** sensor requires a successful client-list poll for that
+node.
+
 ### Optional mobile WAN data usage (upstream #631)
 
 On supported Deco 4G/5G router models, a **Mobile data usage** sensor
