@@ -698,6 +698,15 @@ policy for AI-assisted development.
   options reauthentication-success abort message. Require full canonical
   leaf-key parity for `en`, `nl`, `sk` and `sv`, including real
   `interval_seconds` form labels, setup/options, reauth and abort paths.
+  The Norwegian Bokmål audit found 39 additional missing canonical
+  setup/options, authentication, error and abort paths. Extend full
+  nested-key parity to `nb`, and guard the 16 pre-existing Norwegian
+  values, including legacy titles, opt-in labels and mobile usage.
+  French parity is a separate open PR #56; Portuguese catalogs remain
+  incomplete. Do **not** claim full-language coverage until their
+  missing paths are independently localized and tested. Retain valid
+  locale-specific keys rather than bulk-replacing translations; defer
+  upstream syslog settings until that feature exists in the fork.
   The subsequent French audit found 39 missing canonical leaf keys
   across setup/options, reauthentication and error/abort paths. Include
   `fr` in the complete canonical-key parity matrix, preserve all
