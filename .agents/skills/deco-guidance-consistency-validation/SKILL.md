@@ -41,6 +41,19 @@ Keep `AI_POLICY.md` unchanged unless governing policy itself changes.
 
 ## Failures observed and deterministic validation
 
+- **PR #57 merge during final verification (2026-11-18):** after a
+  lease-protected force-rebase and five successful new-head checks, PR #57
+  changed from open/mergeable to merged while its status was being
+  recorded. The live PR then reported `merged=true`, a merge timestamp
+  and merge commit `cf90deaa`; the new `main` tree matched the
+  verified PR head exactly. Re-fetch PR state **after** final checks
+  and metadata writes, not only at the start of a task. On a confirmed
+  merge, reconcile the issue status and the integration guide with
+  real `main` files and the merge SHA; never preserve an obsolete
+  `proposed/open` label or close the tracking issue because a partial
+  PR merged. Keep language-quality and hardware testing claims separate
+  from structural translation coverage.
+
 - **PR #51 review-bot coverage (2026-11-17):** CodeRabbit posted a
   review-limit warning for the actual branch head instead of findings;
   a Codex status comment independently showed a completed code review
