@@ -121,3 +121,75 @@ def test_legacy_form_inherits_existing_scan_interval() -> None:
         marker for marker in schema.schema if marker.schema == CONF_DEVICE_LIST_INTERVAL
     )
     assert key.default() == 60
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["setup", "options"])
+@pytest.mark.parametrize(
+    ("field_name", "invalid_value", "corrected_value", "error_code"),
+    [
+        (CONF_DEVICE_LIST_INTERVAL, 5, "10", "invalid_device_list_interval"),
+        (CONF_DEVICE_LIST_INTERVAL, 9, "300", "invalid_device_list_interval"),
+        (CONF_SCAN_INTERVAL, "15", "60", "invalid_scan_interval"),
+    ],
+)
+async def test_invalid_interval_can_be_corrected_in_same_flow(
+    kind: str,
+    field_name: str,
+    invalid_value: int | str,
+    corrected_value: str,
+    error_code: str,
+) -> None:
+    """Complete the same setup/options flow after a rejected polling interval."""
+    flow, hass = _flow(kind)
+    entry = hass.config_entries.async_get_known_entry.return_value
+    original_data = dict(entry.data)
+    invalid_data = _values()
+    invalid_data[field_name] = invalid_value
+    valid_data = _values()
+    valid_data[field_name] = corrected_value
+    step = flow.async_step_user if kind == "setup" else flow.async_step_init
+
+    with patch.object(
+        config_flow, "_async_test_credentials", AsyncMock(return_value={})
+    ) as credentials:
+        invalid_result = await step(invalid_data)
+
+        assert invalid_result["type"] == FlowResultType.FORM
+        assert invalid_result["errors"] == {field_name: error_code}
+        form_json = _BaseFlowManagerView(MagicMock())._prepare_result_json(
+            {
+                "type": FlowResultType.FORM,
+                "data_schema": invalid_result["data_schema"],
+            }
+        )
+        assert json.dumps(form_json)
+        assert any(field["name"] == field_name for field in form_json["data_schema"])
+        credentials.assert_not_awaited()
+        flow.async_create_entry.assert_not_called()
+        hass.config_entries.async_update_entry.assert_not_called()
+        assert entry.data == original_data
+
+        valid_result = await step(valid_data)
+
+    assert valid_result["type"] == "create_entry"
+    credentials.assert_awaited_once()
+    flow.async_create_entry.assert_called_once()
+    if kind == "setup":
+        hass.config_entries.async_update_entry.assert_not_called()
+        saved = flow.async_create_entry.call_args.kwargs["data"]
+    else:
+        hass.config_entries.async_update_entry.assert_called_once()
+        saved = hass.config_entries.async_update_entry.call_args.kwargs["data"]
+        flow.async_create_entry.assert_called_once_with(data={})
+
+    assert credentials.await_args.args[1] == saved
+    assert saved[CONF_HOST] == original_data[CONF_HOST]
+    assert saved[CONF_USERNAME] == original_data[CONF_USERNAME]
+    assert saved[CONF_SCAN_INTERVAL] == (
+        int(corrected_value) if field_name == CONF_SCAN_INTERVAL else 30
+    )
+    assert saved[CONF_DEVICE_LIST_INTERVAL] == (
+        int(corrected_value) if field_name == CONF_DEVICE_LIST_INTERVAL else 0
+    )
+    assert entry.data == original_data
