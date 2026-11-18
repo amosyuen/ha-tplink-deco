@@ -95,6 +95,20 @@ async def test_unexpected_coordinator_shutdown_failure_returns_safe_error(
     assert SECRET not in caplog.text
 
 
+async def _assert_credential_check_waits_for_shutdown(
+    credential_task: asyncio.Task[dict[str, str]],
+    shutdown_started: asyncio.Event,
+    allow_shutdown: asyncio.Event,
+) -> None:
+    """Prove the credential check remains pending until sibling cleanup ends."""
+    try:
+        await asyncio.wait_for(shutdown_started.wait(), timeout=1)
+        with pytest.raises(asyncio.TimeoutError):
+            await asyncio.wait_for(asyncio.shield(credential_task), timeout=0.02)
+    finally:
+        allow_shutdown.set()
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "failure",
@@ -108,12 +122,15 @@ async def test_failed_shutdown_awaits_other_coordinators_and_sanitizes_error(
     failure: Exception,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Finish independent cleanup despite one failing temporary shutdown."""
+    """Do not finish credential checks while another shutdown remains blocked."""
+    shutdown_started = asyncio.Event()
+    allow_shutdown = asyncio.Event()
     completed = asyncio.Event()
 
     async def _finish_other_shutdown() -> None:
-        """Mark completion after yielding to a failing sibling."""
-        await asyncio.sleep(0)
+        """Wait for explicit permission before completing sibling shutdown."""
+        shutdown_started.set()
+        await allow_shutdown.wait()
         completed.set()
 
     failed = SimpleNamespace(async_shutdown=AsyncMock(side_effect=failure))
@@ -133,7 +150,13 @@ async def test_failed_shutdown_awaits_other_coordinators_and_sanitizes_error(
         ),
         caplog.at_level(logging.DEBUG, logger=config_flow.__name__),
     ):
-        errors = await config_flow._async_test_credentials(MagicMock(), CONFIG_DATA)
+        credential_task = asyncio.create_task(
+            config_flow._async_test_credentials(MagicMock(), CONFIG_DATA)
+        )
+        await _assert_credential_check_waits_for_shutdown(
+            credential_task, shutdown_started, allow_shutdown
+        )
+        errors = await asyncio.wait_for(credential_task, timeout=1)
 
     assert errors == {"base": "unknown"}
     failed.async_shutdown.assert_awaited_once_with()
@@ -145,12 +168,15 @@ async def test_failed_shutdown_awaits_other_coordinators_and_sanitizes_error(
 
 @pytest.mark.asyncio
 async def test_cancelled_shutdown_still_finishes_siblings_before_propagating() -> None:
-    """Propagate cancellation only after other temporary shutdowns complete."""
+    """Do not propagate a shutdown cancellation before sibling cleanup."""
+    shutdown_started = asyncio.Event()
+    allow_shutdown = asyncio.Event()
     completed = asyncio.Event()
 
     async def _finish_other_shutdown() -> None:
-        """Finish another coordinator shutdown after an event-loop turn."""
-        await asyncio.sleep(0)
+        """Wait for explicit permission before completing sibling shutdown."""
+        shutdown_started.set()
+        await allow_shutdown.wait()
         completed.set()
 
     cancelled = SimpleNamespace(
@@ -169,8 +195,14 @@ async def test_cancelled_shutdown_still_finishes_siblings_before_propagating() -
         "async_create_and_refresh_coordinators",
         new=AsyncMock(return_value=coordinators),
     ):
+        credential_task = asyncio.create_task(
+            config_flow._async_test_credentials(MagicMock(), CONFIG_DATA)
+        )
+        await _assert_credential_check_waits_for_shutdown(
+            credential_task, shutdown_started, allow_shutdown
+        )
         with pytest.raises(asyncio.CancelledError):
-            await config_flow._async_test_credentials(MagicMock(), CONFIG_DATA)
+            await asyncio.wait_for(credential_task, timeout=1)
 
     cancelled.async_shutdown.assert_awaited_once_with()
     healthy.async_shutdown.assert_awaited_once_with()
