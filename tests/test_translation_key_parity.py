@@ -126,9 +126,9 @@ def test_norwegian_existing_labels_and_metadata_are_retained() -> None:
         actual_value: Any = norwegian
         for field_name in key_path:
             actual_value = actual_value[field_name]
-        assert actual_value == expected_text, (
-            f"Original Norwegian label {'.'.join(key_path)} changed"
-        )
+        assert (
+            actual_value == expected_text
+        ), f"Original Norwegian label {'.'.join(key_path)} changed"
 
 
 def test_french_existing_labels_and_metadata_are_retained() -> None:
