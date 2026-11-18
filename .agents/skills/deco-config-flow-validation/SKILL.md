@@ -45,6 +45,17 @@ description: "Validate TP-Link Deco setup, options and reauthentication flows, i
    matching `strings.json` and translation keys.
 6. Keep the main client/performance polling interval distinct from the independent Deco `device_list_interval`. Preserve existing values, unique IDs and the original scan-interval selector. For the new field accept integer 0 (startup-only) or >=10 seconds; use a continuous serializable schema and validate the disjoint constraint at the flow layer in both setup and options, including rejected 1–9 without authentication.
 7. Parameterize regressions across supported values, legacy defaults and invalid inputs. Mock authentication/network operations and verify that invalid inputs do **not** invoke them or update config entries. Cover successful integer persistence in both flows, other config fields remaining unchanged, and JSON serialization.
+   **Same-flow recovery and input ownership (merged PR #59):** drive the
+   same setup/options flow instance with an invalid polling value followed
+   by a valid correction. Both `_normalize_scan_interval` and
+   `_normalize_device_list_interval` mutate their arguments; normalize
+   a fresh shallow copy of the submitted mapping, never caller-owned
+   `user_input`. Verify unchanged input after invalid polling/SSID
+   consent, rejected authentication, successful retry and failed
+   persistence. Snapshot the actual credential payload **at await
+   time**, require exactly one credential check for a valid retry, and
+   assert the exact target entry and integer (not bool/float) interval
+   values. Do not introduce unimplemented upstream syslog fields.
 8. For any config-entry version migration, check the actual `ConfigEntry`
    API in **both supported Home Assistant versions** before choosing how to
    update version or data. The PR #24 review found that directly assigning
@@ -121,11 +132,18 @@ description: "Validate TP-Link Deco setup, options and reauthentication flows, i
   any ordinary shutdown failure as sanitized `unknown`, regardless of
   its upstream exception class. Prioritize `asyncio.CancelledError`
   after all sibling shutdowns complete rather than returning a form
-  error. Prove that slower sibling cleanup is actually **awaited**:
-  gate it with an `asyncio.Event`, assert the parent credential-check
-  task remains pending before releasing the gate, then assert completion.
-  A single `asyncio.sleep(0)` is not enough to detect fail-fast cleanup.
-  Check unchanged stored settings and no writes after cleanup failure.
+  error. **Deterministic concurrency regression (PR #60):** block one
+  sibling in `async_shutdown` on an `asyncio.Event`, start credential
+  verification in a separate task and wait until that sibling started.
+  Prove the parent task is still pending using a bounded
+  `asyncio.wait_for(asyncio.shield(task), ...)` expectation. Release
+  the gate in `finally`, then await and assert the final sanitized
+  error or propagated `CancelledError`; assert each shutdown was
+  awaited once and that no write occurred. A single `sleep(0)` or
+  a completion flag after the fact cannot detect premature return.
+  This tests cancellation **raised by an individual shutdown**;
+  cancellation of the parent credential-check task is a separate
+  scenario and must not be claimed covered by that regression.
   On failed options persistence, the handler must retain its prior data;
   the failure is not silently labeled a successful save.
 - **CI verification:** start with the relevant focused tests, then run both
