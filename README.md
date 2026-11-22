@@ -1,6 +1,6 @@
 # TP-Link Deco
 
-> **Maintainer update:** v3.15.3 is my final release for this repository. I continue development and support at [dkwolf1/ha-deco](https://github.com/dkwolf1/ha-deco). Existing installations do not need to switch to use v3.15.3. To follow my future releases, see the [migration guide](https://github.com/dkwolf1/ha-deco/wiki/Installation#switching-from-the-original-repository). - Dennis (@dkwolf1)
+> **Maintainer update:** v3.15.3 is my final release for this repository. I'd be glad to see others continue maintaining it here. I'll take development in my own direction at [dkwolf1/ha-deco](https://github.com/dkwolf1/ha-deco), where I'll publish my future releases and provide support. Existing installations do not need to switch to use v3.15.3. To follow my future releases, see the [migration guide](https://github.com/dkwolf1/ha-deco/wiki/Installation#switching-from-the-original-repository). - Dennis (@dkwolf1)
 
 [![GitHub Release](https://img.shields.io/github/v/release/amosyuen/ha-tplink-deco?style=for-the-badge)](https://github.com/amosyuen/ha-tplink-deco/releases)
 [![GitHub Activity](https://img.shields.io/github/commit-activity/y/amosyuen/ha-tplink-deco?style=for-the-badge)](https://github.com/amosyuen/ha-tplink-deco/commits/main)
