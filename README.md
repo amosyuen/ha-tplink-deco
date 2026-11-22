@@ -565,8 +565,6 @@ includes contributions from [@alunduil](https://github.com/alunduil),
 and [@dkwolf1](https://github.com/dkwolf1). See the release notes and commit
 history for individual contributions.
 
-[![Community Forum][forum-shield]][forum]
-
 This project was generated from [@oncleben31](https://github.com/oncleben31)'s [Home Assistant Custom Component Cookiecutter](https://github.com/oncleben31/cookiecutter-homeassistant-custom-component) template.
 
 Code template was mainly taken from [@Ludeeus](https://github.com/ludeeus)'s [integration_blueprint][integration_blueprint] template
