@@ -241,6 +241,7 @@ async def test_system_log_download_honors_http_only_policy() -> None:
         (HOST_HTTPS, False, {CONF_HOST: "http_only_requires_http"}),
         ("ftp://192.0.2.1", True, {CONF_HOST: "invalid_host_scheme"}),
         ("http://192.0.2.1/path", True, {CONF_HOST: "invalid_host_scheme"}),
+        ("http://192.0.2.1/", True, {CONF_HOST: "invalid_host_scheme"}),
         ("http://user:secret@192.0.2.1", True, {CONF_HOST: "invalid_host_scheme"}),
         ("http://192.0.2.1:bad", True, {CONF_HOST: "invalid_host_scheme"}),
         (HOST_HTTP, "false", {CONF_USE_HTTPS: "invalid_use_https"}),
