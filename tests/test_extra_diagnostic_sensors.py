@@ -24,7 +24,9 @@ import pytest
 from custom_components.tplink_deco.binary_sensor import (
     async_setup_entry as async_setup_binary_entry,
 )
-from custom_components.tplink_deco.binary_sensor import TplinkDecoDiagnosticFlagBinarySensor
+from custom_components.tplink_deco.binary_sensor import (
+    TplinkDecoDiagnosticFlagBinarySensor,
+)
 from custom_components.tplink_deco.binary_sensor import TplinkDecoStandaloneBinarySensor
 from custom_components.tplink_deco.const import COORDINATOR_CLIENTS_KEY
 from custom_components.tplink_deco.const import COORDINATOR_DECOS_KEY
@@ -40,9 +42,7 @@ MASTER = "02:00:00:00:64:01"
 SATELLITE = "02:00:00:00:64:02"
 STATION = "02-00-00-00-64-03"
 PRIVATE_ERROR = "PRIVATE-SSID PASSWORD=private-password TOKEN=private-token"
-BINARY_FLAG_KEYS = frozenset(
-    {"master", "slave", "set_gateway_support", "standalone"}
-)
+BINARY_FLAG_KEYS = frozenset({"master", "slave", "set_gateway_support", "standalone"})
 RESTORED_KEYS = {
     "group_status",
     "inet",
@@ -300,13 +300,13 @@ async def test_new_standalone_binary_does_not_create_legacy_sensor() -> None:
     coordinator = _coordinator()
     _inventory(coordinator, [_node()])
     _, added, _ = await _platform(coordinator)
-    assert not {
-        f"{MASTER}_{key}" for key in BINARY_FLAG_KEYS
-    }.intersection(_sensors(added))
+    assert not {f"{MASTER}_{key}" for key in BINARY_FLAG_KEYS}.intersection(
+        _sensors(added)
+    )
     binary_added, _ = await _binary_platform(coordinator)
-    assert {
-        f"{MASTER}_{key}" for key in BINARY_FLAG_KEYS
-    } == set(_flag_binary_sensors(binary_added))
+    assert {f"{MASTER}_{key}" for key in BINARY_FLAG_KEYS} == set(
+        _flag_binary_sensors(binary_added)
+    )
 
 
 @pytest.mark.asyncio
@@ -320,9 +320,7 @@ async def test_master_slave_and_gateway_binary_flags_preserve_tristate_and_ident
     flags = _flag_binary_sensors(added)
 
     assert set(flags) == {
-        f"{mac}_{key}"
-        for mac in (MASTER, SATELLITE)
-        for key in BINARY_FLAG_KEYS
+        f"{mac}_{key}" for mac in (MASTER, SATELLITE) for key in BINARY_FLAG_KEYS
     }
     for mac, expected in (
         (MASTER, {"master": True, "slave": False}),
@@ -374,7 +372,9 @@ async def test_master_slave_and_gateway_binary_flags_preserve_tristate_and_ident
 
 
 @pytest.mark.asyncio
-async def test_gateway_flag_discovered_after_role_is_known_and_entries_isolated() -> None:
+async def test_gateway_flag_discovered_after_role_is_known_and_entries_isolated() -> (
+    None
+):
     """Register later firmware flags once without cross-entry suppression."""
     coordinator = _coordinator()
     _inventory(coordinator, [{"mac": MASTER}])
@@ -752,7 +752,9 @@ async def test_actual_refresh_privacy_failure_recovery_and_config_entry_isolatio
     _, second_added, _ = await _platform(second, "mesh-two")
     assert f"{MASTER}_master" not in _sensors(second_added)
     second_binary_added, _ = await _binary_platform(second, "mesh-two")
-    assert _flag_binary_sensors(second_binary_added)[f"{SATELLITE}_master"].is_on is False
+    assert (
+        _flag_binary_sensors(second_binary_added)[f"{SATELLITE}_master"].is_on is False
+    )
 
     exported = json.dumps(
         await async_get_config_entry_diagnostics(
