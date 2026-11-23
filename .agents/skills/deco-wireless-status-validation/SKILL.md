@@ -1,15 +1,18 @@
 ---
 name: deco-wireless-status-validation
-description: "Use when changing optional Deco WLAN status, firmware parsing, transport error handling, WiFi entities or coordinator lifecycle in HiDiHo01/ha-tplink-deco."
+description: "Validate Deco WLAN status and explicitly requested firmware-supported WiFi writes, including authentication, privacy, entity state, concurrency and lifecycle."
 ---
 
-# Validate optional Deco wireless status without leaking credentials
+# Validate Deco wireless reads and controlled writes without leaking credentials
 
 ## When to use and source of authority
 
-Use this procedure for read-only Main, Guest and IoT WiFi status
-(upstream #627, merged fork PR #41) and the separately scoped,
-**default-disabled** SSID option (upstream #637, open fork PR #42).
+Use this procedure for existing read-only Main, Guest and IoT WiFi
+status (upstream #627, merged fork PR #41), the separately scoped,
+**default-disabled** SSID exposure option, and future explicitly
+requested WiFi-setting writes. This skill **permits** narrowly scoped
+writes after all safeguards below are implemented and verified; it
+does not claim that write support is already present on `main`.
 Start with `AI_POLICY.md`, `AGENTS.md` and `home-assistant.md`.
 Inspect the current branch's `api.py`, `wireless.py`,
 `binary_sensor.py`, `config_flow.py`, `__init__.py` and tests.
@@ -18,39 +21,50 @@ present on an open PR is not yet present on deployed `main`.
 
 ## API boundary and privacy
 
-1. Keep the local request read-only: the fixed
+1. Preserve the existing **read** contract: use the fixed
    `admin/wireless?form=wlan` endpoint with `{"operation": "read"}`.
-   Preserve encryption/session handling without introducing WiFi-setting
-   writes. Never expose PSKs, passwords or raw WLAN payloads. SSID names
-   may be published **only** as explicitly consented existing sensor
-   attributes; keep the option disabled by default.
+   **Write** operations on that same authenticated, encrypted endpoint
+   are allowed only through an explicit Home Assistant user/service
+   action, with `{"operation": "write", "params": ...}`, and only after
+   validating the selected firmware capabilities and target fields.
+   Never send a write during setup, background polling, discovery,
+   diagnostics or failure recovery. Do not change unrelated WiFi
+   configuration, or publish PSKs, passwords or raw WLAN payloads.
+   SSID names may be published **only** as explicitly consented existing
+   sensor attributes; keep that option disabled by default.
 2. Validate the outer HTTP JSON mapping, its encrypted `data` string, the
    decrypted mapping and the `result` mapping **before** indexing or
    interpreting fields. Missing, malformed or unsupported fields are not
    evidence that WiFi is disabled. Only accepted `enable` flags on
    `band*/host`, `band*/guest` and `iot/host` can produce booleans.
    Multiple enabled bands combine to an enabled network.
-3. Preserve the established API error contract: an expired session
-   (`-5002`, including the legacy `errorcode` form) permits at most
-   one re-login; explicit firmware `timeout` is a timeout, without
-   extra optional WLAN timeout retries. Propagate Home Assistant
-   authentication failures and `asyncio.CancelledError` without
-   recording them as routine optional-endpoint failures.
+3. Preserve the established **read** error contract: an expired session
+   (`-5002`, including legacy `errorcode`) permits at most one
+   re-login; an explicit firmware `timeout` is a timeout, without
+   extra optional WLAN timeout retries. For **writes**, only retry
+   if the router explicitly rejects authentication **before** applying
+   a command and the API can prove that no write occurred. Never replay
+   a write after timeout, disconnect, malformed acknowledgement or any
+   other outcome that might already have changed the router. Propagate
+   Home Assistant authentication failures and `asyncio.CancelledError`
+   without treating them as ordinary optional-read backoff.
 4. Sanitize **at the originating HTTP/decoder boundary**, not only in
    a coordinator catch block. Aiohttp errors may embed the LuCI token
    in `request_info.real_url`; error codes or firmware messages may
    contain attacker-controlled text. Do not log raw responses, private
    fields, cookie values, encryption keys/IVs, URLs or upstream exception
    strings; also inspect exception causes in surfaced tracebacks. Use
-   fixed errors and safe exception class names where needed. Avoid
-   changing other API forms while repairing the WLAN path.
-5. Unexpected exceptions from this **optional** request must not break
-   the mandatory Deco or client coordinators. Surface a sanitized
-   `UpdateFailed`, preserve their data, and defer further optional
-   requests for five minutes after two consecutive failed polls. Do not
-   bypass this bound with an additional retry loop. A successful read
-   clears the cooldown; a pause retains cache. An invalid response
-   must not count as successful empty data.
+   fixed errors and safe exception class names where needed. Keep
+   WLAN write changes isolated from other API forms and request paths.
+5. Unexpected exceptions from the **optional read** must not break
+   mandatory Deco or client coordinators. Surface a sanitized
+   `UpdateFailed`, preserve their data, and defer optional read polls
+   for five minutes after two consecutive failures. Do not bypass
+   that bound with an additional retry loop. A successful read clears
+   the cooldown; a pause retains cache. An invalid response is not
+   successful empty data. For explicit writes, return a separate,
+   sanitized action failure; never silently report success or weaken
+   the read coordinator's retry policy.
 
 ## Coordinator and entity lifecycle
 
@@ -69,6 +83,75 @@ present on an open PR is not yet present on deployed `main`.
    for immediate availability changes; unsubscribe via
    `async_on_remove` during entity removal. When the original master
    returns, its original entity identity may become available again.
+
+## Controlled WiFi-setting writes (opt-in user actions)
+
+- **Explicit scope and entity semantics:** Add Home Assistant controls only
+  for a capability verified against the current API and target firmware.
+  Use a stateful `switch` for enabling/disabling a network, not a
+  stateless reboot-style `button`. Preserve the existing read-only
+  WiFi `binary_sensor` and its unique ID as an independent status
+  source; do not silently convert its entity domain or delete the
+  registry entry. Register controls only for supported networks and
+  keep each control scoped to its owning config entry/master device.
+  Creation or setup must never enable or disable a network.
+- **Firmware and target validation:** Before any write, require a
+  successful, current WLAN read and an unambiguous, online, currently
+  owned master. Check its MAC **and** generation before and after each
+  await; reject A -> B -> A master handovers and stale data. Select only
+  recognized firmware band keys actually returned by that router,
+  validate supported write fields and booleans strictly, and reject
+  missing, malformed or unsupported band/network data. Do not infer
+  that a network is disabled from an absent or invalid flag.
+- **Guest-network payload:** For a guest enable/disable action, use the
+  authenticated encrypted `admin/wireless?form=wlan` **write**
+  operation with the narrowest firmware-confirmed per-band
+  `{"guest": {"enable": true|false}}` mapping for the selected
+  bands. Only change requested `enable` flags. Never supply or
+  overwrite existing SSIDs, passwords, encryption, schedules, VLANs,
+  band settings or other options as a side effect. Do not send raw,
+  user-supplied dictionaries or unconstrained firmware keys as write
+  parameters. If the firmware requires additional settings or does
+  not confirm that partial updates are safe, reject the action rather
+  than guessing its required payload.
+- **Preflight and concurrency:** Re-read supported network/band
+  settings before writing; require the control's entry, selected
+  master and capability to remain current. Serialize writes per
+  config entry to prevent conflicting actions. Prevalidate all
+  affected bands before the first command. Do not imply that a
+  multi-band update is atomic; if the firmware cannot guarantee
+  all-or-nothing behavior, surface partial/uncertain outcomes and
+  reconcile by a fresh read instead of issuing blind rollback writes.
+- **Acknowledgement and state:** Validate outer HTTP JSON, encrypted
+  data, decrypted result and fixed numeric firmware status before
+  reporting acceptance. Refresh WLAN state after a confirmed write,
+  and report the observed router state; never optimistically set
+  `switch.is_on` from the submitted command. If acknowledgement or
+  readback is missing, report a controlled unknown/failure state
+  rather than asserting success. Preserve unavailable states when
+  WLAN data is invalid, stale or temporarily inaccessible.
+- **Authorization, transport and privacy:** Reuse the entry-owned
+  authenticated client, HTTPS/redirect protections and safe error
+  handling. Only the explicitly requested action may issue the
+  write; no background automation should run without the user's
+  Home Assistant control/service invocation. Never expose SSIDs,
+  passwords, keys, cookies, tokens, router URLs or raw responses in
+  logs, exceptions, traces, diagnostics or newly created entities.
+  Sanitize error text **and** `__cause__`/`__context__` at the API
+  boundary, including failures on incomplete HTTP replies.
+- **Write-specific regressions:** Test the exact operation, URL,
+  form, encrypted payload, per-band `enable` flags, cookies and
+  session/HTTPS context using **synthetic** data. Assert absence
+  of unrelated wireless fields and of **any** write for unsupported
+  bands, invalid types, missing master, cross-entry ownership,
+  stale generations, disabled/unavailable controls, failed preflight
+  or cancelled tasks. Test concurrent commands, multi-band partial
+  failures, accepted writes followed by stale/failed readback,
+  router rejections, token expiry and uncertainty after timeout;
+  never allow automatic replay after an ambiguous write. Verify
+  unchanged WiFi sensors, stable device/entity IDs and opt-in
+  SSID privacy across all regression scenarios. Mocked tests are
+  not proof of device/firmware write compatibility.
 
 ## Explicit SSID opt-in (upstream #637)
 
@@ -142,10 +225,14 @@ present on an open PR is not yet present on deployed `main`.
 
 ## Required failure-outcome checks
 
-Use `tests/test_wireless.py` and `tests/test_wifi_ssid_opt_in.py` for
-focused regressions. For each check, verify the API-call count, returned
-status or exception, cached names, owner/generation, failure counter and
-cooldown—not merely that an exception was raised.
+For existing read-only behavior, use `tests/test_wireless.py` and
+`tests/test_wifi_ssid_opt_in.py`. For a new write action, add focused
+API/control regressions and include them in the full matrix. For each
+read check, verify the API-call count, returned status or exception,
+cached names, owner/generation, failure counter and cooldown—not
+merely that an exception was raised. For write checks, additionally
+verify the exact authorized payload, target/owner at dispatch and
+the **absence of duplicate or unexpected writes**.
 
 - **Successful current-master read:** parse booleans and opt-in names
   together, publish only matching-owner names, and clear the active
@@ -167,9 +254,14 @@ cooldown—not merely that an exception was raised.
   Verify a subsequent failure of the current master counts as attempt one.
 - **Authentication or task cancellation:** propagate the original
   control-flow outcome; do not misclassify it as routine WLAN backoff.
-- **Pause and independent config entries:** avoid API requests during
-  pause, retain appropriate cached status, and do not modify another
+- **Pause and independent config entries:** avoid optional status polls
+  during pause, retain appropriate cached status, and do not modify another
   entry's SSID ownership or retry state.
+- **Write preflight and post-write verification:** a write must fail closed
+  if the current master, eligible bands or capability cannot be verified.
+  Check exact targets, encrypted request, session and sanitized errors.
+  Do not replay uncertain outcomes or claim success without confirmed
+  acknowledgement and a fresh corresponding status read.
 
 For deterministic asynchronous races, coordinate mocked router calls
 with `asyncio.Event` rather than sleeps; patch `monotonic()` to test
@@ -179,7 +271,8 @@ not infer physical mesh compatibility from mocked tests.
 
 ## Tests and failure investigation
 
-8. In `tests/test_wireless.py`, cover recognized/unknown flags,
+8. For read-only WLAN paths, in `tests/test_wireless.py`, cover
+   recognized/unknown flags,
    malformed and missing outer/inner payloads, corrupted ciphertext,
    `-5002`, firmware timeout, HTTP 403/5xx, unexpected upstream errors,
    two-failure cooldown/recovery, paused polling and cancellation.
@@ -213,16 +306,20 @@ not infer physical mesh compatibility from mocked tests.
     lacks** `async_close`. Test a master A -> B -> A transition,
     absent master, retained unique IDs and immediate Deco update
     listener notifications, including listener cleanup.
-11. After any commit, verify the **new final head** with both supported
+11. After any commit, including documentation-only skill changes, verify
+    the **new final head** with both supported
     Python/Home Assistant pytest matrices (3.13/2025.12 and
     3.14/2026.11), pre-commit, HACS and Hassfest. The repository's
     `.github/workflows/pytest.yaml` runs
     `python -m pytest --no-cov -ra tests/` against each pinned environment;
     `.github/workflows/tests.yaml` runs
     `pre-commit run --all-files --show-diff-on-failure --color=always`.
-    For focused WLAN work, first exercise the real coordinator paths in
-    `tests/test_wireless.py` and `tests/test_wifi_ssid_opt_in.py`, then
-    require the **full** CI matrix. Verify synthetic decoder secrets do
+    For read-only WLAN work, first exercise real coordinator paths in
+    `tests/test_wireless.py` and `tests/test_wifi_ssid_opt_in.py`;
+    for write work, additionally exercise the authenticated write
+    boundary, owning config entry and control action with simulated
+    firmware, then require the **full** CI matrix. Verify synthetic
+    decoder secrets do
     not survive in logged text or `UpdateFailed.__context__`; assert
     retained states, two-failure cooldown, recovery and malformed-band
     rejection. When Black/isort/Prettier rewrites files, apply the exact
@@ -241,16 +338,18 @@ not infer physical mesh compatibility from mocked tests.
     PR #41 left older "two coordinators/no WiFi status" claims; PR #42
     uncovered a stale "five platforms" count, an old baseline described
     as current and an obsolete "SSID still out of scope" disclaimer.
-    Derive the six platforms from `const.py:PLATFORMS`; confirm the two
-    mandatory plus optional WLAN coordinators in `__init__.py` and
-    the strict consent flag in `config_flow.py` and `binary_sensor.py`.
-    Distinguish merged #627 status from **unmerged** #637 SSID work and
-    preserve separate syslog/mobile pending scope. Update conflicting
+    Derive the platform count from `const.py:PLATFORMS`; confirm the
+    mandatory and optional coordinators in `__init__.py` and
+    the strict SSID-consent flag in `config_flow.py` and
+    `binary_sensor.py`.
+    Distinguish historical upstream status from the **current**
+    implementation and proposed WLAN writes; do not describe
+    guidance-only permission as an implemented feature. Update conflicting
     statements wherever they occur before considering docs complete.
 14. Link partial work as `Part of #2`, never `Fixes #2`. Issue #2
-    has **separate** checklist items: read-only WiFi status (#627) was
-    checked after PR #41 merged; SSID exposure (#637) stays unchecked
-    until PR #42 is actually merged and verified. Update the existing
+    has **separate** checklist items for read-only WiFi status and SSID
+    exposure. Verify their actual status before updating them; an
+    allowance for future WLAN writes does not complete either feature. Update the existing
     in-progress issue record with the **actual** final head, CI results,
     review status and hardware limitations. Keep issue #2 open for
     unrelated upstream work.
