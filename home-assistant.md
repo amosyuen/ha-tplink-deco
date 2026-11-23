@@ -190,7 +190,7 @@ Their physical-firmware validation remains a separate limitation.
   are on `main` (merge commit `35d1c0c`); physical firmware testing
   remains unverified.
 - **Issue #67 (PR #68 merged; follow-up PR pending):** non-list
-  `client_list` replies cause an unsuccessful *per-node* poll rather than
+  `client_list` replies cause an unsuccessful _per-node_ poll rather than
   taking down the entire client coordinator. On real mesh hardware, a
   repeated unsupported-list response was observed while a second Deco
   returned four clients and the coordinator remained successful.
