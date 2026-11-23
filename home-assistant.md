@@ -498,12 +498,16 @@ Their physical-firmware validation remains a separate limitation.
   and persists the selected integer in the config entry before reload.
 - The button platform restores `<deco_mac>_reboot` for each node and
   `<config_entry_id>_reboot_all` for a multi-node mesh with an identified master.
-  The mesh button follows master changes in the entity registry. Before a write
-  the button forces an inventory refresh and checks the active entry and every
-  selected device's registry ownership and online status. One press issues
-  one batch to the owning entry's API. Overlapping presses on that mesh are
-  rejected while the request is in flight. Recovery uses subsequent inventory
-  observations and preserves the user's polling settings.
+  An individual reboot requires only its own node to be online after a successful
+  inventory refresh; a satellite-only entry or a healthy satellite with an
+  offline master can reboot that node. Reboot All continues to require a single
+  confirmed online master and every mesh node online. The mesh button follows
+  master changes in the entity registry. Before a write the button forces an
+  inventory refresh and checks the active entry and every selected device's
+  registry ownership and online status. One press issues one batch to the owning
+  entry's API. Overlapping presses on that mesh are rejected while the request
+  is in flight. Recovery uses subsequent inventory observations and preserves
+  the user's polling settings.
 - The three existing per-entry services are `tplink_deco.reboot_deco`,
   `tplink_deco.pause_polling` and `tplink_deco.resume_polling`.
   PR #44 added a separate integration-wide, once-registered
