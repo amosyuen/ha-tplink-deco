@@ -263,9 +263,7 @@ async def test_mesh_non_list_peer_preserves_valid_client_sensors_and_recovers(
     coordinator, api = _coordinator({CLIENT_MAC: old_client}, two_decos=True)
     good_node = SATELLITE_MAC if failed_node == MASTER_MAC else MASTER_MAC
 
-    async def _list_clients(
-        deco_mac: str, *, timeout_error_retries: int
-    ) -> object:
+    async def _list_clients(deco_mac: str, *, timeout_error_retries: int) -> object:
         """Return an invalid peer and one valid client-list response."""
         assert timeout_error_retries == 0
         if deco_mac == failed_node:
