@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from typing import Any
+from urllib.parse import urlsplit
 
 import aiohttp
 from homeassistant import config_entries
@@ -30,6 +31,7 @@ from .const import CONF_LINK_CLIENT_DEVICES
 from .const import CONF_TIMEOUT_ERROR_RETRIES
 from .const import CONF_TIMEOUT_SECONDS
 from .const import CONF_VERIFY_SSL
+from .const import CONF_USE_HTTPS
 from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
 from .const import COORDINATOR_MOBILE_KEY
@@ -41,8 +43,11 @@ from .const import DEFAULT_LINK_CLIENT_DEVICES
 from .const import DEFAULT_SCAN_INTERVAL
 from .const import DEFAULT_TIMEOUT_ERROR_RETRIES
 from .const import DEFAULT_TIMEOUT_SECONDS
+from .const import DEFAULT_USE_HTTPS
 from .const import DOMAIN
+from .exceptions import HttpsRequiredException
 from .exceptions import TimeoutException
+from .exceptions import UnsafeRedirectException
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -107,7 +112,38 @@ def _valid_ssid_choice(data: dict[str, Any]) -> bool:
     )
 
 
-def _get_auth_schema(data: dict[str:Any]):
+def _transport_errors(data: dict[str, Any]) -> dict[str, str]:
+    """Validate protocol consent and origin before any authentication attempt."""
+    use_https = data.get(CONF_USE_HTTPS, DEFAULT_USE_HTTPS)
+    if not isinstance(use_https, bool):
+        return {CONF_USE_HTTPS: "invalid_use_https"}
+
+    host = data.get(CONF_HOST)
+    if not isinstance(host, str):
+        return {CONF_HOST: "invalid_host_scheme"}
+    try:
+        parsed = urlsplit(host)
+        if (
+            parsed.scheme not in ("http", "https")
+            or not parsed.hostname
+            or not parsed.netloc
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.path not in ("", "/")
+            or parsed.query
+            or parsed.fragment
+        ):
+            return {CONF_HOST: "invalid_host_scheme"}
+        _ = parsed.port
+    except ValueError:
+        return {CONF_HOST: "invalid_host_scheme"}
+
+    if not use_https and parsed.scheme != "http":
+        return {CONF_HOST: "http_only_requires_http"}
+    return {}
+
+
+def _get_auth_schema(data: dict[str, Any]):
     if data is None:
         data = {}
     return {
@@ -164,6 +200,10 @@ def _get_schema(data: dict[str:Any]):
                 default=data.get(CONF_VERIFY_SSL, True),
             ): bool,
             vol.Required(
+                CONF_USE_HTTPS,
+                default=data.get(CONF_USE_HTTPS, DEFAULT_USE_HTTPS),
+            ): bool,
+            vol.Required(
                 CONF_LINK_CLIENT_DEVICES,
                 default=data.get(CONF_LINK_CLIENT_DEVICES, DEFAULT_LINK_CLIENT_DEVICES),
             ): bool,
@@ -216,6 +256,12 @@ async def _async_test_credentials(
     except (TimeoutException, asyncio.TimeoutError):
         _LOGGER.debug("Deco credential check timed out")
         return {"base": "timeout_connect"}
+    except HttpsRequiredException:
+        _LOGGER.debug("Deco router enforces HTTPS for this connection")
+        return {"base": "https_required"}
+    except UnsafeRedirectException:
+        _LOGGER.debug("Deco router returned a disallowed redirect")
+        return {"base": "unsafe_redirect"}
     except ConfigEntryAuthFailed:
         _LOGGER.debug("Deco credentials rejected")
         return {"base": "invalid_auth"}
@@ -283,7 +329,10 @@ class TplinkDecoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 }
             elif not _valid_ssid_choice(candidate_data):
                 self._errors = {CONF_EXPOSE_WIFI_SSIDS: "invalid_expose_wifi_ssids"}
+            elif (transport_errors := _transport_errors(candidate_data)):
+                self._errors = transport_errors
             else:
+                candidate_data.setdefault(CONF_USE_HTTPS, DEFAULT_USE_HTTPS)
                 self._errors = await _async_test_credentials(self.hass, candidate_data)
             if not self._errors:
                 _ensure_user_input_optionals(candidate_data)
@@ -354,9 +403,12 @@ class TplinkDecoOptionsFlowHandler(config_entries.OptionsFlow):
                 }
             elif not _valid_ssid_choice(submitted_data):
                 self._errors = {CONF_EXPOSE_WIFI_SSIDS: "invalid_expose_wifi_ssids"}
+            elif (transport_errors := _transport_errors({**self.data, **submitted_data})):
+                self._errors = transport_errors
             else:
                 _ensure_user_input_optionals(submitted_data)
                 candidate_data = {**self.data, **submitted_data}
+                candidate_data.setdefault(CONF_USE_HTTPS, DEFAULT_USE_HTTPS)
                 self._errors = await _async_test_credentials(self.hass, candidate_data)
             if not self._errors:
                 self.hass.config_entries.async_update_entry(
