@@ -332,15 +332,18 @@ policy for AI-assisted development.
   current master; cover missing/ambiguous masters, late fields, false/zero,
   offline recovery, reload identities and multiple entries in regression
   tests.
-- **Standalone sensor-domain conversion:** A boolean standalone diagnostic
-  must be a disabled-by-default binary sensor. Since an old `sensor.*`
-  entity ID cannot be kept under a new domain, keep **only previously
-  registered** sensor-domain entities working for existing automations.
-  Check exact config-entry ownership before legacy registration. Never
-  create new legacy records, remove registry entries, or enable the new
-  binary entity automatically. Validate strict true/false/unknown states,
-  retained offline satellites, late discovery, registry customization,
-  separate entries and translation parity. The opt-in `inet_error_msg` sensor is the explicit exception for firmware
+- **Diagnostic flag domain conversions (PR #75 and follow-up):** The
+  `standalone`, `master`, `slave` and `set_gateway_support` flags are
+  disabled-by-default binary sensors. Home Assistant cannot retain a
+  `sensor.*` entity ID in the `binary_sensor` domain. Only re-register
+  pre-existing sensor-domain flags from the **same** config entry to keep
+  existing automation targets and registry customization intact; never
+  create new sensor-domain flags, delete registry entries or auto-enable
+  replacements. Register late firmware values once per MAC and key.
+  Validate true/false/unknown state transitions, retained offline nodes,
+  strict role/firmware value parsing, separate entries, device associations
+  and all translation namespaces, including the original legacy keys.
+- The opt-in `inet_error_msg` sensor is the explicit exception for firmware
   error text. Test its bounded display, unavailable state when cleared, and
   absence from integration logs and the config-entry diagnostics download.
 
