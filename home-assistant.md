@@ -189,6 +189,17 @@ Their physical-firmware validation remains a separate limitation.
   interpolate client MACs. The implementation and focused regressions
   are on `main` (merge commit `35d1c0c`); physical firmware testing
   remains unverified.
+- **Issue #67 (proposed fix, not yet merged):** a non-list top-level
+  `client_list` is a failed *per-node* poll, not a successful empty list.
+  The API raises a typed, fixed-message shape error; the client coordinator
+  preserves prior state for the affected node while processing validated
+  peers. No count readiness is granted for the failed peer. An all-invalid
+  cycle still raises a sanitized `ValueError`, and malformed client *items*
+  retain the existing atomic whole-response preflight and rejection.
+  The node, payload contents and credentials are never logged. Physical
+  router compatibility remains unverified. The separately reported
+  always-unavailable `Topology` entity still requires an observed, sanitized
+  firmware shape before changing its parser.
 - Down/Up throughput aggregation includes only clients with truthy
   `online` status. Per-Deco data rates additionally require the matching
   `deco_mac`; network-wide totals include online clients across nodes.
