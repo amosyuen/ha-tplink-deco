@@ -21,10 +21,10 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import EntityPlatform
 import pytest
 
-from custom_components.tplink_deco.binary_sensor import TplinkDecoStandaloneBinarySensor
 from custom_components.tplink_deco.binary_sensor import (
     async_setup_entry as async_setup_binary_entry,
 )
+from custom_components.tplink_deco.binary_sensor import TplinkDecoStandaloneBinarySensor
 from custom_components.tplink_deco.const import COORDINATOR_CLIENTS_KEY
 from custom_components.tplink_deco.const import COORDINATOR_DECOS_KEY
 from custom_components.tplink_deco.const import DOMAIN
@@ -150,9 +150,7 @@ async def _binary_platform(
     coordinator.async_add_listener = MagicMock(return_value=MagicMock())
     added = MagicMock()
     with patch("custom_components.tplink_deco.binary_sensor.async_dispatcher_connect"):
-        await async_setup_binary_entry(
-            hass, SimpleNamespace(entry_id=entry_id), added
-        )
+        await async_setup_binary_entry(hass, SimpleNamespace(entry_id=entry_id), added)
     return added, coordinator.async_add_listener.call_args_list[0].args[0]
 
 
@@ -226,7 +224,9 @@ async def test_original_sensor_keys_values_and_read_only_device_association() ->
 
 
 @pytest.mark.asyncio
-async def test_standalone_binary_sensor_late_discovery_mesh_and_unknown_states() -> None:
+async def test_standalone_binary_sensor_late_discovery_mesh_and_unknown_states() -> (
+    None
+):
     """Preserve true/false/unknown topology and original device identity."""
     coordinator = _coordinator()
     _inventory(coordinator, [{"mac": MASTER}])
