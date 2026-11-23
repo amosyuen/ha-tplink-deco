@@ -35,6 +35,7 @@ def _mock_api(decoded_payload: dict[str, object]) -> TplinkDecoApi:
     api._stok = "test-session"
     return api
 
+
 @pytest.mark.asyncio
 async def test_list_devices_handles_mixed_firmware_nicknames() -> None:
     """Decode, preserve, or omit nicknames without losing other device attributes."""
@@ -65,6 +66,7 @@ async def test_list_devices_handles_mixed_firmware_nicknames() -> None:
     api.async_login_if_needed.assert_awaited_once_with()
     api._async_post.assert_awaited_once()
     api._decrypt_data.assert_called_once_with("List Devices", "mocked-encrypted-body")
+
 
 @pytest.mark.asyncio
 async def test_list_clients_handles_mixed_firmware_names() -> None:
@@ -99,6 +101,7 @@ async def test_list_clients_handles_mixed_firmware_names() -> None:
         "mocked-encrypted-body",
     )
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("method", "result_key", "name_key"),
@@ -128,6 +131,7 @@ async def test_successful_name_reads_do_not_log_private_names(
 
     assert sensitive_name not in caplog.text
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "invalid_clients",
@@ -148,6 +152,7 @@ async def test_non_list_firmware_client_reply_is_rejected_without_private_data(
 
     assert "sensitive-test-client-name" not in caplog.text
     assert "Deco client-list parsing failed" not in caplog.text
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
@@ -175,6 +180,7 @@ async def test_explicit_empty_legacy_client_list_normalizes_to_valid_empty(
     api.async_login_if_needed.assert_awaited_once()
     api._async_post.assert_awaited_once()
 
+
 @pytest.mark.asyncio
 async def test_missing_client_list_never_becomes_a_successful_empty_response() -> None:
     """Preserve strict validation when firmware omits the required list field."""
@@ -182,6 +188,7 @@ async def test_missing_client_list_never_becomes_a_successful_empty_response() -
 
     with pytest.raises(KeyError, match="client_list"):
         await api._async_list_clients("default")
+
 
 @pytest.mark.asyncio
 async def test_legacy_empty_client_list_does_not_mask_authentication_failure() -> None:
