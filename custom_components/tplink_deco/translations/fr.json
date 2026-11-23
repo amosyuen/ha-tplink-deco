@@ -162,6 +162,15 @@
     "binary_sensor": {
       "standalone": {
         "name": "Principal autonome"
+      },
+      "master": {
+        "name": "Deco principal"
+      },
+      "slave": {
+        "name": "Deco satellite"
+      },
+      "set_gateway_support": {
+        "name": "Configuration de la passerelle prise en charge"
       }
     },
     "button": {
