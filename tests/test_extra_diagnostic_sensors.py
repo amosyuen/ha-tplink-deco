@@ -177,7 +177,7 @@ def _sensors(added: MagicMock) -> dict[str, TplinkDecoDiagnosticSensor]:
         for call in added.call_args_list
         for entity in call.args[0]
         if isinstance(entity, TplinkDecoDiagnosticSensor)
-        and entity.entity_description.key in RESTORED_KEYS
+        and entity.entity_description.key in (*RESTORED_KEYS, "standalone")
     ]
     assert len(entities) == len({entity.unique_id for entity in entities})
     return {entity.unique_id: entity for entity in entities}
