@@ -18,6 +18,7 @@ from homeassistant.const import UnitOfInformation
 from homeassistant.const import UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.core import callback
+from homeassistant.helpers import entity_registry
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -78,7 +79,6 @@ RESTORED_DIAGNOSTIC_SENSOR_DESCRIPTIONS = tuple(
         ("role", "Role"),
         ("master", "Master Deco"),
         ("slave", "Slave Deco"),
-        ("standalone", "Standalone Master"),
         ("signal_level", "Signal level"),
         ("signal_level24", "Signal level 2.4Ghz"),
         ("signal_level5", "Signal level 5Ghz"),
@@ -90,6 +90,12 @@ RESTORED_DIAGNOSTIC_SENSOR_DESCRIPTIONS = tuple(
         ("set_gateway_support", "Set gateway support"),
         ("topology", "Topology"),
     )
+)
+
+
+# Keep an existing legacy sensor-domain entity working for its automations.
+LEGACY_STANDALONE_SENSOR_DESCRIPTION = _restored_diagnostic_description(
+    "standalone", "Standalone Master"
 )
 
 
@@ -300,6 +306,7 @@ async def async_setup_entry(
     tracked_macs: set[str] = set()
     tracked_diagnostics: set[tuple[str, str]] = set()
     tracked_client_count_macs: set[str] = set()
+    legacy_registry = entity_registry.async_get(hass)
 
     def _build_entities_for_deco(deco: TpLinkDeco | None) -> list[SensorEntity]:
         """Build the list of sensor entities for a single deco (or totals)."""
@@ -345,7 +352,24 @@ async def async_setup_entry(
                 new_entities.extend(_build_entities_for_deco(deco))
                 tracked_macs.add(mac)
 
-            for description in DIAGNOSTIC_SENSOR_DESCRIPTIONS:
+            descriptions = DIAGNOSTIC_SENSOR_DESCRIPTIONS
+            legacy_id = legacy_registry.async_get_entity_id(
+                "sensor", DOMAIN, f"{mac}_standalone"
+            )
+            if legacy_id is not None:
+                legacy_entry = legacy_registry.async_get(legacy_id)
+                if (
+                    legacy_entry is not None
+                    and legacy_entry.config_entry_id == entry.entry_id
+                ):
+                    # Preserve old automations and registry preferences without
+                    # generating sensor-domain entries for fresh installations.
+                    descriptions = (
+                        *descriptions,
+                        LEGACY_STANDALONE_SENSOR_DESCRIPTION,
+                    )
+
+            for description in descriptions:
                 sensor_key = (mac, description.key)
                 if sensor_key in tracked_diagnostics or _is_empty(
                     description.value_fn(deco)
