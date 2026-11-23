@@ -350,9 +350,7 @@ async def test_mobile_sensor_registration_is_delayed_and_idempotent() -> None:
         ),
         patch(
             "custom_components.tplink_deco.sensor.entity_registry.async_get",
-            return_value=MagicMock(
-                async_get_entity_id=MagicMock(return_value=None)
-            ),
+            return_value=MagicMock(async_get_entity_id=MagicMock(return_value=None)),
         ),
     ):
         await async_setup_sensors(hass, entry, batches.append)
