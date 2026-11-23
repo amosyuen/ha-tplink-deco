@@ -487,11 +487,13 @@ A device is created for each deco. Each device contains the device_tracker entit
 ### Reboot buttons
 
 Press **Reboot** on a Deco's device page to restart that unit, including a
-standalone master. **Reboot All** appears on the master of a multi-node mesh
-and restarts the nodes in that configuration. A press refreshes the inventory
-first. The master and every selected node must be online and registered to
-the entry. A missing satellite makes **Reboot All** unavailable; individual
-online nodes can still be restarted.
+standalone master or a satellite configured through its own integration entry.
+An individual Reboot button requires a fresh, successful inventory check,
+the selected Deco online, and its device registered to the entry; it does not
+require a master to be present in that entry. **Reboot All** appears on the
+master of a multi-node mesh and still requires a confirmed online master and
+all mesh nodes online. A missing or offline satellite makes **Reboot All**
+unavailable, while individually online satellites remain restartable.
 
 The next inventory refresh reports when devices return. With startup-only
 or paused polling, press **Refresh Deco status** to check. If the router
