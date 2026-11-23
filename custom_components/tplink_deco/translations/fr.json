@@ -159,6 +159,11 @@
         "name": "Topologie"
       }
     },
+    "binary_sensor": {
+      "standalone": {
+        "name": "Principal autonome"
+      }
+    },
     "button": {
       "reboot": {
         "name": "Redémarrer"
