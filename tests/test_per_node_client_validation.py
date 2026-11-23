@@ -53,6 +53,7 @@ def _coordinator(
     )
     return coordinator, api
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "invalid_entry",
@@ -114,6 +115,7 @@ async def test_late_invalid_node_reply_preserves_prior_client_state(
     assert PRIVATE_VALUE not in "".join(traceback.format_exception(exc.value))
     api.async_list_clients.assert_awaited_once_with(MASTER_MAC, timeout_error_retries=0)
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("response", [{"bad": PRIVATE_VALUE}, PRIVATE_VALUE, 42])
 async def test_malformed_node_response_type_is_rejected_without_state_changes(
@@ -132,6 +134,7 @@ async def test_malformed_node_response_type_is_rejected_without_state_changes(
     assert old_client.online is True
     assert not coordinator.successfully_polled_deco_macs
     assert coordinator.health.last_error == "ValueError"
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
@@ -181,6 +184,7 @@ async def test_invalid_client_ip_normalizes_without_rejecting_valid_peer(
     assert PRIVATE_VALUE not in caplog.text
     api.async_list_clients.assert_awaited_once_with(MASTER_MAC, timeout_error_retries=0)
 
+
 @pytest.mark.asyncio
 async def test_valid_peer_updates_when_other_node_times_out() -> None:
     """A missing node response remains incomplete, not an empty success."""
@@ -208,6 +212,7 @@ async def test_valid_peer_updates_when_other_node_times_out() -> None:
     assert coordinator.successfully_polled_deco_macs == {MASTER_MAC}
     assert coordinator.health.timeout_count == 1
 
+
 @pytest.mark.asyncio
 async def test_new_client_discovery_does_not_log_client_mac(
     caplog: pytest.LogCaptureFixture,
@@ -226,6 +231,7 @@ async def test_new_client_discovery_does_not_log_client_mac(
     assert NEW_CLIENT_MAC not in caplog.text
     assert PRIVATE_VALUE not in caplog.text
     assert coordinator.health.last_successful_update is not None
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
@@ -328,6 +334,7 @@ async def test_mesh_non_list_peer_preserves_valid_client_sensors_and_recovers(
     assert coordinator.data[CLIENT_MAC] is old_client
     assert coordinator.data[CLIENT_MAC].name == "restored"
 
+
 @pytest.mark.asyncio
 async def test_typed_firmware_client_error_is_isolated_to_one_peer() -> None:
     """Treat the API's specific shape error as a failed node, not an empty list."""
@@ -349,6 +356,7 @@ async def test_typed_firmware_client_error_is_isolated_to_one_peer() -> None:
     assert coordinator.successfully_polled_deco_macs == {MASTER_MAC}
     assert coordinator.health.last_error == "0"
 
+
 @pytest.mark.asyncio
 async def test_all_invalid_mesh_client_lists_remain_failed_not_empty() -> None:
     """Reject a fully invalid mesh without changing cached node identities."""
@@ -366,6 +374,7 @@ async def test_all_invalid_mesh_client_lists_remain_failed_not_empty() -> None:
     assert coordinator.health.last_error == "ValueError"
     assert coordinator.health.consecutive_failures == 1
     assert coordinator.successfully_polled_deco_macs == set()
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("legacy_empty", [{}, ""], ids=["empty-object", "empty-string"])
