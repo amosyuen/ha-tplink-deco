@@ -82,7 +82,9 @@ async def async_setup_entry(
                 ):
                     continue
                 if description.key == "standalone":
-                    entities.append(TplinkDecoStandaloneBinarySensor(coordinator_decos, mac))
+                    entities.append(
+                        TplinkDecoStandaloneBinarySensor(coordinator_decos, mac)
+                    )
                 else:
                     entities.append(
                         TplinkDecoDiagnosticFlagBinarySensor(
