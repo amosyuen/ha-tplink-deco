@@ -202,7 +202,9 @@ async def test_invalid_interval_can_be_corrected_in_same_flow(
     if kind == "setup":
         hass.config_entries.async_update_entry.assert_not_called()
         saved = flow.async_create_entry.call_args.kwargs["data"]
-        assert set(credential_payloads[0]) == set(original_valid_data) | {CONF_USE_HTTPS}
+        assert set(credential_payloads[0]) == set(original_valid_data) | {
+            CONF_USE_HTTPS
+        }
         assert credential_payloads[0][CONF_USE_HTTPS] is True
     else:
         hass.config_entries.async_update_entry.assert_called_once()
