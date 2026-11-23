@@ -178,6 +178,77 @@ async def test_scoped_single_and_mesh_buttons_discover_once_and_recover(
 
 
 @pytest.mark.asyncio
+async def test_satellite_only_entry_can_reboot_its_own_online_node(
+    ha: HomeAssistant,
+) -> None:
+    """Do not require a master in an entry connected directly to a satellite."""
+    mesh = await _mesh(ha, "satellite-only", [_node(SATELLITE, "slave")])
+    button = mesh.buttons[f"{SATELLITE}_reboot"]
+    assert mesh.coordinator.data.confirmed_online_master is None
+    assert mesh.buttons.keys() == {
+        "satellite-only_refresh_deco_status",
+        f"{SATELLITE}_reboot",
+    }
+    assert button.available
+    assert button.device_info["identifiers"] == {(DOMAIN, SATELLITE)}
+
+    await button.async_press()
+    mesh.api.async_reboot_decos.assert_awaited_once_with([SATELLITE])
+
+    mesh.api.async_list_devices.return_value = [
+        _node(SATELLITE, "slave", "disconnected")
+    ]
+    await mesh.coordinator.async_request_device_refresh()
+    assert not button.available
+    with pytest.raises(ServiceValidationError, match="online"):
+        await button.async_press()
+    mesh.api.async_reboot_decos.assert_awaited_once_with([SATELLITE])
+
+    mesh.api.async_list_devices.return_value = [_node(SATELLITE, "slave")]
+    await mesh.coordinator.async_request_device_refresh()
+    assert button.available
+
+    mesh.api.async_list_devices.return_value = []
+    await mesh.coordinator.async_request_device_refresh()
+    assert not button.available
+    assert not mesh.queued
+
+
+@pytest.mark.asyncio
+async def test_online_satellite_reboot_survives_master_offline(
+    ha: HomeAssistant,
+) -> None:
+    """Permit one healthy satellite without weakening Reboot All safety."""
+    mesh = await _mesh(ha, "mesh", [_node(MASTER), _node(SATELLITE, "slave")])
+    satellite_button = mesh.buttons[f"{SATELLITE}_reboot"]
+    master_button = mesh.buttons[f"{MASTER}_reboot"]
+    mesh_button = mesh.buttons["mesh_reboot_all"]
+    assert satellite_button.available and mesh_button.available
+
+    mesh.api.async_list_devices.return_value = [
+        _node(MASTER, status="disconnected"),
+        _node(SATELLITE, "slave"),
+    ]
+    await mesh.coordinator.async_request_device_refresh()
+    assert mesh.coordinator.data.confirmed_online_master is None
+    assert not master_button.available
+    assert not mesh_button.available
+    assert satellite_button.available
+
+    await satellite_button.async_press()
+    mesh.api.async_reboot_decos.assert_awaited_once_with([SATELLITE])
+    with pytest.raises(ServiceValidationError, match="online"):
+        await mesh_button.async_press()
+    mesh.api.async_reboot_decos.assert_awaited_once_with([SATELLITE])
+
+    mesh.api.async_list_devices.return_value = [_node(MASTER)]
+    await mesh.coordinator.async_request_device_refresh()
+    assert not satellite_button.available
+    assert master_button.available
+    assert not mesh_button.available
+
+
+@pytest.mark.asyncio
 async def test_reboot_all_follows_master_in_real_registry(ha: HomeAssistant) -> None:
     """Move the same user-named mesh button when roles swap without new MACs."""
     mesh = await _mesh(ha, "mesh", [_node(MASTER), _node(SATELLITE, "slave")])
