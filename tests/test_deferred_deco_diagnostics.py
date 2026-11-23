@@ -73,12 +73,11 @@ async def test_late_diagnostic_values_register_once_without_placeholder_entities
 
     assert callback.__name__ == "_add_untracked_deco_sensors"
     assert _diagnostics(added) == []
-    assert {
-        f"{MASTER_MAC}_down",
-        f"{MASTER_MAC}_up",
-        f"{MASTER_MAC}_total_down",
-        f"{MASTER_MAC}_total_up",
-    }.issubset(_sensor_ids(added))
+    assert {f"{MASTER_MAC}_down", f"{MASTER_MAC}_up"}.issubset(
+        _sensor_ids(added)
+    )
+    assert f"{MASTER_MAC}_total_down" not in _sensor_ids(added)
+    assert f"{MASTER_MAC}_total_up" not in _sensor_ids(added)
 
     master.ip_address = "192.0.2.10"
     master.cpu_usage = 0
@@ -125,6 +124,8 @@ async def test_delayed_satellite_discovery_keeps_per_node_ids_and_no_duplicates(
     coordinator.data.decos[SATELLITE_MAC] = satellite
     callback()
     callback()
+    # Network totals register on the separate post-update listener.
+    coordinator.async_add_listener.call_args_list[1].args[0]()
 
     ids = _sensor_ids(added)
     assert f"{SATELLITE_MAC}_down" in ids
