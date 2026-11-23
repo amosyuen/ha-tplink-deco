@@ -141,9 +141,7 @@ async def test_deferred_count_entities_are_per_node_and_idempotent() -> None:
         ),
         patch(
             "custom_components.tplink_deco.sensor.entity_registry.async_get",
-            return_value=MagicMock(
-                async_get_entity_id=MagicMock(return_value=None)
-            ),
+            return_value=MagicMock(async_get_entity_id=MagicMock(return_value=None)),
         ),
     ):
         for entry_id, mac in (("mesh-one", MASTER_MAC), ("mesh-two", OTHER_MAC)):
