@@ -364,7 +364,16 @@ async def test_all_invalid_mesh_client_lists_remain_failed_not_empty() -> None:
     old_client.deco_mac = MASTER_MAC
     old_client.online = True
     coordinator, api = _coordinator({CLIENT_MAC: old_client}, two_decos=True)
-    api.async_list_clients = AsyncMock(return_value={})
+    async def _invalid_clients(
+        deco_mac: str, *, timeout_error_retries: int
+    ) -> object:
+        """Simulate an invalid mesh and an invalid global firmware response."""
+        assert timeout_error_retries == 0
+        if deco_mac == "default":
+            raise InvalidClientListException("Deco client-list response must be a list")
+        return {}
+
+    api.async_list_clients = AsyncMock(side_effect=_invalid_clients)
 
     with pytest.raises(ValueError, match="^Invalid Deco client list response$"):
         await coordinator._async_update_data()
@@ -374,6 +383,8 @@ async def test_all_invalid_mesh_client_lists_remain_failed_not_empty() -> None:
     assert coordinator.health.last_error == "ValueError"
     assert coordinator.health.consecutive_failures == 1
     assert coordinator.successfully_polled_deco_macs == set()
+    assert api.async_list_clients.await_count == 3
+    assert api.async_list_clients.await_args_list[-1].args == ("default",)
 
 
 @pytest.mark.asyncio
@@ -466,3 +477,150 @@ async def test_real_api_legacy_empty_reply_keeps_both_mesh_counts_live(
     assert "Invalid Deco client list response" not in caplog.text
     assert CLIENT_MAC not in caplog.text
     assert NEW_CLIENT_MAC not in caplog.text
+
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("invalid_node", [MASTER_MAC, SATELLITE_MAC])
+async def test_all_invalid_node_lists_recover_from_valid_global_client_list(
+    invalid_node: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Use one strictly validated global fallback when every node poll failed."""
+    old_client = TpLinkDecoClient(CLIENT_MAC)
+    old_client.deco_mac = MASTER_MAC
+    old_client.online = False
+    coordinator, api = _coordinator({CLIENT_MAC: old_client}, two_decos=True)
+    original_identity = old_client
+    query_order: list[str] = []
+
+    async def _clients(
+        deco_mac: str, *, timeout_error_retries: int
+    ) -> list[dict[str, object]]:
+        """Return invalid node shapes and one usable global inventory."""
+        assert timeout_error_retries == 0
+        query_order.append(deco_mac)
+        if deco_mac == invalid_node:
+            raise InvalidClientListException("Deco client-list response must be a list")
+        if deco_mac != "default":
+            raise InvalidClientListException("Deco client-list response must be a list")
+        return [
+            {"mac": CLIENT_MAC, "name": "known", "online": True, "down_speed": 80},
+            {"mac": NEW_CLIENT_MAC, "name": "new", "online": True, "up_speed": 32},
+        ]
+
+    api.async_list_clients = AsyncMock(side_effect=_clients)
+
+    with patch("custom_components.tplink_deco.coordinator.async_dispatcher_send"):
+        with caplog.at_level(logging.DEBUG):
+            await coordinator.async_refresh()
+
+    assert query_order[-1] == "default"
+    assert set(query_order[:-1]) == {MASTER_MAC, SATELLITE_MAC}
+    assert len(query_order) == 3
+    assert coordinator.last_update_success is True
+    assert coordinator.health.last_error == "0"
+    assert coordinator.health.consecutive_failures == 0
+    assert coordinator.client_query_mode == "global"
+    assert coordinator.successfully_polled_deco_macs == {MASTER_MAC}
+    assert coordinator.data[CLIENT_MAC] is original_identity
+    assert original_identity.online is True
+    assert original_identity.deco_mac == MASTER_MAC
+    assert coordinator.data[NEW_CLIENT_MAC].deco_mac == MASTER_MAC
+    assert coordinator.data[NEW_CLIENT_MAC].online is True
+
+    master_count = TplinkDecoClientCountSensor(
+        coordinator_decos=coordinator._deco_update_coordinator,
+        coordinator_clients=coordinator,
+        deco_mac=MASTER_MAC,
+    )
+    satellite_count = TplinkDecoClientCountSensor(
+        coordinator_decos=coordinator._deco_update_coordinator,
+        coordinator_clients=coordinator,
+        deco_mac=SATELLITE_MAC,
+    )
+    assert master_count.available is True
+    assert master_count.native_value == 2
+    assert satellite_count.available is False
+
+    throughput = TplinkTotalClientDataRateSensor(
+        coordinator_decos=coordinator._deco_update_coordinator,
+        coordinator_clients=coordinator,
+        name="Total Down",
+        unique_id="mesh_total_down",
+        client_attribute="down_kilobytes_per_s",
+        deco=None,
+    )
+    assert throughput.available is True
+    assert throughput.native_value == pytest.approx(10.0)
+    assert "All Deco node client polls failed; trying one global query" in caplog.text
+    assert CLIENT_MAC not in caplog.text
+    assert NEW_CLIENT_MAC not in caplog.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("global_failure", ["timeout", "bad_item", "bad_type"])
+async def test_all_invalid_global_fallback_never_commits_untrusted_client_data(
+    global_failure: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Keep prior client identities on a failed or malformed global recovery."""
+    old_client = TpLinkDecoClient(CLIENT_MAC)
+    old_client.deco_mac = SATELLITE_MAC
+    old_client.online = True
+    coordinator, api = _coordinator({CLIENT_MAC: old_client}, two_decos=True)
+
+    async def _clients(
+        deco_mac: str, *, timeout_error_retries: int
+    ) -> object:
+        """Return safe synthetic invalid responses for every query."""
+        assert timeout_error_retries == 0
+        if deco_mac != "default":
+            raise InvalidClientListException(PRIVATE_VALUE)
+        if global_failure == "timeout":
+            raise TimeoutException(PRIVATE_VALUE)
+        if global_failure == "bad_type":
+            raise InvalidClientListException(PRIVATE_VALUE)
+        return [{"mac": NEW_CLIENT_MAC}, {"mac": None, "name": PRIVATE_VALUE}]
+
+    api.async_list_clients = AsyncMock(side_effect=_clients)
+    with (
+        patch("custom_components.tplink_deco.coordinator.async_dispatcher_send"),
+        caplog.at_level(logging.DEBUG),
+    ):
+        with pytest.raises(ValueError, match="^Invalid (global )?Deco client list response$"):
+            await coordinator.async_refresh()
+
+    assert coordinator.last_update_success is False
+    assert coordinator.data == {CLIENT_MAC: old_client}
+    assert old_client.online is True
+    assert old_client.deco_mac == SATELLITE_MAC
+    assert coordinator.successfully_polled_deco_macs == set()
+    assert coordinator.has_successful_refresh is False
+    assert coordinator.health.consecutive_failures == 1
+    assert api.async_list_clients.await_count == 3
+    assert PRIVATE_VALUE not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_valid_peer_skips_global_fallback_after_an_invalid_node() -> None:
+    """Do not add a global query when at least one real node is healthy."""
+    coordinator, api = _coordinator(two_decos=True)
+
+    async def _clients(
+        deco_mac: str, *, timeout_error_retries: int
+    ) -> list[dict[str, object]]:
+        """Return one invalid node and a healthy peer."""
+        assert deco_mac != "default"
+        assert timeout_error_retries == 0
+        if deco_mac == SATELLITE_MAC:
+            raise InvalidClientListException("Deco client-list response must be a list")
+        return [{"mac": CLIENT_MAC, "online": True}]
+
+    api.async_list_clients = AsyncMock(side_effect=_clients)
+    result = await coordinator._async_update_data()
+
+    assert result[CLIENT_MAC].deco_mac == MASTER_MAC
+    assert coordinator.successfully_polled_deco_macs == {MASTER_MAC}
+    assert coordinator.client_query_mode == "per_node"
+    assert api.async_list_clients.await_count == 2
