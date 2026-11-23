@@ -390,8 +390,12 @@ Their physical-firmware validation remains a separate limitation.
   one current master and includes retained offline nodes in the mesh size.
   Missing/ambiguous masters leave standalone unknown. An explicit automatic
   flag reports `auto`. An explicit manual flag reports the validated target
-  or `fixed` when the firmware supplies no target. Missing or invalid modes
-  leave topology unknown. Signal summaries
+  or `fixed` when the firmware supplies no target. When a confirmed master
+  omits the topology object, supplies null or an empty mapping, its Topology
+  sensor reports `root`, reflecting its verified mesh position, **not** an
+  inferred `fixed` configuration. Missing satellite topology and malformed
+  explicitly supplied topology remain unavailable. Offline master reports
+  do not create a root state. Signal summaries
   prefer a valid 2.4 GHz measurement, including zero, then 5 GHz, without
   changing the firmware scale. A failed refresh or a node missing from the
   latest inventory makes the new sensors unavailable. A node explicitly
