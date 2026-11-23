@@ -643,12 +643,6 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         except TransientConnectionException:
             _LOGGER.debug("Global Deco client poll incomplete")
             return None
-        except InvalidClientListException:
-            # An unsupported global firmware shape cannot rescue a failed
-            # per-node cycle. Never treat it as an empty client inventory.
-            self._poll_had_invalid_response = True
-            _LOGGER.debug("Global Deco client poll returned an unsupported list type")
-            return None
         except aiohttp.ClientResponseError as err:
             if not 500 <= err.status < 600:
                 raise
@@ -793,7 +787,18 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
                 )
             master = self._deco_update_coordinator.data.master_deco
             if master is not None:
-                global_clients = await self._async_list_clients_globally()
+                try:
+                    global_clients = await self._async_list_clients_globally()
+                except InvalidClientListException:
+                    # Only the new all-invalid recovery may treat an invalid
+                    # global shape as another failed poll. Preserve the
+                    # established HTTP 5xx fallback error contract.
+                    if not all_nodes_invalid or server_error:
+                        raise
+                    _LOGGER.debug(
+                        "Global Deco client poll returned an unsupported list type"
+                    )
+                    global_clients = None
                 if global_clients is not None:
                     # Global data lacks a reliable node identity. Use the
                     # real master MAC, never the API sentinel "default".
