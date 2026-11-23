@@ -370,35 +370,47 @@ async def async_setup_entry(
     )
 
     total_sensors_added = False
+    health_sensors_added = False
 
     @callback
-    def _add_totals_when_master_available() -> None:
-        """Register network totals once a master Deco is available."""
-        nonlocal total_sensors_added
+    def _add_master_sensors_when_available() -> None:
+        """Register master health sensors and mesh totals independently."""
+        nonlocal total_sensors_added, health_sensors_added
 
-        if total_sensors_added or coordinator_decos.data.master_deco is None:
+        master = coordinator_decos.data.master_deco
+        if master is None:
             return
 
-        total_entities = _build_entities_for_deco(None)
-        master = coordinator_decos.data.master_deco
-        health_entities: list[SensorEntity] = [
-            TplinkCoordinatorHealthSensor(
-                coordinator_decos=coordinator_decos,
-                coordinator=data[description.coordinator_key],
-                master_deco_mac=master.mac,
-                description=description,
+        new_entities: list[SensorEntity] = []
+        if not health_sensors_added:
+            new_entities.extend(
+                TplinkCoordinatorHealthSensor(
+                    coordinator_decos=coordinator_decos,
+                    coordinator=data[description.coordinator_key],
+                    master_deco_mac=master.mac,
+                    description=description,
+                )
+                for description in COORDINATOR_HEALTH_SENSOR_DESCRIPTIONS
             )
-            for description in COORDINATOR_HEALTH_SENSOR_DESCRIPTIONS
-        ]
-        if total_entities:
-            async_add_entities([*total_entities, *health_entities])
+            health_sensors_added = True
+
+        # Retained offline satellites still belong to the known mesh.
+        has_satellite = master.mac in coordinator_decos.data.decos and any(
+            mac != master.mac and not deco.master
+            for mac, deco in coordinator_decos.data.decos.items()
+        )
+        if not total_sensors_added and has_satellite:
+            new_entities.extend(_build_entities_for_deco(None))
             total_sensors_added = True
 
-    # The coordinator listener runs after the new device-list data is stored.
-    # SIGNAL_DECO_ADDED can fire before that data is assigned.
-    _add_totals_when_master_available()
+        if new_entities:
+            async_add_entities(new_entities)
+
+    # Register health diagnostics for standalone masters immediately. Network
+    # totals are deferred until a satellite is discovered in a later refresh.
+    _add_master_sensors_when_available()
     coordinator_decos.on_close(
-        coordinator_decos.async_add_listener(_add_totals_when_master_available)
+        coordinator_decos.async_add_listener(_add_master_sensors_when_available)
     )
 
     # Per-deco sensors for already-known decos
