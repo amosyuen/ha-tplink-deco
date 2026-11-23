@@ -13,12 +13,16 @@
           "timeout_seconds": "Timeout seconds",
           "timeout_error_retries": "Timeout error retry count",
           "verify_ssl": "Verify SSL certificate is valid",
+          "use_https": "Use HTTPS (allow automatic upgrade)",
           "client_prefix": "Client name prefix",
           "client_postfix": "Client name postfix",
           "deco_prefix": "Deco name prefix",
           "deco_postfix": "Deco name postfix",
           "link_client_devices": "Link client trackers to devices by MAC address",
           "expose_wifi_ssids": "Show WiFi network names on the WiFi status sensors"
+        },
+        "data_description": {
+          "use_https": "When disabled, connect using HTTP only. Routers that enforce HTTPS will not work. Verify SSL is a separate certificate setting."
         }
       },
       "reauth_confirm": {
@@ -39,7 +43,12 @@
       "unknown": "Unexpected error",
       "invalid_scan_interval": "Select a polling interval of 10, 30, 60, or 120 seconds.",
       "invalid_device_list_interval": "Enter 0 for startup-only, or at least 10 seconds for Deco status updates.",
-      "invalid_expose_wifi_ssids": "Select on or off to control WiFi network name exposure."
+      "invalid_expose_wifi_ssids": "Select on or off to control WiFi network name exposure.",
+      "invalid_use_https": "Choose on or off to control HTTPS.",
+      "invalid_host_scheme": "Enter an http:// or https:// router address without a path, credentials or query.",
+      "http_only_requires_http": "HTTP-only mode requires an http:// host URL.",
+      "https_required": "This Deco requires HTTPS. Enable Use HTTPS to connect.",
+      "unsafe_redirect": "This router returned an unsafe or unsupported redirect."
     }
   },
   "options": {
@@ -56,12 +65,16 @@
           "timeout_seconds": "Timeout seconds",
           "timeout_error_retries": "Timeout error retry count",
           "verify_ssl": "Verify SSL certificate is valid",
+          "use_https": "Use HTTPS (allow automatic upgrade)",
           "client_prefix": "Client name prefix",
           "client_postfix": "Client name postfix",
           "deco_prefix": "Deco name prefix",
           "deco_postfix": "Deco name postfix",
           "link_client_devices": "Link client trackers to devices by MAC address",
           "expose_wifi_ssids": "Show WiFi network names on the WiFi status sensors"
+        },
+        "data_description": {
+          "use_https": "When disabled, connect using HTTP only. Routers that enforce HTTPS will not work. Verify SSL is a separate certificate setting."
         }
       }
     },
@@ -75,7 +88,12 @@
       "unknown": "Unexpected error",
       "invalid_scan_interval": "Select a polling interval of 10, 30, 60, or 120 seconds.",
       "invalid_device_list_interval": "Enter 0 for startup-only, or at least 10 seconds for Deco status updates.",
-      "invalid_expose_wifi_ssids": "Select on or off to control WiFi network name exposure."
+      "invalid_expose_wifi_ssids": "Select on or off to control WiFi network name exposure.",
+      "invalid_use_https": "Choose on or off to control HTTPS.",
+      "invalid_host_scheme": "Enter an http:// or https:// router address without a path, credentials or query.",
+      "http_only_requires_http": "HTTP-only mode requires an http:// host URL.",
+      "https_required": "This Deco requires HTTPS. Enable Use HTTPS to connect.",
+      "unsafe_redirect": "This router returned an unsafe or unsupported redirect."
     }
   },
   "entity": {
