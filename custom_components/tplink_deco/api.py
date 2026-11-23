@@ -802,7 +802,7 @@ class TplinkDecoApi:
         self, response: aiohttp.ClientResponse
     ) -> None:
         """Upgrade only after a same-router HTTP 307 redirect to HTTPS."""
-        if not response.history or not self._host.startswith("http://"):
+        if not self._use_https or not response.history or not self._host.startswith("http://"):
             return
 
         first_response = response.history[0]
