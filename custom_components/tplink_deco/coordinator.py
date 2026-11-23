@@ -808,6 +808,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         if (
             not global_only
             and not server_error
+            and not all_nodes_invalid
             and all(response is not None for response, _ in deco_client_responses)
         ):
             self._reset_client_backoff()
