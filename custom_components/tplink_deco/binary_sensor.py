@@ -22,7 +22,6 @@ from .wireless import WIRELESS_NETWORKS
 from .wireless import WirelessNetworkDescription
 from .wireless import wireless_ssid_attributes
 
-
 STANDALONE_BINARY_SENSOR_DESCRIPTION = BinarySensorEntityDescription(
     key="standalone",
     name="Standalone Master",
