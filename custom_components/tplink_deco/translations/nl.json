@@ -162,6 +162,15 @@
     "binary_sensor": {
       "standalone": {
         "name": "Zelfstandige master"
+      },
+      "master": {
+        "name": "Master-Deco"
+      },
+      "slave": {
+        "name": "Satelliet-Deco"
+      },
+      "set_gateway_support": {
+        "name": "Ondersteuning voor gatewaykeuze"
       }
     },
     "button": {
