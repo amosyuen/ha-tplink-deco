@@ -15,7 +15,10 @@ from custom_components.tplink_deco.coordinator import TpLinkDeco
 from custom_components.tplink_deco.coordinator import TpLinkDecoClient
 from custom_components.tplink_deco.coordinator import TpLinkDecoData
 from custom_components.tplink_deco.coordinator import TplinkDecoClientUpdateCoordinator
+from custom_components.tplink_deco.exceptions import InvalidClientListException
 from custom_components.tplink_deco.exceptions import TimeoutException
+from custom_components.tplink_deco.sensor import TplinkDecoClientCountSensor
+from custom_components.tplink_deco.sensor import TplinkTotalClientDataRateSensor
 
 MASTER_MAC = "02:00:00:00:60:01"
 SATELLITE_MAC = "02:00:00:00:60:02"
@@ -227,3 +230,141 @@ async def test_new_client_discovery_does_not_log_client_mac(
     assert NEW_CLIENT_MAC not in caplog.text
     assert PRIVATE_VALUE not in caplog.text
     assert coordinator.health.last_successful_update is not None
+
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "invalid_response",
+    [None, {}, {"private": PRIVATE_VALUE}, "", PRIVATE_VALUE, 42],
+    ids=["null", "empty-object", "populated-object", "empty-string", "string", "number"],
+)
+@pytest.mark.parametrize("failed_node", [MASTER_MAC, SATELLITE_MAC])
+async def test_mesh_non_list_peer_preserves_valid_client_sensors_and_recovers(
+    invalid_response: object,
+    failed_node: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Keep good mesh peers available and old failed-node client state intact."""
+    old_client = TpLinkDecoClient(CLIENT_MAC)
+    old_client.deco_mac = failed_node
+    old_client.online = True
+    old_client.down_kilobytes_per_s = 2.0
+    old_client.up_kilobytes_per_s = 1.0
+    old_client.last_activity = datetime.now(timezone.utc)
+    previous_activity = old_client.last_activity
+    coordinator, api = _coordinator({CLIENT_MAC: old_client}, two_decos=True)
+    good_node = SATELLITE_MAC if failed_node == MASTER_MAC else MASTER_MAC
+
+    async def _list_clients(
+        deco_mac: str, *, timeout_error_retries: int
+    ) -> object:
+        """Return an invalid peer and one valid client-list response."""
+        assert timeout_error_retries == 0
+        if deco_mac == failed_node:
+            return invalid_response
+        return [
+            {
+                "mac": NEW_CLIENT_MAC,
+                "name": "fixture",
+                "online": True,
+                "down_speed": 80,
+                "up_speed": 32,
+            }
+        ]
+
+    api.async_list_clients = AsyncMock(side_effect=_list_clients)
+    with caplog.at_level(logging.DEBUG):
+        await coordinator.async_refresh()
+
+    assert coordinator.last_update_success is True
+    assert coordinator.health.last_error == "0"
+    assert coordinator.health.last_successful_update is not None
+    assert coordinator.successfully_polled_deco_macs == {good_node}
+    assert coordinator.data[CLIENT_MAC] is old_client
+    assert old_client.deco_mac == failed_node
+    assert old_client.online is True
+    assert old_client.last_activity == previous_activity
+    assert coordinator.data[NEW_CLIENT_MAC].deco_mac == good_node
+    assert coordinator.data[NEW_CLIENT_MAC].online is True
+    assert PRIVATE_VALUE not in caplog.text
+    assert CLIENT_MAC not in caplog.text
+    assert NEW_CLIENT_MAC not in caplog.text
+
+    count_sensor = TplinkDecoClientCountSensor(
+        coordinator_decos=coordinator._deco_update_coordinator,
+        coordinator_clients=coordinator,
+        deco_mac=good_node,
+    )
+    assert count_sensor.available is True
+    assert count_sensor.native_value == 1
+    assert count_sensor.unique_id == f"{good_node}_client_count"
+
+    throughput = TplinkTotalClientDataRateSensor(
+        coordinator_decos=coordinator._deco_update_coordinator,
+        coordinator_clients=coordinator,
+        name="Network download",
+        unique_id="mesh_total_down",
+        client_attribute="down_kilobytes_per_s",
+        deco=None,
+    )
+    assert throughput.available is True
+    assert throughput.native_value == pytest.approx(12.0)
+
+    async def _recovered(
+        deco_mac: str, *, timeout_error_retries: int
+    ) -> list[dict[str, object]]:
+        """Return valid lists for both peers after the firmware recovers."""
+        assert timeout_error_retries == 0
+        if deco_mac == failed_node:
+            return [{"mac": CLIENT_MAC, "name": "restored", "online": True}]
+        return [{"mac": NEW_CLIENT_MAC, "name": "fixture", "online": True}]
+
+    api.async_list_clients = AsyncMock(side_effect=_recovered)
+    await coordinator.async_refresh()
+    assert coordinator.last_update_success is True
+    assert coordinator.health.consecutive_failures == 0
+    assert coordinator.successfully_polled_deco_macs == {MASTER_MAC, SATELLITE_MAC}
+    assert coordinator.data[CLIENT_MAC] is old_client
+    assert coordinator.data[CLIENT_MAC].name == "restored"
+
+
+@pytest.mark.asyncio
+async def test_typed_firmware_client_error_is_isolated_to_one_peer() -> None:
+    """Treat the API's specific shape error as a failed node, not an empty list."""
+    coordinator, api = _coordinator(two_decos=True)
+
+    async def _clients(
+        deco_mac: str, *, timeout_error_retries: int
+    ) -> list[dict[str, object]]:
+        """Simulate typed parsing failure from the real API boundary."""
+        assert timeout_error_retries == 0
+        if deco_mac == SATELLITE_MAC:
+            raise InvalidClientListException("Deco client-list response must be a list")
+        return [{"mac": CLIENT_MAC, "name": "fixture", "online": True}]
+
+    api.async_list_clients = AsyncMock(side_effect=_clients)
+    result = await coordinator._async_update_data()
+
+    assert result[CLIENT_MAC].deco_mac == MASTER_MAC
+    assert coordinator.successfully_polled_deco_macs == {MASTER_MAC}
+    assert coordinator.health.last_error == "0"
+
+
+@pytest.mark.asyncio
+async def test_all_invalid_mesh_client_lists_remain_failed_not_empty() -> None:
+    """Reject a fully invalid mesh without changing cached node identities."""
+    old_client = TpLinkDecoClient(CLIENT_MAC)
+    old_client.deco_mac = MASTER_MAC
+    old_client.online = True
+    coordinator, api = _coordinator({CLIENT_MAC: old_client}, two_decos=True)
+    api.async_list_clients = AsyncMock(return_value={})
+
+    with pytest.raises(ValueError, match="^Invalid Deco client list response$"):
+        await coordinator._async_update_data()
+
+    assert coordinator.data == {CLIENT_MAC: old_client}
+    assert old_client.online is True
+    assert coordinator.health.last_error == "ValueError"
+    assert coordinator.health.consecutive_failures == 1
+    assert coordinator.successfully_polled_deco_macs == set()
