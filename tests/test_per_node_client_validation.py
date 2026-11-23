@@ -368,6 +368,7 @@ async def test_all_invalid_mesh_client_lists_remain_failed_not_empty() -> None:
     old_client.deco_mac = MASTER_MAC
     old_client.online = True
     coordinator, api = _coordinator({CLIENT_MAC: old_client}, two_decos=True)
+
     async def _invalid_clients(deco_mac: str, *, timeout_error_retries: int) -> object:
         """Simulate an invalid mesh and an invalid global firmware response."""
         assert timeout_error_retries == 0
