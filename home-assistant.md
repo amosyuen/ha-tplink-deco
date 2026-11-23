@@ -189,18 +189,26 @@ Their physical-firmware validation remains a separate limitation.
   interpolate client MACs. The implementation and focused regressions
   are on `main` (merge commit `35d1c0c`); physical firmware testing
   remains unverified.
-- **Issue #67 (proposed fix, not yet merged):** a non-list top-level
-  `client_list` is a failed _per-node_ poll, not a successful empty list.
-  The API raises a typed, fixed-message shape error; the client coordinator
-  preserves prior state for the affected node while processing validated
-  peers. No count readiness is granted for the failed peer. An all-invalid
-  cycle still raises a sanitized `ValueError`, and malformed client _items_
-  retain the existing atomic whole-response preflight and rejection.
-  The node, payload contents and credentials are never logged. Physical
-  router compatibility remains unverified. The related master `Topology`
-  regression now reports `root` from a confirmed master role when topology
-  mode is absent, without assuming the firmware configured a `fixed` mode;
-  the actual firmware mode remains unverified.
+- **Issue #67 (PR #68 merged; follow-up PR pending):** non-list
+  `client_list` replies cause an unsuccessful *per-node* poll rather than
+  taking down the entire client coordinator. On real mesh hardware, a
+  repeated unsupported-list response was observed while a second Deco
+  returned four clients and the coordinator remained successful.
+  The follow-up compatibility fix accepts only explicitly present,
+  **empty** firmware `client_list` values encoded as `{}` or `""`.
+  Those two zero-length legacy representations are normalized to `[]`
+  **after** normal authentication/error-code checking; no other mapping,
+  non-empty string, missing value or `None` is considered an empty list.
+  Validated empty results update that node's count and normal offline grace;
+  malformed values remain isolated as a failed node, and malformed list
+  items retain atomic whole-response preflight. The empty-shape variants
+  are supported by legacy branch behavior and tests, but the exact
+  production firmware variant remains **unverified** until measured on
+  the affected router. Logs show only the shape's type, never client
+  contents, MACs or session data.
+  The related master `Topology` regression was fixed in merged PR #68
+  by displaying `root` from a confirmed master role without asserting an
+  unreported `fixed` firmware mode.
 - Down/Up throughput aggregation includes only clients with truthy
   `online` status. Per-Deco data rates additionally require the matching
   `deco_mac`; network-wide totals include online clients across nodes.
