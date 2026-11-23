@@ -132,7 +132,6 @@ async def test_successful_name_reads_do_not_log_private_names(
     assert sensitive_name not in caplog.text
 
 
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "invalid_clients",
