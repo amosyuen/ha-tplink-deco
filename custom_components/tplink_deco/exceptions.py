@@ -37,5 +37,9 @@ class TransientConnectionException(Exception):
     """A truncated response or disconnect that can be retried safely."""
 
 
+class InvalidClientListException(Exception):
+    """A Deco returned a client list with an unsupported top-level type."""
+
+
 class UnexpectedApiException(Exception):
     """Unexpected API exception"""
