@@ -337,8 +337,7 @@ policy for AI-assisted development.
 
 ## Invalid-only mesh client polls and global fallback (issue #67, 2026-11-23)
 
-- **Verified:** a physical Deco mesh still raised `ValueError("Invalid Deco
-  client list response")` in the client's all-nodes-incomplete branch after
+- **Verified:** a physical Deco mesh still raised `ValueError("Invalid Deco client list response")` in the client's all-nodes-incomplete branch after
   PRs #68/#69 were merged. The existing per-node validation correctly
   rejects unsupported firmware response types; the all-invalid condition
   is not evidence of an actual empty client inventory. Never broaden the
