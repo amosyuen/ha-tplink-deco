@@ -80,6 +80,16 @@ description: "Use when implementing or reviewing bounded Deco API retries for tr
    ensure normal grace transitions and privacy-safe type-only diagnostics.
    Physical firmware shape remains unverified until measured; do not
    generalize to arbitrary dictionary or string payloads.
+   **Issue #67 all-invalid mesh recovery:** if every per-node query is
+   incomplete and at least one failed with an invalid client-list type,
+   issue at most one fully validated global `default` query before the
+   all-invalid error. A successful global reply confirms only the master
+   and must preserve per-node count readiness and client registry IDs;
+   reject malformed global data without partially mutating cached state.
+   No global request is allowed when a peer returned a valid list. Include
+   invalid global type, global timeout, malformed client item, and a
+   successful global fallback in the mocked regression suite. Never log
+   router payloads, client MACs or access tokens.
 9. Update existing transport tests that assumed a disconnect always
    propagates immediately. Preserve their original authentication
    assertions and check `timeout_error_retries=0` separately.
