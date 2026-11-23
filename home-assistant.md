@@ -417,8 +417,8 @@ Their physical-firmware validation remains a separate limitation.
   not create new diagnostics; existing registered entities remain stable.
   No new diagnostics should implicitly delete existing entities.
 - **Restored diagnostics (issue #64):** PR #65 restored 17 additional
-  read-only sensors retain the `extra` branch's `<deco_mac>_<sensor_key>`
-  unique IDs: `group_status`, `inet`, `nickname`, `role`, `master`, `slave`,
+  read-only diagnostics with the `extra` branch's
+  `<deco_mac>_<sensor_key>` unique IDs: `group_status`, `inet`, `nickname`, `role`, `master`, `slave`,
   `standalone`, `signal_level`, `signal_level24`, `signal_level5`, `interface`,
   `previous`, `client_mesh`, `bssid_sta_2g`, `bssid_sta_5g`,
   `set_gateway_support` and `topology`. They reuse the existing late-value
@@ -427,6 +427,12 @@ Their physical-firmware validation remains a separate limitation.
   of existing tracker/backhaul fields; missing or malformed optional values
   do not produce false states or placeholder sensors. `inet` reads
   `inet_status`; the raw nickname remains separate from the display name.
+  The `standalone` diagnostic is an opt-in `binary_sensor` with the same
+  per-node MAC-based suffix and device association but a different entity
+  domain. Previously registered `sensor` entries continue working for
+  existing automations, with their registry customization intact; fresh
+  configurations never create a legacy sensor. Both translation namespaces
+  remain supported for compatibility.
   Master/slave flags require a recognized role. Standalone requires exactly
   one current master and includes retained offline nodes in the mesh size.
   Missing/ambiguous masters leave standalone unknown. An explicit automatic
