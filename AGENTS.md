@@ -602,9 +602,15 @@ policy for AI-assisted development.
   fresh inventory and registry ownership before the write, including a missing
   last target and a master handover with a user-named mesh button. Use the
   entry-scoped device-registry identifier lookup where available; check
-  membership explicitly on Home Assistant 2025.12. A lost reply
-  can follow an accepted reboot. Assert that only explicit authentication
-  rejection can replay the write, never timeout or disconnect.
+  membership explicitly on Home Assistant 2025.12. **Per-node Reboot** must
+  depend on the selected node's online status and a successful inventory,
+  not on discovery of a master in that entry: direct satellite-only entries
+  and online satellites whose master is offline must remain actionable.
+  **Reboot All** still requires one confirmed online master and every selected
+  mesh node online. Preserve the preflight refresh, entry ownership,
+  registry validation and no partial writes. A lost reply can follow an
+  accepted reboot. Assert that only explicit authentication rejection can
+  replay the write, never timeout or disconnect.
 
 ## Independent device-list cadence (upstream #616/#669/#670)
 
