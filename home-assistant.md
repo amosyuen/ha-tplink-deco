@@ -385,7 +385,13 @@ Their physical-firmware validation remains a separate limitation.
 - `sensor` exposes Down/Up totals per node and across the network,
   per-node `Connected clients` diagnostics and optional diagnostic
   readings (firmware Device Type, IP address, BSSIDs, backhaul type/rate and
-  CPU/memory). The restored `extra` Device Type sensor uses the firmware's
+  CPU/memory). The existing `connection_type` diagnostic **Backhaul type**
+  exposes every firmware-reported band as a comma-separated string (for
+  example `band2_4, band5`), rather than discarding bands after the first.
+  Legacy single strings remain strings; absent or malformed values do not
+  invent a band. The sensor keeps its `<deco_mac>_connection_type` unique ID,
+  and the Deco tracker keeps its original raw connection-type attribute.
+  The restored `extra` Device Type sensor uses the firmware's
   `device_type` string, the original per-Deco `<deco_mac>_device_type`
   unique ID, and the existing per-node device association. It is distinct
   from the `device_tracker` `device_type` attribute (`deco`/`client`).
