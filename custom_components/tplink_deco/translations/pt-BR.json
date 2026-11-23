@@ -170,6 +170,11 @@
         "name": "Topologia"
       }
     },
+    "binary_sensor": {
+      "standalone": {
+        "name": "Principal autônomo"
+      }
+    },
     "button": {
       "reboot": {
         "name": "Reiniciar"
