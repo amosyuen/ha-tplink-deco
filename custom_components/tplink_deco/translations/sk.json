@@ -156,6 +156,11 @@
         "name": "Topológia"
       }
     },
+    "binary_sensor": {
+      "standalone": {
+        "name": "Samostatné hlavné zariadenie"
+      }
+    },
     "button": {
       "reboot": {
         "name": "Reštartovať"
