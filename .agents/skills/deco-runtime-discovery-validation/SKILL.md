@@ -36,8 +36,12 @@ description: "Validate TP-Link Deco runtime node discovery, synchronous dispatch
    obtain their original `device_tracker`, per-node `binary_sensor` and
    regular/diagnostic `sensor` entities without changing any existing
    entity IDs, master/satellite registry links or configuration.
-   Network-wide total sensors continue to use the coordinator update
-   listener, since those are master-dependent and must be created once.
+   Network-wide Total Down/Up sensors continue to use the coordinator
+   update listener, but only register when a master has at least one known
+   satellite (including retained offline nodes). Do not register them for a
+   standalone master. Keep master health diagnostics independent and available
+   for standalone masters; preserve existing total-sensor IDs and avoid
+   duplicate registration when nodes are discovered later.
    For optional WLAN entities, follow
    [wireless-status validation](../deco-wireless-status-validation/SKILL.md):
    master changes must update availability via a Deco coordinator listener
