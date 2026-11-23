@@ -13,6 +13,7 @@
           "timeout_seconds": "Time-out in seconden",
           "timeout_error_retries": "Aantal nieuwe pogingen bij een time-out",
           "verify_ssl": "Geldigheid van het SSL-certificaat controleren",
+          "use_https": "HTTPS gebruiken (automatisch omschakelen toestaan)",
           "client_prefix": "Voorvoegsel voor clientnamen",
           "client_postfix": "Achtervoegsel voor clientnamen",
           "deco_prefix": "Voorvoegsel voor Deconamen",
@@ -20,7 +21,10 @@
           "link_client_devices": "Koppel clienttrackers aan apparaten via MAC-adres",
           "expose_wifi_ssids": "Toon wifi-netwerknamen op de wifi-statussensoren"
         },
-        "title": "TP-Link Deco"
+        "title": "TP-Link Deco",
+        "data_description": {
+          "use_https": "Uitgeschakeld: alleen HTTP gebruiken. Als de Deco HTTPS verplicht stelt, lukt verbinden niet. SSL-verificatie is een aparte instelling."
+        }
       },
       "reauth_confirm": {
         "description": "Er is een probleem met de aanmeldgegevens. Dit kan gebeuren wanneer je op een ander apparaat bent ingelogd. Raadpleeg de documentatie voor de aanmeldvereisten.",
@@ -38,7 +42,12 @@
       "unknown": "Onbekende fout",
       "invalid_scan_interval": "Kies een pollinginterval van 10, 30, 60 of 120 seconden.",
       "invalid_device_list_interval": "Kies 0 voor alleen bij opstarten of minstens 10 seconden voor Deco-statusupdates.",
-      "invalid_expose_wifi_ssids": "Kies aan of uit om wifi-netwerknamen weer te geven."
+      "invalid_expose_wifi_ssids": "Kies aan of uit om wifi-netwerknamen weer te geven.",
+      "invalid_use_https": "Kies aan of uit voor HTTPS.",
+      "invalid_host_scheme": "Vul een http://- of https://-adres in zonder pad, aanmeldgegevens of query.",
+      "http_only_requires_http": "Voor alleen HTTP is een http://-adres vereist.",
+      "https_required": "Deze Deco vereist HTTPS. Schakel HTTPS gebruiken in.",
+      "unsafe_redirect": "De Deco gaf een onveilige of niet-ondersteunde omleiding terug."
     },
     "abort": {
       "reauth_successful": "Opnieuw aanmelden geslaagd"
@@ -58,6 +67,7 @@
           "timeout_seconds": "Time-out in seconden",
           "timeout_error_retries": "Aantal nieuwe pogingen bij een time-out",
           "verify_ssl": "Geldigheid van het SSL-certificaat controleren",
+          "use_https": "HTTPS gebruiken (automatisch omschakelen toestaan)",
           "client_prefix": "Voorvoegsel voor clientnamen",
           "client_postfix": "Achtervoegsel voor clientnamen",
           "deco_prefix": "Voorvoegsel voor Deconamen",
@@ -65,7 +75,10 @@
           "link_client_devices": "Koppel clienttrackers aan apparaten via MAC-adres",
           "expose_wifi_ssids": "Toon wifi-netwerknamen op de wifi-statussensoren"
         },
-        "title": "TP-Link Deco"
+        "title": "TP-Link Deco",
+        "data_description": {
+          "use_https": "Uitgeschakeld: alleen HTTP gebruiken. Als de Deco HTTPS verplicht stelt, lukt verbinden niet. SSL-verificatie is een aparte instelling."
+        }
       }
     },
     "abort": {
@@ -78,7 +91,12 @@
       "unknown": "Onbekende fout",
       "invalid_scan_interval": "Kies een pollinginterval van 10, 30, 60 of 120 seconden.",
       "invalid_device_list_interval": "Kies 0 voor alleen bij opstarten of minstens 10 seconden voor Deco-statusupdates.",
-      "invalid_expose_wifi_ssids": "Kies aan of uit om wifi-netwerknamen weer te geven."
+      "invalid_expose_wifi_ssids": "Kies aan of uit om wifi-netwerknamen weer te geven.",
+      "invalid_use_https": "Kies aan of uit voor HTTPS.",
+      "invalid_host_scheme": "Vul een http://- of https://-adres in zonder pad, aanmeldgegevens of query.",
+      "http_only_requires_http": "Voor alleen HTTP is een http://-adres vereist.",
+      "https_required": "Deze Deco vereist HTTPS. Schakel HTTPS gebruiken in.",
+      "unsafe_redirect": "De Deco gaf een onveilige of niet-ondersteunde omleiding terug."
     }
   },
   "entity": {
