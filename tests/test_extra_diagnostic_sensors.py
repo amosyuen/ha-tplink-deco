@@ -24,6 +24,7 @@ import pytest
 from custom_components.tplink_deco.binary_sensor import (
     async_setup_entry as async_setup_binary_entry,
 )
+from custom_components.tplink_deco.binary_sensor import TplinkDecoDiagnosticFlagBinarySensor
 from custom_components.tplink_deco.binary_sensor import TplinkDecoStandaloneBinarySensor
 from custom_components.tplink_deco.const import COORDINATOR_CLIENTS_KEY
 from custom_components.tplink_deco.const import COORDINATOR_DECOS_KEY
@@ -39,14 +40,15 @@ MASTER = "02:00:00:00:64:01"
 SATELLITE = "02:00:00:00:64:02"
 STATION = "02-00-00-00-64-03"
 PRIVATE_ERROR = "PRIVATE-SSID PASSWORD=private-password TOKEN=private-token"
+BINARY_FLAG_KEYS = frozenset(
+    {"master", "slave", "set_gateway_support", "standalone"}
+)
 RESTORED_KEYS = {
     "group_status",
     "inet",
     "inet_error_msg",
     "nickname",
     "role",
-    "master",
-    "slave",
     "signal_level",
     "signal_level24",
     "signal_level5",
@@ -55,7 +57,6 @@ RESTORED_KEYS = {
     "client_mesh",
     "bssid_sta_2g",
     "bssid_sta_5g",
-    "set_gateway_support",
     "topology",
 }
 
@@ -154,6 +155,20 @@ async def _binary_platform(
     return added, coordinator.async_add_listener.call_args_list[0].args[0]
 
 
+def _flag_binary_sensors(
+    added: MagicMock,
+) -> dict[str, TplinkDecoDiagnosticFlagBinarySensor]:
+    """Collect all read-only firmware flag binary sensors."""
+    entities = [
+        entity
+        for call in added.call_args_list
+        for entity in call.args[0]
+        if isinstance(entity, TplinkDecoDiagnosticFlagBinarySensor)
+    ]
+    assert len(entities) == len({entity.unique_id for entity in entities})
+    return {entity.unique_id: entity for entity in entities}
+
+
 def _standalone_binary_sensors(
     added: MagicMock,
 ) -> dict[str, TplinkDecoStandaloneBinarySensor]:
@@ -175,7 +190,7 @@ def _sensors(added: MagicMock) -> dict[str, TplinkDecoDiagnosticSensor]:
         for call in added.call_args_list
         for entity in call.args[0]
         if isinstance(entity, TplinkDecoDiagnosticSensor)
-        and entity.entity_description.key in (*RESTORED_KEYS, "standalone")
+        and entity.entity_description.key in RESTORED_KEYS | BINARY_FLAG_KEYS
     ]
     assert len(entities) == len({entity.unique_id for entity in entities})
     return {entity.unique_id: entity for entity in entities}
@@ -195,8 +210,6 @@ async def test_original_sensor_keys_values_and_read_only_device_association() ->
         "inet_error_msg": PRIVATE_ERROR,
         "nickname": "firmware_name",
         "role": "master",
-        "master": True,
-        "slave": False,
         "signal_level": 0,
         "signal_level24": 0,
         "signal_level5": 48,
@@ -205,7 +218,6 @@ async def test_original_sensor_keys_values_and_read_only_device_association() ->
         "client_mesh": False,
         "bssid_sta_2g": MASTER,
         "bssid_sta_5g": STATION,
-        "set_gateway_support": False,
         "topology": SATELLITE,
     }
     for key, value in expected.items():
@@ -288,9 +300,13 @@ async def test_new_standalone_binary_does_not_create_legacy_sensor() -> None:
     coordinator = _coordinator()
     _inventory(coordinator, [_node()])
     _, added, _ = await _platform(coordinator)
-    assert f"{MASTER}_standalone" not in _sensors(added)
+    assert not {
+        f"{MASTER}_{key}" for key in BINARY_FLAG_KEYS
+    }.intersection(_sensors(added))
     binary_added, _ = await _binary_platform(coordinator)
-    assert f"{MASTER}_standalone" in _standalone_binary_sensors(binary_added)
+    assert {
+        f"{MASTER}_{key}" for key in BINARY_FLAG_KEYS
+    } == set(_flag_binary_sensors(binary_added))
 
 
 @pytest.mark.parametrize("internet", [False, True, 0, 1, "up", "offline"])
