@@ -337,10 +337,20 @@ Their physical-firmware validation remains a separate limitation.
   and permits a later fresh login. Owner failures are propagated
   without leaving pending shared futures; cancellation is not
   retried as ordinary authentication failure.
-- A same-host HTTP **307 → HTTPS** redirect may update the **runtime**
-  API origin, including its port, to preserve subsequent authenticated
-  requests. A cross-host redirect must not rewrite the configured router
-  endpoint or its persisted config-entry data.
+- **Issue #70, HTTPS transport option (PR pending):** each entry defaults to
+  `use_https: true` (including existing entries without the field), allowing
+  an explicit HTTPS host or one safe same-router HTTP 307/308 → HTTPS
+  upgrade, preserving the redirected port and original POST credentials.
+  If `use_https: false`, only an `http://` host is accepted and **no**
+  automatic HTTPS redirect may be followed. A router enforcing HTTPS
+  produces a fixed `https_required` config/options error; unsupported or
+  cross-host redirects produce `unsafe_redirect`. All API POST methods,
+  including login/key exchange and system-log download, use the same
+  redirect guard. This setting is distinct from `verify_ssl`; turning off
+  verification must not be implicit. Host and boolean validation occurs
+  before login or config-entry mutation. Keep existing settings and entity
+  identities unchanged after configuration reload. Router HTTPS enforcement
+  cannot be overridden by Home Assistant.
 - Device lists, per-node client lists, performance reads and Deco reboot
   use the existing encrypted authenticated API methods. An explicit reboot
   service call or button press can submit a restart. A timeout, disconnect
