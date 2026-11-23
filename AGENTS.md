@@ -335,7 +335,9 @@ policy for AI-assisted development.
   error text. Test its bounded display, unavailable state when cleared, and
   absence from integration logs and the config-entry diagnostics download.
 
-- **Issue #67 firmware empty-client-list compatibility:** historical
+## Legacy firmware empty client-list representations (issue #67)
+
+- **Verified code-path regression:** historical
   `extra` code iterated explicit zero-length dictionaries/strings as
   empty sequences, while stricter `main` client-list validation emitted
   repeated type errors for a mesh node and invalidated its count readiness.
