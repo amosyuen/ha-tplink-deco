@@ -49,9 +49,7 @@ def _api(
     return api, session.post
 
 
-def _response(
-    status: int = 200, *, location: str | None = None
-) -> MagicMock:
+def _response(status: int = 200, *, location: str | None = None) -> MagicMock:
     """Return a synthetic firmware HTTP response with no private payload."""
     response = MagicMock()
     response.status = status
@@ -141,9 +139,7 @@ async def test_http_only_rejects_router_enforced_https_without_retry_or_token(
 ) -> None:
     """A router requiring HTTPS cannot bypass the HTTP-only setting."""
     api, post = _api(use_https=False)
-    first = _response(
-        redirect_status, location=f"https://{HOST}:8443{REQUEST_PATH}"
-    )
+    first = _response(redirect_status, location=f"https://{HOST}:8443{REQUEST_PATH}")
     post.return_value = first
     with caplog.at_level(logging.DEBUG):
         with pytest.raises(HttpsRequiredException, match="enable Use HTTPS"):
@@ -209,9 +205,7 @@ async def test_repeated_upgrade_is_rejected_and_response_released() -> None:
 async def test_login_key_exchange_honors_http_only_policy() -> None:
     """Apply the same redirect guard to the unauthenticated key exchange."""
     api, post = _api(use_https=False)
-    first = _response(
-        307, location=f"https://{HOST}/cgi-bin/luci/;stok=/login"
-    )
+    first = _response(307, location=f"https://{HOST}/cgi-bin/luci/;stok=/login")
     post.return_value = first
 
     with pytest.raises(HttpsRequiredException):
@@ -257,9 +251,10 @@ def test_host_and_protocol_validation(
     host: str, use_https: object, error: dict[str, str]
 ) -> None:
     """Reject mismatched protocol settings before network access."""
-    assert config_flow._transport_errors(
-        {CONF_HOST: host, CONF_USE_HTTPS: use_https}
-    ) == error
+    assert (
+        config_flow._transport_errors({CONF_HOST: host, CONF_USE_HTTPS: use_https})
+        == error
+    )
 
 
 @pytest.mark.asyncio
@@ -276,7 +271,8 @@ async def test_protocol_failures_are_translated_without_leaking_secrets(
     """Show actionable form codes and never raw redirect or token data."""
     with (
         patch.object(
-            config_flow, "async_create_and_refresh_coordinators",
+            config_flow,
+            "async_create_and_refresh_coordinators",
             new=AsyncMock(side_effect=failure),
         ),
         caplog.at_level(logging.DEBUG, logger=config_flow.__name__),
