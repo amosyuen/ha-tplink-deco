@@ -364,9 +364,7 @@ async def test_all_invalid_mesh_client_lists_remain_failed_not_empty() -> None:
     old_client.deco_mac = MASTER_MAC
     old_client.online = True
     coordinator, api = _coordinator({CLIENT_MAC: old_client}, two_decos=True)
-    async def _invalid_clients(
-        deco_mac: str, *, timeout_error_retries: int
-    ) -> object:
+    async def _invalid_clients(deco_mac: str, *, timeout_error_retries: int) -> object:
         """Simulate an invalid mesh and an invalid global firmware response."""
         assert timeout_error_retries == 0
         if deco_mac == "default":
@@ -479,7 +477,6 @@ async def test_real_api_legacy_empty_reply_keeps_both_mesh_counts_live(
     assert NEW_CLIENT_MAC not in caplog.text
 
 
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize("invalid_node", [MASTER_MAC, SATELLITE_MAC])
 async def test_all_invalid_node_lists_recover_from_valid_global_client_list(
@@ -570,9 +567,7 @@ async def test_all_invalid_global_fallback_never_commits_untrusted_client_data(
     old_client.online = True
     coordinator, api = _coordinator({CLIENT_MAC: old_client}, two_decos=True)
 
-    async def _clients(
-        deco_mac: str, *, timeout_error_retries: int
-    ) -> object:
+    async def _clients(deco_mac: str, *, timeout_error_retries: int) -> object:
         """Return safe synthetic invalid responses for every query."""
         assert timeout_error_retries == 0
         if deco_mac != "default":
