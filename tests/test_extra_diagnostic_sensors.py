@@ -21,6 +21,10 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import EntityPlatform
 import pytest
 
+from custom_components.tplink_deco.binary_sensor import TplinkDecoStandaloneBinarySensor
+from custom_components.tplink_deco.binary_sensor import (
+    async_setup_entry as async_setup_binary_entry,
+)
 from custom_components.tplink_deco.const import COORDINATOR_CLIENTS_KEY
 from custom_components.tplink_deco.const import COORDINATOR_DECOS_KEY
 from custom_components.tplink_deco.const import DOMAIN
@@ -43,7 +47,6 @@ RESTORED_KEYS = {
     "role",
     "master",
     "slave",
-    "standalone",
     "signal_level",
     "signal_level24",
     "signal_level5",
@@ -97,7 +100,9 @@ def _inventory(
 
 
 async def _platform(
-    coordinator: TplinkDecoUpdateCoordinator, entry_id: str = "mesh-one"
+    coordinator: TplinkDecoUpdateCoordinator,
+    entry_id: str = "mesh-one",
+    legacy_registry: er.EntityRegistry | None = None,
 ) -> tuple[MagicMock, MagicMock, Callable[[], None]]:
     """Exercise actual sensor setup and capture its normal update listener."""
     clients = MagicMock(
@@ -120,9 +125,49 @@ async def _platform(
     }
     coordinator.async_add_listener = MagicMock(return_value=MagicMock())
     added = MagicMock()
-    with patch("custom_components.tplink_deco.sensor.async_dispatcher_connect"):
+    registry = (
+        legacy_registry
+        if legacy_registry is not None
+        else MagicMock(async_get_entity_id=MagicMock(return_value=None))
+    )
+    with (
+        patch("custom_components.tplink_deco.sensor.async_dispatcher_connect"),
+        patch(
+            "custom_components.tplink_deco.sensor.entity_registry.async_get",
+            return_value=registry,
+        ),
+    ):
         await async_setup_entry(hass, SimpleNamespace(entry_id=entry_id), added)
     return hass, added, coordinator.async_add_listener.call_args_list[0].args[0]
+
+
+async def _binary_platform(
+    coordinator: TplinkDecoUpdateCoordinator, entry_id: str = "mesh-one"
+) -> tuple[MagicMock, Callable[[], None]]:
+    """Capture standalone binary status and coordinator update discovery."""
+    hass = MagicMock()
+    hass.data = {DOMAIN: {entry_id: {COORDINATOR_DECOS_KEY: coordinator}}}
+    coordinator.async_add_listener = MagicMock(return_value=MagicMock())
+    added = MagicMock()
+    with patch("custom_components.tplink_deco.binary_sensor.async_dispatcher_connect"):
+        await async_setup_binary_entry(
+            hass, SimpleNamespace(entry_id=entry_id), added
+        )
+    return added, coordinator.async_add_listener.call_args_list[0].args[0]
+
+
+def _standalone_binary_sensors(
+    added: MagicMock,
+) -> dict[str, TplinkDecoStandaloneBinarySensor]:
+    """Collect standalone binary sensors by unique ID."""
+    entities = [
+        entity
+        for call in added.call_args_list
+        for entity in call.args[0]
+        if isinstance(entity, TplinkDecoStandaloneBinarySensor)
+    ]
+    assert len(entities) == len({entity.unique_id for entity in entities})
+    return {entity.unique_id: entity for entity in entities}
 
 
 def _sensors(added: MagicMock) -> dict[str, TplinkDecoDiagnosticSensor]:
@@ -154,7 +199,6 @@ async def test_original_sensor_keys_values_and_read_only_device_association() ->
         "role": "master",
         "master": True,
         "slave": False,
-        "standalone": True,
         "signal_level": 0,
         "signal_level24": 0,
         "signal_level5": 48,
@@ -179,6 +223,74 @@ async def test_original_sensor_keys_values_and_read_only_device_association() ->
     assert coordinator.data.master_deco.name == "User display name"
     coordinator.api.async_list_devices.assert_not_called()
     coordinator.api.async_get_performance.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_standalone_binary_sensor_late_discovery_mesh_and_unknown_states() -> None:
+    """Preserve true/false/unknown topology and original device identity."""
+    coordinator = _coordinator()
+    _inventory(coordinator, [{"mac": MASTER}])
+    added, notify = await _binary_platform(coordinator)
+    assert not _standalone_binary_sensors(added)
+
+    _inventory(coordinator, [_node()])
+    notify()
+    binary = _standalone_binary_sensors(added)[f"{MASTER}_standalone"]
+    assert binary.unique_id == f"{MASTER}_standalone"
+    assert binary.translation_key == "standalone"
+    assert binary.entity_description.entity_registry_enabled_default is False
+    assert binary.entity_description.entity_category == "diagnostic"
+    assert binary.device_info["identifiers"] == {(DOMAIN, MASTER)}
+    assert binary.available
+    assert binary.is_on is True
+
+    notify()
+    assert len(_standalone_binary_sensors(added)) == 1
+
+    _inventory(coordinator, [_node(), _node(SATELLITE, "slave")])
+    notify()
+    binary_sensors = _standalone_binary_sensors(added)
+    assert set(binary_sensors) == {f"{MASTER}_standalone", f"{SATELLITE}_standalone"}
+    assert binary.is_on is False
+    assert binary.available
+    assert binary_sensors[f"{SATELLITE}_standalone"].is_on is False
+
+    _inventory(coordinator, [_node()])
+    notify()
+    assert binary.is_on is False  # A retained offline satellite still counts.
+    assert len(_standalone_binary_sensors(added)) == 2
+
+    _inventory(
+        coordinator,
+        [{"mac": MASTER, "group_status": "connected"}, _node(SATELLITE, "slave")],
+    )
+    notify()
+    assert binary.is_on is None
+    assert not binary.available
+
+    _inventory(coordinator, [_node(), _node(SATELLITE, "slave")])
+    notify()
+    assert binary.available
+    assert binary.is_on is False
+
+    other = _coordinator("mesh-two")
+    _inventory(other, [_node(SATELLITE, "master")])
+    other_added, other_notify = await _binary_platform(other, "mesh-two")
+    other_binary = _standalone_binary_sensors(other_added)[f"{SATELLITE}_standalone"]
+    assert other_binary.is_on is True
+    other_notify()
+    assert len(_standalone_binary_sensors(other_added)) == 1
+
+
+@pytest.mark.asyncio
+async def test_new_standalone_binary_does_not_create_legacy_sensor() -> None:
+    """Fresh entries must publish standalone only under binary_sensor."""
+    coordinator = _coordinator()
+    _inventory(coordinator, [_node()])
+    _, added, _ = await _platform(coordinator)
+    assert f"{MASTER}_standalone" not in _sensors(added)
+    binary_added, _ = await _binary_platform(coordinator)
+    assert f"{MASTER}_standalone" in _standalone_binary_sensors(binary_added)
 
 
 @pytest.mark.parametrize("internet", [False, True, 0, 1, "up", "offline"])
@@ -408,7 +520,6 @@ async def test_late_fields_offline_nodes_missing_values_and_reload_keep_identity
     assert len(sensors) == 2 * len(RESTORED_KEYS)
     assert sensors[f"{SATELLITE}_master"].native_value is False
     assert sensors[f"{SATELLITE}_slave"].native_value is True
-    assert sensors[f"{MASTER}_standalone"].native_value is False
 
     _inventory(
         coordinator,
@@ -427,7 +538,6 @@ async def test_late_fields_offline_nodes_missing_values_and_reload_keep_identity
     _inventory(coordinator, [_node()])
     notify()
     assert coordinator.data.decos[SATELLITE] is satellite
-    assert sensors[f"{MASTER}_standalone"].native_value is False
     assert not sensors[f"{SATELLITE}_master"].available
     assert sensors[f"{SATELLITE}_master"].device_info["identifiers"] == {
         (DOMAIN, SATELLITE)
@@ -540,13 +650,16 @@ def test_restored_sensor_names_are_translated_in_every_shipped_locale(
     )
     for key in RESTORED_KEYS:
         assert labels["entity"]["sensor"][key]["name"].strip()
+    assert labels["entity"]["binary_sensor"]["standalone"]["name"].strip()
+    assert labels["entity"]["sensor"]["standalone"]["name"].strip()
     for key in ("reboot", "reboot_all"):
         assert labels["entity"]["button"][key]["name"].strip()
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("restored_key", "state"), [("master", "True"), ("inet_error_msg", PRIVATE_ERROR)]
+    ("restored_key", "state"),
+    [("master", "True"), ("inet_error_msg", PRIVATE_ERROR), ("standalone", "True")],
 )
 async def test_legacy_enabled_sensor_reclaims_custom_entity_and_device(
     tmp_path: Path,
@@ -603,7 +716,7 @@ async def test_legacy_enabled_sensor_reclaims_custom_entity_and_device(
     try:
         coordinator = _coordinator()
         _inventory(coordinator, [{"mac": MASTER}])
-        _, added, notify = await _platform(coordinator)
+        _, added, notify = await _platform(coordinator, legacy_registry=registry)
         assert not _sensors(added)
         assert registry.async_get(prior.entity_id).device_id == device.id
         _inventory(
