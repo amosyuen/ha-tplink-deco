@@ -1345,12 +1345,16 @@ policy for AI-assisted development.
   coordinator data is committed. Use the coordinator's post-update listener
   for deferred master-dependent entities and unregister it on coordinator
   shutdown.
-- Register network-wide Total Down/Up exactly once per config entry using
-  the established `<master_mac>_total_down` and `<master_mac>_total_up`
-  unique IDs. Do not recreate them after transient master disappearance.
-- Test master-present, initially absent and permanently absent scenarios,
-  late master discovery, repeated updates, stable IDs, and independent config
-  entries without real hardware.
+- Register network-wide Total Down/Up only after a master and at least one
+  known satellite have been discovered. Include retained offline satellites:
+  an incomplete live response must not turn a known mesh into a standalone
+  Deco. Keep the original `<master_mac>_total_down` and
+  `<master_mac>_total_up` unique IDs and register them at most once per entry.
+- Keep master coordinator-health diagnostics independent of these totals;
+  standalone masters still expose their opt-in health entities.
+- Test standalone masters, late satellite/master discovery, retained offline
+  satellites, master disappearance, repeated updates, stable IDs, health
+  diagnostics, and independent entries without real hardware.
 
 ## Client throughput aggregation lessons (PR #6)
 
