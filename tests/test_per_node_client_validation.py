@@ -127,9 +127,13 @@ async def test_malformed_node_response_type_is_rejected_without_state_changes(
     coordinator, api = _coordinator({CLIENT_MAC: old_client})
     api.async_list_clients = AsyncMock(return_value=response)
 
-    with pytest.raises(ValueError, match="^Invalid Deco client list response$"):
+    with pytest.raises(
+        ValueError, match="^Invalid (global )?Deco client list response$"
+    ):
         await coordinator._async_update_data()
 
+    assert api.async_list_clients.await_count == 2
+    assert api.async_list_clients.await_args_list[-1].args == ("default",)
     assert coordinator.data[CLIENT_MAC] is old_client
     assert old_client.online is True
     assert not coordinator.successfully_polled_deco_macs
