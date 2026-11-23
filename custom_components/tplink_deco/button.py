@@ -174,17 +174,22 @@ class DecoRebootButton(CoordinatorEntity[TplinkDecoUpdateCoordinator], ButtonEnt
         return create_device_info(node, data.master_deco, self.coordinator)
 
     def _target_macs(self) -> list[str]:
-        """Require an online master and the complete intended set of online nodes."""
-        data = self.coordinator.data
-        if (
-            not self.coordinator.last_update_success
-            or data.confirmed_online_master is None
-        ):
+        """Validate a single online node independently of mesh-wide reboot."""
+        if not self.coordinator.last_update_success:
             return []
+
+        data = self.coordinator.data
         if self._deco_mac is not None:
             node = data.decos.get(self._deco_mac)
             return [self._deco_mac] if node is not None and node.online else []
-        if len(data.decos) > 1 and all(node.online for node in data.decos.values()):
+
+        # Reboot All must still have one confirmed, online master and a
+        # complete set of online mesh nodes. An individual satellite does not.
+        if (
+            data.confirmed_online_master is not None
+            and len(data.decos) > 1
+            and all(node.online for node in data.decos.values())
+        ):
             return list(data.decos)
         return []
 
