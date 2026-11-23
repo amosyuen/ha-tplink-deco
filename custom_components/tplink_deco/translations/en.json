@@ -159,6 +159,15 @@
     "binary_sensor": {
       "standalone": {
         "name": "Standalone Master"
+      },
+      "master": {
+        "name": "Master Deco"
+      },
+      "slave": {
+        "name": "Slave Deco"
+      },
+      "set_gateway_support": {
+        "name": "Set gateway support"
       }
     },
     "button": {
