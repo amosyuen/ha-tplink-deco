@@ -156,6 +156,11 @@
         "name": "Topologi"
       }
     },
+    "binary_sensor": {
+      "standalone": {
+        "name": "Fristående huvudenhet"
+      }
+    },
     "button": {
       "reboot": {
         "name": "Starta om"
