@@ -525,17 +525,22 @@ async def test_late_fields_offline_nodes_missing_values_and_reload_keep_identity
     coordinator = _coordinator()
     _inventory(coordinator, [{"mac": MASTER}])
     _, added, notify = await _platform(coordinator)
+    binary_added, binary_notify = await _binary_platform(coordinator)
     assert _sensors(added) == {}
+    assert not _flag_binary_sensors(binary_added)
 
     _inventory(coordinator, [_node(), _node(SATELLITE, "slave")])
     notify()
     notify()
+    binary_notify()
+    binary_notify()
     sensors = _sensors(added)
+    binary_flags = _flag_binary_sensors(binary_added)
     master = coordinator.data.decos[MASTER]
     satellite = coordinator.data.decos[SATELLITE]
     assert len(sensors) == 2 * len(RESTORED_KEYS)
-    assert sensors[f"{SATELLITE}_master"].native_value is False
-    assert sensors[f"{SATELLITE}_slave"].native_value is True
+    assert binary_flags[f"{SATELLITE}_master"].is_on is False
+    assert binary_flags[f"{SATELLITE}_slave"].is_on is True
 
     _inventory(
         coordinator,
@@ -545,30 +550,30 @@ async def test_late_fields_offline_nodes_missing_values_and_reload_keep_identity
         ],
     )
     notify()
-    assert sensors[f"{MASTER}_set_gateway_support"].available
-    assert sensors[f"{MASTER}_set_gateway_support"].native_value is False
+    assert binary_flags[f"{MASTER}_set_gateway_support"].available
+    assert binary_flags[f"{MASTER}_set_gateway_support"].is_on is False
     assert sensors[f"{SATELLITE}_group_status"].available
     assert sensors[f"{SATELLITE}_group_status"].native_value == "disconnected"
-    assert not sensors[f"{SATELLITE}_master"].available
+    assert not binary_flags[f"{SATELLITE}_master"].available
 
     _inventory(coordinator, [_node()])
     notify()
     assert coordinator.data.decos[SATELLITE] is satellite
-    assert not sensors[f"{SATELLITE}_master"].available
-    assert sensors[f"{SATELLITE}_master"].device_info["identifiers"] == {
+    assert not binary_flags[f"{SATELLITE}_master"].available
+    assert binary_flags[f"{SATELLITE}_master"].device_info["identifiers"] == {
         (DOMAIN, SATELLITE)
     }
 
     _inventory(coordinator, [{"mac": MASTER, "group_status": "connected"}])
     notify()
     assert coordinator.data.decos[MASTER] is master
-    assert not sensors[f"{MASTER}_master"].available
-    assert sensors[f"{MASTER}_master"].native_value is None
+    assert not binary_flags[f"{MASTER}_master"].available
+    assert binary_flags[f"{MASTER}_master"].is_on is None
     assert len(_sensors(added)) == 2 * len(RESTORED_KEYS)
 
     _inventory(coordinator, [_node(), _node(SATELLITE, "slave")])
     notify()
-    assert sensors[f"{MASTER}_master"].available
+    assert binary_flags[f"{MASTER}_master"].available
     assert len(_sensors(added)) == 2 * len(RESTORED_KEYS)
     _, reloaded, _ = await _platform(coordinator)
     assert set(_sensors(reloaded)) == set(sensors)
@@ -609,7 +614,8 @@ async def test_actual_refresh_privacy_failure_recovery_and_config_entry_isolatio
         await coordinator.async_request_device_refresh()
     master = coordinator.data.master_deco
     hass, added, notify = await _platform(coordinator)
-    entity = _sensors(added)[f"{MASTER}_master"]
+    binary_added, _ = await _binary_platform(coordinator)
+    entity = _flag_binary_sensors(binary_added)[f"{MASTER}_master"]
     error_sensor = _sensors(added)[f"{MASTER}_inet_error_msg"]
     assert error_sensor.native_value == PRIVATE_ERROR
 
@@ -620,7 +626,7 @@ async def test_actual_refresh_privacy_failure_recovery_and_config_entry_isolatio
     assert not entity.available
     assert not error_sensor.available
     assert coordinator.data.master_deco is master
-    assert entity.native_value is True
+    assert entity.is_on is True
     coordinator.api.async_list_devices.side_effect = None
     await coordinator.async_request_device_refresh()
     assert coordinator.last_update_success is True
@@ -632,7 +638,8 @@ async def test_actual_refresh_privacy_failure_recovery_and_config_entry_isolatio
     _inventory(second, [_node(SATELLITE, "slave")])
     _, second_added, _ = await _platform(second, "mesh-two")
     assert f"{MASTER}_master" not in _sensors(second_added)
-    assert _sensors(second_added)[f"{SATELLITE}_master"].native_value is False
+    second_binary_added, _ = await _binary_platform(second, "mesh-two")
+    assert _flag_binary_sensors(second_binary_added)[f"{SATELLITE}_master"].is_on is False
 
     exported = json.dumps(
         await async_get_config_entry_diagnostics(
@@ -666,8 +673,10 @@ def test_restored_sensor_names_are_translated_in_every_shipped_locale(
     )
     for key in RESTORED_KEYS:
         assert labels["entity"]["sensor"][key]["name"].strip()
-    assert labels["entity"]["binary_sensor"]["standalone"]["name"].strip()
-    assert labels["entity"]["sensor"]["standalone"]["name"].strip()
+    for key in BINARY_FLAG_KEYS:
+        assert labels["entity"]["binary_sensor"][key]["name"].strip()
+        # Legacy sensor translations survive for existing entity IDs.
+        assert labels["entity"]["sensor"][key]["name"].strip()
     for key in ("reboot", "reboot_all"):
         assert labels["entity"]["button"][key]["name"].strip()
 
@@ -675,7 +684,13 @@ def test_restored_sensor_names_are_translated_in_every_shipped_locale(
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("restored_key", "state"),
-    [("master", "True"), ("inet_error_msg", PRIVATE_ERROR), ("standalone", "True")],
+    [
+        ("master", "True"),
+        ("slave", "False"),
+        ("set_gateway_support", "False"),
+        ("inet_error_msg", PRIVATE_ERROR),
+        ("standalone", "True"),
+    ],
 )
 async def test_legacy_enabled_sensor_reclaims_custom_entity_and_device(
     tmp_path: Path,
@@ -737,19 +752,26 @@ async def test_legacy_enabled_sensor_reclaims_custom_entity_and_device(
         assert registry.async_get(prior.entity_id).device_id == device.id
         _inventory(
             coordinator,
-            [{"mac": MASTER, "role": "master", "inet_error_msg": PRIVATE_ERROR}],
+            [
+                {
+                    "mac": MASTER,
+                    "role": "master",
+                    "inet_error_msg": PRIVATE_ERROR,
+                    "set_gateway_support": False,
+                }
+            ],
         )
         notify()
         sensors = _sensors(added)
         await platform.async_add_entities(
-            [sensors[f"{MASTER}_{restored_key}"], sensors[f"{MASTER}_slave"]]
+            [sensors[f"{MASTER}_{restored_key}"], sensors[f"{MASTER}_role"]]
         )
         current = registry.async_get(prior.entity_id)
         assert current.id == prior.id and current.device_id == device.id
         assert current.config_entry_id == entry.entry_id
         assert current.disabled_by is None
         assert hass.states.get(prior.entity_id).state == state
-        new_id = registry.async_get_entity_id("sensor", DOMAIN, f"{MASTER}_slave")
+        new_id = registry.async_get_entity_id("sensor", DOMAIN, f"{MASTER}_role")
         assert (
             registry.async_get(new_id).disabled_by
             == er.RegistryEntryDisabler.INTEGRATION
