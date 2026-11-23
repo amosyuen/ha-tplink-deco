@@ -35,7 +35,6 @@ def _mock_api(decoded_payload: dict[str, object]) -> TplinkDecoApi:
     api._stok = "test-session"
     return api
 
-
 @pytest.mark.asyncio
 async def test_list_devices_handles_mixed_firmware_nicknames() -> None:
     """Decode, preserve, or omit nicknames without losing other device attributes."""
@@ -66,7 +65,6 @@ async def test_list_devices_handles_mixed_firmware_nicknames() -> None:
     api.async_login_if_needed.assert_awaited_once_with()
     api._async_post.assert_awaited_once()
     api._decrypt_data.assert_called_once_with("List Devices", "mocked-encrypted-body")
-
 
 @pytest.mark.asyncio
 async def test_list_clients_handles_mixed_firmware_names() -> None:
@@ -101,7 +99,6 @@ async def test_list_clients_handles_mixed_firmware_names() -> None:
         "mocked-encrypted-body",
     )
 
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("method", "result_key", "name_key"),
@@ -131,11 +128,10 @@ async def test_successful_name_reads_do_not_log_private_names(
 
     assert sensitive_name not in caplog.text
 
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "invalid_clients",
-    [None, {}, {"private": "sensitive-test-client-name"}, "", "invalid", 7],
+    [None, {"private": "sensitive-test-client-name"}, " ", "invalid", 7],
 )
 async def test_non_list_firmware_client_reply_is_rejected_without_private_data(
     invalid_clients: object,
@@ -152,3 +148,47 @@ async def test_non_list_firmware_client_reply_is_rejected_without_private_data(
 
     assert "sensitive-test-client-name" not in caplog.text
     assert "Deco client-list parsing failed" not in caplog.text
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("legacy_empty", "type_name"),
+    [
+        pytest.param({}, "dict", id="empty-mapping"),
+        pytest.param("", "str", id="empty-string"),
+    ],
+)
+async def test_explicit_empty_legacy_client_list_normalizes_to_valid_empty(
+    legacy_empty: dict[str, object] | str,
+    type_name: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Accept only the two legacy zero-client encodings with safe diagnostics."""
+    api = _mock_api({"error_code": 0, "result": {"client_list": legacy_empty}})
+
+    with caplog.at_level(logging.DEBUG):
+        clients = await api._async_list_clients("default")
+
+    assert clients == []
+    assert f"Deco client-list normalized empty {type_name} response" in caplog.text
+    assert "Deco client-list client_count=0" in caplog.text
+    assert "Deco client-list parsing failed" not in caplog.text
+    api.async_login_if_needed.assert_awaited_once()
+    api._async_post.assert_awaited_once()
+
+@pytest.mark.asyncio
+async def test_missing_client_list_never_becomes_a_successful_empty_response() -> None:
+    """Preserve strict validation when firmware omits the required list field."""
+    api = _mock_api({"error_code": 0, "result": {}})
+
+    with pytest.raises(KeyError, match="client_list"):
+        await api._async_list_clients("default")
+
+@pytest.mark.asyncio
+async def test_legacy_empty_client_list_does_not_mask_authentication_failure() -> None:
+    """Require the normal authenticated API result before normalizing legacy data."""
+    from custom_components.tplink_deco.exceptions import EmptyDataException
+
+    api = _mock_api({"error_code": -5002, "result": {"client_list": {}}})
+
+    with pytest.raises(EmptyDataException, match="authenticated session expired"):
+        await api._async_list_clients("default")
