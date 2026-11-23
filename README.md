@@ -334,7 +334,7 @@ Configurable:
 
 - Await Home Assistant platform initialization during config-entry setup so setup cannot complete before platforms are ready and forwarding failures are reported.
 
-- Defer network-wide Total Down/Up sensors until the master Deco is available, then register them once without changing their existing MAC-based unique IDs. Satellite sensors remain available when no master is detected.
+- Show network-wide Total Down/Up sensors only when a master Deco has at least one known satellite, including a temporarily offline satellite. Standalone masters keep their per-Deco Down/Up sensors and coordinator-health diagnostics. Late satellite discovery adds totals once with the existing MAC-based unique IDs.
 
 - Expose optional wireless-backhaul BSSIDs (`backhaul_bssid_band2_4` and `backhaul_bssid_band5`) as read-only Deco tracker attributes, separately from the existing access-point BSSIDs. Absent firmware fields remain `None`; no device or entity identifiers change.
 
