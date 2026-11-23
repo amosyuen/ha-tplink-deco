@@ -555,6 +555,16 @@ class TplinkDecoApi:
 
         try:
             client_list = data["result"]["client_list"]
+            # Some firmware encodes an explicitly empty client list as an
+            # empty object or string. The legacy extra branch processed both
+            # as zero clients, but newer strict validation rejected them.
+            # Do not normalize missing, non-empty or malformed responses.
+            if isinstance(client_list, (dict, str)) and not client_list:
+                _LOGGER.debug(
+                    "Deco client-list normalized empty %s response",
+                    type(client_list).__name__,
+                )
+                client_list = []
             # Never interpret an unrecognized firmware response as an empty
             # client list. The coordinator can isolate this failed node.
             if not isinstance(client_list, list):
