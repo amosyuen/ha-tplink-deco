@@ -15,12 +15,16 @@
           "timeout_seconds": "Tidsavbrudd i sekunder",
           "timeout_error_retries": "Antall nye forsøk ved tidsavbrudd",
           "verify_ssl": "Kontroller at SSL-sertifikatet er gyldig",
+          "use_https": "Bruk HTTPS (tillat automatisk omdirigering)",
           "client_prefix": "Prefiks for klientnavn",
           "client_postfix": "Suffiks for klientnavn",
           "deco_prefix": "Prefiks for Deco-navn",
           "deco_postfix": "Suffiks for Deco-navn"
         },
-        "description": "Bruk påloggingsopplysningene for administratorens nettgrensesnitt. Se dokumentasjonen for oppsett."
+        "description": "Bruk påloggingsopplysningene for administratorens nettgrensesnitt. Se dokumentasjonen for oppsett.",
+        "data_description": {
+          "use_https": "Når deaktivert brukes bare HTTP. Rutere som krever HTTPS kan da ikke nås. SSL-verifisering er en egen innstilling."
+        }
       },
       "reauth_confirm": {
         "title": "TP-Link Deco",
@@ -38,7 +42,12 @@
       "timeout_connect": "Tidsavbrudd ved tilkobling",
       "unknown": "Uventet feil",
       "invalid_scan_interval": "Velg et oppdateringsintervall på 10, 30, 60 eller 120 sekunder.",
-      "invalid_device_list_interval": "Angi 0 for oppdatering bare ved oppstart, eller minst 10 sekunder for Deco-status."
+      "invalid_device_list_interval": "Angi 0 for oppdatering bare ved oppstart, eller minst 10 sekunder for Deco-status.",
+      "invalid_use_https": "Velg på eller av for HTTPS.",
+      "invalid_host_scheme": "Oppgi en http://- eller https://-adresse uten sti, påloggingsdata eller spørring.",
+      "http_only_requires_http": "Bare HTTP krever en http://-adresse.",
+      "https_required": "Denne Deco-en krever HTTPS. Slå på Bruk HTTPS.",
+      "unsafe_redirect": "Deco returnerte en usikker eller ikke støttet omdirigering."
     },
     "abort": {
       "reauth_successful": "Autentisering på nytt var vellykket"
@@ -60,12 +69,16 @@
           "timeout_seconds": "Tidsavbrudd i sekunder",
           "timeout_error_retries": "Antall nye forsøk ved tidsavbrudd",
           "verify_ssl": "Kontroller at SSL-sertifikatet er gyldig",
+          "use_https": "Bruk HTTPS (tillat automatisk omdirigering)",
           "client_prefix": "Prefiks for klientnavn",
           "client_postfix": "Suffiks for klientnavn",
           "deco_prefix": "Prefiks for Deco-navn",
           "deco_postfix": "Suffiks for Deco-navn"
         },
-        "description": "Bruk påloggingsopplysningene for administratorens nettgrensesnitt. Se dokumentasjonen for oppsett."
+        "description": "Bruk påloggingsopplysningene for administratorens nettgrensesnitt. Se dokumentasjonen for oppsett.",
+        "data_description": {
+          "use_https": "Når deaktivert brukes bare HTTP. Rutere som krever HTTPS kan da ikke nås. SSL-verifisering er en egen innstilling."
+        }
       }
     },
     "error": {
@@ -75,7 +88,12 @@
       "timeout_connect": "Tidsavbrudd ved tilkobling",
       "unknown": "Uventet feil",
       "invalid_scan_interval": "Velg et oppdateringsintervall på 10, 30, 60 eller 120 sekunder.",
-      "invalid_device_list_interval": "Angi 0 for oppdatering bare ved oppstart, eller minst 10 sekunder for Deco-status."
+      "invalid_device_list_interval": "Angi 0 for oppdatering bare ved oppstart, eller minst 10 sekunder for Deco-status.",
+      "invalid_use_https": "Velg på eller av for HTTPS.",
+      "invalid_host_scheme": "Oppgi en http://- eller https://-adresse uten sti, påloggingsdata eller spørring.",
+      "http_only_requires_http": "Bare HTTP krever en http://-adresse.",
+      "https_required": "Denne Deco-en krever HTTPS. Slå på Bruk HTTPS.",
+      "unsafe_redirect": "Deco returnerte en usikker eller ikke støttet omdirigering."
     },
     "abort": {
       "reauth_successful": "Autentisering på nytt var vellykket"
