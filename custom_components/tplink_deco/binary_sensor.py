@@ -30,6 +30,26 @@ STANDALONE_BINARY_SENSOR_DESCRIPTION = BinarySensorEntityDescription(
     entity_registry_enabled_default=False,
 )
 
+DIAGNOSTIC_FLAG_BINARY_SENSOR_DESCRIPTIONS: tuple[
+    BinarySensorEntityDescription, ...
+] = (
+    STANDALONE_BINARY_SENSOR_DESCRIPTION,
+    *(
+        BinarySensorEntityDescription(
+            key=key,
+            name=name,
+            translation_key=key,
+            entity_category=EntityCategory.DIAGNOSTIC,
+            entity_registry_enabled_default=False,
+        )
+        for key, name in (
+            ("master", "Master Deco"),
+            ("slave", "Slave Deco"),
+            ("set_gateway_support", "Set gateway support"),
+        )
+    ),
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
@@ -39,7 +59,7 @@ async def async_setup_entry(
     coordinator_decos = data[COORDINATOR_DECOS_KEY]
 
     tracked_decos: set[str] = set()
-    tracked_standalone: set[str] = set()
+    tracked_flags: set[tuple[str, str]] = set()
 
     @callback
     def add_untracked_deco_binary_sensors() -> None:
@@ -55,13 +75,21 @@ async def async_setup_entry(
                 )
                 tracked_decos.add(mac)
 
-            if mac not in tracked_standalone and isinstance(
-                deco.diagnostic_values.get("standalone"), bool
-            ):
-                entities.append(
-                    TplinkDecoStandaloneBinarySensor(coordinator_decos, mac)
-                )
-                tracked_standalone.add(mac)
+            for description in DIAGNOSTIC_FLAG_BINARY_SENSOR_DESCRIPTIONS:
+                flag_id = (mac, description.key)
+                if flag_id in tracked_flags or not isinstance(
+                    deco.diagnostic_values.get(description.key), bool
+                ):
+                    continue
+                if description.key == "standalone":
+                    entities.append(TplinkDecoStandaloneBinarySensor(coordinator_decos, mac))
+                else:
+                    entities.append(
+                        TplinkDecoDiagnosticFlagBinarySensor(
+                            coordinator_decos, mac, description
+                        )
+                    )
+                tracked_flags.add(flag_id)
 
         if entities:
             async_add_entities(entities)
@@ -117,19 +145,23 @@ async def async_setup_entry(
     add_wireless_binary_sensors()
 
 
-class TplinkDecoStandaloneBinarySensor(CoordinatorEntity, BinarySensorEntity):
-    """Report whether a known Deco is the only master in its mesh."""
+class TplinkDecoDiagnosticFlagBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Expose a validated firmware diagnostic flag as a binary sensor."""
 
     _attr_has_entity_name = True
-    entity_description = STANDALONE_BINARY_SENSOR_DESCRIPTION
+    entity_description: BinarySensorEntityDescription
 
     def __init__(
-        self, coordinator_decos: TplinkDecoUpdateCoordinator, deco_mac: str
+        self,
+        coordinator_decos: TplinkDecoUpdateCoordinator,
+        deco_mac: str,
+        description: BinarySensorEntityDescription,
     ) -> None:
-        """Bind the diagnostic to its Deco with a stable MAC-based unique ID."""
+        """Preserve the existing per-Deco identity and diagnostic metadata."""
         super().__init__(coordinator_decos)
         self._deco_mac = deco_mac
-        self._attr_unique_id = f"{deco_mac}_standalone"
+        self.entity_description = description
+        self._attr_unique_id = f"{deco_mac}_{description.key}"
 
     @property
     def _deco(self) -> TpLinkDeco | None:
@@ -142,7 +174,7 @@ class TplinkDecoStandaloneBinarySensor(CoordinatorEntity, BinarySensorEntity):
         deco = self._deco
         if deco is None:
             return None
-        value = deco.diagnostic_values.get("standalone")
+        value = deco.diagnostic_values.get(self.entity_description.key)
         return value if isinstance(value, bool) else None
 
     @property
@@ -158,6 +190,18 @@ class TplinkDecoStandaloneBinarySensor(CoordinatorEntity, BinarySensorEntity):
             return None
         return create_device_info(
             deco, self.coordinator.data.master_deco, self.coordinator
+        )
+
+
+class TplinkDecoStandaloneBinarySensor(TplinkDecoDiagnosticFlagBinarySensor):
+    """Keep the standalone diagnostic's existing class and behavior."""
+
+    def __init__(
+        self, coordinator_decos: TplinkDecoUpdateCoordinator, deco_mac: str
+    ) -> None:
+        """Use the existing standalone flag description and unique ID."""
+        super().__init__(
+            coordinator_decos, deco_mac, STANDALONE_BINARY_SENSOR_DESCRIPTION
         )
 
 
