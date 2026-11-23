@@ -129,7 +129,7 @@ def _transport_errors(data: dict[str, Any]) -> dict[str, str]:
             or not parsed.netloc
             or parsed.username is not None
             or parsed.password is not None
-            or parsed.path not in ("", "/")
+            or parsed.path
             or parsed.query
             or parsed.fragment
         ):
