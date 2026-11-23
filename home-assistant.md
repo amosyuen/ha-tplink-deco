@@ -197,9 +197,10 @@ Their physical-firmware validation remains a separate limitation.
   cycle still raises a sanitized `ValueError`, and malformed client _items_
   retain the existing atomic whole-response preflight and rejection.
   The node, payload contents and credentials are never logged. Physical
-  router compatibility remains unverified. The separately reported
-  always-unavailable `Topology` entity still requires an observed, sanitized
-  firmware shape before changing its parser.
+  router compatibility remains unverified. The related master `Topology`
+  regression now reports `root` from a confirmed master role when topology
+  mode is absent, without assuming the firmware configured a `fixed` mode;
+  the actual firmware mode remains unverified.
 - Down/Up throughput aggregation includes only clients with truthy
   `online` status. Per-Deco data rates additionally require the matching
   `deco_mac`; network-wide totals include online clients across nodes.
