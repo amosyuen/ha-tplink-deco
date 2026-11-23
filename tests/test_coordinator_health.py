@@ -386,9 +386,7 @@ async def test_health_sensors_wait_for_master_then_register_once() -> None:
         ),
         patch(
             "custom_components.tplink_deco.sensor.entity_registry.async_get",
-            return_value=MagicMock(
-                async_get_entity_id=MagicMock(return_value=None)
-            ),
+            return_value=MagicMock(async_get_entity_id=MagicMock(return_value=None)),
         ),
     ):
         await async_setup_entry(hass, SimpleNamespace(entry_id="mesh-one"), added)
