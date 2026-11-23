@@ -427,12 +427,17 @@ Their physical-firmware validation remains a separate limitation.
   of existing tracker/backhaul fields; missing or malformed optional values
   do not produce false states or placeholder sensors. `inet` reads
   `inet_status`; the raw nickname remains separate from the display name.
-  The `standalone` diagnostic is an opt-in `binary_sensor` with the same
-  per-node MAC-based suffix and device association but a different entity
-  domain. Previously registered `sensor` entries continue working for
-  existing automations, with their registry customization intact; fresh
-  configurations never create a legacy sensor. Both translation namespaces
-  remain supported for compatibility.
+  The `standalone`, `master`, `slave` and `set_gateway_support` flags
+  are disabled-by-default `binary_sensor` diagnostics with their original
+  per-node MAC-based unique ID suffixes and device associations. These
+  values are only registered after validated booleans are seen, including
+  late values; confirmed false remains `off`, while missing/invalid or
+  failed polls are `unavailable`. Previously registered `sensor`-domain
+  entities for the same keys continue working for their owning config entry
+  and retain customized IDs, settings and automations. Fresh entries
+  create no legacy sensor-domain flags; no registry cleanup or automatic
+  enablement is performed. The sensor and binary-sensor domains require
+  different entity IDs, and both translation namespaces remain supported.
   Master/slave flags require a recognized role. Standalone requires exactly
   one current master and includes retained offline nodes in the mesh size.
   Missing/ambiguous masters leave standalone unknown. An explicit automatic
