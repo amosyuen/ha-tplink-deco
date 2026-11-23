@@ -22,10 +22,10 @@ from homeassistant.helpers.entity_platform import EntityPlatform
 import pytest
 
 from custom_components.tplink_deco.binary_sensor import (
-    async_setup_entry as async_setup_binary_entry,
+    TplinkDecoDiagnosticFlagBinarySensor,
 )
 from custom_components.tplink_deco.binary_sensor import (
-    TplinkDecoDiagnosticFlagBinarySensor,
+    async_setup_entry as async_setup_binary_entry,
 )
 from custom_components.tplink_deco.binary_sensor import TplinkDecoStandaloneBinarySensor
 from custom_components.tplink_deco.const import COORDINATOR_CLIENTS_KEY
