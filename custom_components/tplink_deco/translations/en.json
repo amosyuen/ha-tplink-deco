@@ -156,6 +156,11 @@
         "name": "Topology"
       }
     },
+    "binary_sensor": {
+      "standalone": {
+        "name": "Standalone Master"
+      }
+    },
     "button": {
       "reboot": {
         "name": "Reboot"
