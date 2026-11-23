@@ -41,5 +41,13 @@ class InvalidClientListException(Exception):
     """A Deco returned a client list with an unsupported top-level type."""
 
 
+class HttpsRequiredException(Exception):
+    """The Deco router requires HTTPS but this entry permits HTTP only."""
+
+
+class UnsafeRedirectException(Exception):
+    """The Deco returned a redirect outside the permitted local transport."""
+
+
 class UnexpectedApiException(Exception):
     """Unexpected API exception"""
