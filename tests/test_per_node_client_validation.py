@@ -588,10 +588,12 @@ async def test_all_invalid_global_fallback_never_commits_untrusted_client_data(
         patch("custom_components.tplink_deco.coordinator.async_dispatcher_send"),
         caplog.at_level(logging.DEBUG),
     ):
-        with pytest.raises(ValueError, match="^Invalid (global )?Deco client list response$"):
-            await coordinator.async_refresh()
+        with pytest.raises(
+            ValueError, match="^Invalid (global )?Deco client list response$"
+        ):
+            await coordinator._async_update_data()
 
-    assert coordinator.last_update_success is False
+    assert coordinator.health.last_error == "ValueError"
     assert coordinator.data == {CLIENT_MAC: old_client}
     assert old_client.online is True
     assert old_client.deco_mac == SATELLITE_MAC
