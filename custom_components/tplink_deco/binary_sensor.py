@@ -1,6 +1,7 @@
 """Binary sensors for TP-Link Deco."""
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.components.binary_sensor import BinarySensorEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
@@ -22,6 +23,15 @@ from .wireless import WirelessNetworkDescription
 from .wireless import wireless_ssid_attributes
 
 
+STANDALONE_BINARY_SENSOR_DESCRIPTION = BinarySensorEntityDescription(
+    key="standalone",
+    name="Standalone Master",
+    translation_key="standalone",
+    entity_category=EntityCategory.DIAGNOSTIC,
+    entity_registry_enabled_default=False,
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ):
@@ -29,31 +39,33 @@ async def async_setup_entry(
     data = hass.data[DOMAIN][entry.entry_id]
     coordinator_decos = data[COORDINATOR_DECOS_KEY]
 
-    tracked_decos = set()
-
-    def add_binary_sensors_for_deco(deco: TpLinkDeco) -> None:
-        async_add_entities(
-            [
-                TplinkDecoInternetOnlineBinarySensor(
-                    coordinator_decos,
-                    deco.mac,
-                ),
-                TplinkDecoOnlineBinarySensor(
-                    coordinator_decos,
-                    deco.mac,
-                ),
-            ]
-        )
+    tracked_decos: set[str] = set()
+    tracked_standalone: set[str] = set()
 
     @callback
     def add_untracked_deco_binary_sensors() -> None:
-        """Add binary sensors for newly discovered decos."""
+        """Register newly available binary sensors without duplicates."""
+        entities: list[BinarySensorEntity] = []
         for mac, deco in coordinator_decos.data.decos.items():
-            if mac in tracked_decos:
-                continue
+            if mac not in tracked_decos:
+                entities.extend(
+                    (
+                        TplinkDecoInternetOnlineBinarySensor(coordinator_decos, mac),
+                        TplinkDecoOnlineBinarySensor(coordinator_decos, mac),
+                    )
+                )
+                tracked_decos.add(mac)
 
-            add_binary_sensors_for_deco(deco)
-            tracked_decos.add(mac)
+            if mac not in tracked_standalone and isinstance(
+                deco.diagnostic_values.get("standalone"), bool
+            ):
+                entities.append(
+                    TplinkDecoStandaloneBinarySensor(coordinator_decos, mac)
+                )
+                tracked_standalone.add(mac)
+
+        if entities:
+            async_add_entities(entities)
 
     add_untracked_deco_binary_sensors()
 
@@ -61,6 +73,10 @@ async def async_setup_entry(
         async_dispatcher_connect(
             hass, SIGNAL_DECO_ADDED, add_untracked_deco_binary_sensors
         )
+    )
+    # New validated roles may appear without a new-node dispatcher signal.
+    coordinator_decos.on_close(
+        coordinator_decos.async_add_listener(add_untracked_deco_binary_sensors)
     )
 
     wireless_coordinator = data.get(COORDINATOR_WIRELESS_KEY)
@@ -100,6 +116,50 @@ async def async_setup_entry(
         async_dispatcher_connect(hass, SIGNAL_DECO_ADDED, add_wireless_binary_sensors)
     )
     add_wireless_binary_sensors()
+
+
+class TplinkDecoStandaloneBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Report whether a known Deco is the only master in its mesh."""
+
+    _attr_has_entity_name = True
+    entity_description = STANDALONE_BINARY_SENSOR_DESCRIPTION
+
+    def __init__(
+        self, coordinator_decos: TplinkDecoUpdateCoordinator, deco_mac: str
+    ) -> None:
+        """Bind the diagnostic to its Deco with a stable MAC-based unique ID."""
+        super().__init__(coordinator_decos)
+        self._deco_mac = deco_mac
+        self._attr_unique_id = f"{deco_mac}_standalone"
+
+    @property
+    def _deco(self) -> TpLinkDeco | None:
+        """Return the current Deco without inventing missing nodes."""
+        return self.coordinator.data.decos.get(self._deco_mac)
+
+    @property
+    def is_on(self) -> bool | None:
+        """Preserve confirmed true, false and unknown topology states."""
+        deco = self._deco
+        if deco is None:
+            return None
+        value = deco.diagnostic_values.get("standalone")
+        return value if isinstance(value, bool) else None
+
+    @property
+    def available(self) -> bool:
+        """Require a successful refresh and a confirmed standalone flag."""
+        return super().available and self.is_on is not None
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Associate the binary sensor with its original Deco device."""
+        deco = self._deco
+        if deco is None:
+            return None
+        return create_device_info(
+            deco, self.coordinator.data.master_deco, self.coordinator
+        )
 
 
 class TplinkDecoInternetOnlineBinarySensor(CoordinatorEntity, BinarySensorEntity):
