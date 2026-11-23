@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from custom_components.tplink_deco.api import TplinkDecoApi
+from custom_components.tplink_deco.exceptions import InvalidClientListException
 
 DECO_MAC = "AA:BB:CC:DD:EE:FF"
 CLIENT_MAC = "11:22:33:44:55:66"
@@ -129,3 +130,26 @@ async def test_successful_name_reads_do_not_log_private_names(
             await api._async_list_clients("default")
 
     assert sensitive_name not in caplog.text
+
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "invalid_clients",
+    [None, {}, {"private": "sensitive-test-client-name"}, "", "invalid", 7],
+)
+async def test_non_list_firmware_client_reply_is_rejected_without_private_data(
+    invalid_clients: object,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Reject a non-list type before decoding names or exposing router data."""
+    api = _mock_api({"result": {"client_list": invalid_clients}})
+
+    with caplog.at_level(logging.DEBUG):
+        with pytest.raises(
+            InvalidClientListException, match="Deco client-list response must be a list"
+        ):
+            await api._async_list_clients("default")
+
+    assert "sensitive-test-client-name" not in caplog.text
+    assert "Deco client-list parsing failed (InvalidClientListException)" in caplog.text
