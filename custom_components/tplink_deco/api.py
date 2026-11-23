@@ -8,6 +8,7 @@ import re
 import secrets
 from typing import Any
 from urllib.parse import quote_plus
+from urllib.parse import urljoin
 from urllib.parse import urlsplit
 
 from Crypto.Cipher import PKCS1_v1_5
@@ -26,11 +27,13 @@ from .const import DEFAULT_TIMEOUT_ERROR_RETRIES
 from .const import DEFAULT_TIMEOUT_SECONDS
 from .exceptions import EmptyDataException
 from .exceptions import ForbiddenException
+from .exceptions import HttpsRequiredException
 from .exceptions import InvalidClientListException
 from .exceptions import LoginForbiddenException
 from .exceptions import LoginInvalidException
 from .exceptions import TimeoutException
 from .exceptions import TransientConnectionException
+from .exceptions import UnsafeRedirectException
 from .exceptions import UnexpectedApiException
 from .system_log import MAX_SYSTEM_LOG_BYTES
 from .system_log import SystemLogLevel
@@ -148,7 +151,14 @@ class TplinkDecoApi:
         verify_ssl: bool,
         timeout_error_retries: int = DEFAULT_TIMEOUT_ERROR_RETRIES,
         timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
+        *,
+        use_https: bool = True,
     ) -> None:
+        if not isinstance(use_https, bool):
+            raise ValueError("Use HTTPS must be enabled or disabled")
+        if not use_https and urlsplit(host).scheme != "http":
+            raise ValueError("HTTP-only Deco connections require an HTTP host URL")
+        self._use_https = use_https
         self._host = host
         self._username = username
         self._password = password
@@ -421,7 +431,7 @@ class TplinkDecoApi:
             cookies["sysauth"] = self._cookie.partition("=")[2]
         try:
             async with asyncio.timeout(self._timeout_seconds):
-                response = await self._session.post(
+                response = await self._async_post_with_transport_policy(
                     self._log_export_url(),
                     params={"form": "save_log"},
                     data=form,
@@ -733,6 +743,63 @@ class TplinkDecoApi:
         # Login success
         self._auth_errors = 0
 
+    async def _async_post_with_transport_policy(
+        self, url: str, **request_kwargs: Any
+    ) -> aiohttp.ClientResponse:
+        """Reject untrusted redirects and use HTTPS only when permitted."""
+        response = await self._session.post(
+            url, allow_redirects=False, **request_kwargs
+        )
+        status = response.status
+        if not isinstance(status, int) or status not in (301, 302, 303, 307, 308):
+            return response
+
+        location = response.headers.get("Location")
+        response.release()
+        if not isinstance(location, str) or not location:
+            raise UnsafeRedirectException("Deco returned an invalid redirect") from None
+
+        original = urlsplit(url)
+        redirected = urlsplit(urljoin(url, location))
+        if (
+            original.scheme != "http"
+            or redirected.hostname != original.hostname
+            or redirected.scheme != "https"
+            or redirected.username is not None
+            or redirected.password is not None
+            or redirected.fragment
+            or redirected.path != original.path
+        ):
+            raise UnsafeRedirectException(
+                "Deco returned a redirect outside the permitted HTTPS origin"
+            ) from None
+        if not self._use_https:
+            raise HttpsRequiredException(
+                "Deco requires HTTPS; enable Use HTTPS in integration settings"
+            ) from None
+        if status not in (307, 308):
+            raise UnsafeRedirectException(
+                "Deco returned a redirect that cannot preserve its POST method"
+            ) from None
+
+        # Keep the original URL path and request params. A redirect may only
+        # change this router's transport and port, never its API endpoint.
+        target_origin = f"{redirected.scheme}://{redirected.netloc}"
+        target_url = f"{target_origin}{original.path}"
+        redirected_response = await self._session.post(
+            target_url, allow_redirects=False, **request_kwargs
+        )
+        final_status = redirected_response.status
+        if isinstance(final_status, int) and 300 <= final_status < 400:
+            redirected_response.release()
+            raise UnsafeRedirectException(
+                "Deco returned multiple redirects"
+            ) from None
+        if isinstance(final_status, int) and final_status < 400:
+            self._host = target_origin
+            _LOGGER.debug("Deco API switched to HTTPS after same-host 307 redirect")
+        return redirected_response
+
     def _update_https_host_after_redirect(
         self, response: aiohttp.ClientResponse
     ) -> None:
@@ -797,7 +864,7 @@ class TplinkDecoApi:
         forbidden_message: str | None = None
         try:
             async with async_timeout.timeout(self._timeout_seconds):
-                response = await self._session.post(
+                response = await self._async_post_with_transport_policy(
                     url,
                     params=params,
                     data=data,
