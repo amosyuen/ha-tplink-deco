@@ -318,6 +318,15 @@ policy for AI-assisted development.
   firmware sources, rather than copying these fallback bugs. Keep original
   MAC/key unique IDs and validate optional diagnostic scalars separately
   from established tracker and numeric telemetry contracts.
+- **Issue #67 master Topology regression:** a user confirmed that the
+  master Topology entity stays unavailable while a satellite works; the
+  `extra` branch supplies `fixed` for absent firmware data, which cannot
+  establish the master's actual configured mode. For a node with a validated
+  `master` role and absent, null or empty topology, the known master/root
+  position can be displayed as `root` without asserting a `fixed` mode.
+  Never infer a mode for a satellite or malformed explicit topology.
+  Cover both nodes, explicit modes, malformed payloads, offline status,
+  recovery, registry IDs and reload in the actual coordinator/entity tests.
 - Do not infer standalone from the current response length alone: retained
   offline satellites still belong to the known mesh. Require exactly one
   current master; cover missing/ambiguous masters, late fields, false/zero,
