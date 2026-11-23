@@ -13,12 +13,16 @@
           "timeout_seconds": "Timeout sekundy",
           "timeout_error_retries": "Timeout error počet opakovaní",
           "verify_ssl": "Skontrolujte, či je certifikát SSL platný",
+          "use_https": "Použiť HTTPS (povoliť automatické presmerovanie)",
           "client_prefix": "Klient názov predpony",
           "client_postfix": "Klient názov koncovky",
           "deco_prefix": "Deco názov predpony",
           "deco_postfix": "Deco názov koncovky",
           "link_client_devices": "Prepojiť sledovače klientov so zariadeniami podľa adresy MAC",
           "expose_wifi_ssids": "Zobrazovať názvy Wi-Fi sietí na snímačoch stavu Wi-Fi"
+        },
+        "data_description": {
+          "use_https": "Po vypnutí sa používa iba HTTP. Smerovače vyžadujúce HTTPS nebudú dostupné. Overenie SSL je samostatné nastavenie."
         }
       },
       "reauth_confirm": {
@@ -39,7 +43,12 @@
       "unknown": "Neočakávaná chyba",
       "invalid_scan_interval": "Zvoľte interval aktualizácie 10, 30, 60 alebo 120 sekúnd.",
       "invalid_device_list_interval": "Zvoľte 0 pre aktualizáciu iba pri spustení alebo aspoň 10 sekúnd pre stav Deco.",
-      "invalid_expose_wifi_ssids": "Vyberte zapnuté alebo vypnuté pre zobrazovanie názvov Wi-Fi sietí."
+      "invalid_expose_wifi_ssids": "Vyberte zapnuté alebo vypnuté pre zobrazovanie názvov Wi-Fi sietí.",
+      "invalid_use_https": "Zapnite alebo vypnite používanie HTTPS.",
+      "invalid_host_scheme": "Zadajte adresu http:// alebo https:// bez cesty, prihlasovacích údajov alebo parametrov.",
+      "http_only_requires_http": "Režim iba HTTP vyžaduje adresu http://.",
+      "https_required": "Toto zariadenie Deco vyžaduje HTTPS. Zapnite Použiť HTTPS.",
+      "unsafe_redirect": "Zariadenie Deco vrátilo nebezpečné alebo nepodporované presmerovanie."
     }
   },
   "options": {
@@ -56,12 +65,16 @@
           "timeout_seconds": "Timeout sekundy",
           "timeout_error_retries": "Timeout error počet opakovaní",
           "verify_ssl": "Skontrolujte, či je certifikát SSL platný",
+          "use_https": "Použiť HTTPS (povoliť automatické presmerovanie)",
           "client_prefix": "Klient názov predpony",
           "client_postfix": "Klient názov koncovky",
           "deco_prefix": "Deco názov predpony",
           "deco_postfix": "Deco názov koncovky",
           "link_client_devices": "Prepojiť sledovače klientov so zariadeniami podľa adresy MAC",
           "expose_wifi_ssids": "Zobrazovať názvy Wi-Fi sietí na snímačoch stavu Wi-Fi"
+        },
+        "data_description": {
+          "use_https": "Po vypnutí sa používa iba HTTP. Smerovače vyžadujúce HTTPS nebudú dostupné. Overenie SSL je samostatné nastavenie."
         }
       }
     },
@@ -75,7 +88,12 @@
       "unknown": "Neočakávaná chyba",
       "invalid_scan_interval": "Zvoľte interval aktualizácie 10, 30, 60 alebo 120 sekúnd.",
       "invalid_device_list_interval": "Zvoľte 0 pre aktualizáciu iba pri spustení alebo aspoň 10 sekúnd pre stav Deco.",
-      "invalid_expose_wifi_ssids": "Vyberte zapnuté alebo vypnuté pre zobrazovanie názvov Wi-Fi sietí."
+      "invalid_expose_wifi_ssids": "Vyberte zapnuté alebo vypnuté pre zobrazovanie názvov Wi-Fi sietí.",
+      "invalid_use_https": "Zapnite alebo vypnite používanie HTTPS.",
+      "invalid_host_scheme": "Zadajte adresu http:// alebo https:// bez cesty, prihlasovacích údajov alebo parametrov.",
+      "http_only_requires_http": "Režim iba HTTP vyžaduje adresu http://.",
+      "https_required": "Toto zariadenie Deco vyžaduje HTTPS. Zapnite Použiť HTTPS.",
+      "unsafe_redirect": "Zariadenie Deco vrátilo nebezpečné alebo nepodporované presmerovanie."
     }
   },
   "entity": {
