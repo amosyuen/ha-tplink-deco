@@ -537,7 +537,8 @@ class TplinkDecoApi:
             timeout_error_retries=timeout_error_retries,
         )
 
-    async def _async_list_clients(self, deco_mac) -> dict:
+    async def _async_list_clients(self, deco_mac: str) -> list[dict[str, Any]]:
+        """Read a validated client-list container for one Deco node."""
         await self.async_login_if_needed()
 
         context = f"List Clients {deco_mac}"
@@ -567,6 +568,10 @@ class TplinkDecoApi:
                 client["name"] = decode_name_with_fallback(client["name"])
 
             return client_list
+        except InvalidClientListException:
+            # This peer is marked incomplete by the client coordinator.
+            # Avoid an ERROR message on every scheduled poll.
+            raise
         except Exception as err:
             _LOGGER.error("Deco client-list parsing failed (%s)", type(err).__name__)
             raise
