@@ -31,6 +31,7 @@ from .const import DEFAULT_SCAN_INTERVAL
 from .const import DOMAIN
 from .const import SIGNAL_CLIENT_ADDED
 from .const import SIGNAL_DECO_ADDED
+from .exceptions import InvalidClientListException
 from .exceptions import LoginForbiddenException
 from .exceptions import LoginInvalidException
 from .exceptions import TimeoutException
@@ -556,6 +557,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         self.health = CoordinatorHealth()
         self._poll_had_valid_response = False
         self._poll_had_timeout = False
+        self._poll_had_invalid_response = False
         self._client_query_mode = "per_node"
 
     @property
@@ -606,11 +608,24 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             # A failed request is not equivalent to a valid empty client list.
             _LOGGER.debug("Deco client poll incomplete after transport retries")
             return None, False
+        except InvalidClientListException:
+            # Reject only this node without discarding valid mesh peers.
+            self._poll_had_invalid_response = True
+            _LOGGER.debug("Deco client poll returned an unsupported list type")
+            return None, False
         except aiohttp.ClientResponseError as err:
             if not 500 <= err.status < 600:
                 raise
             _LOGGER.debug("Deco client poll returned HTTP %d", err.status)
             return None, True
+        if not isinstance(clients, list):
+            # Defence in depth for alternate or mocked API implementations.
+            self._poll_had_invalid_response = True
+            _LOGGER.debug(
+                "Deco client poll returned a non-list type (%s)",
+                type(clients).__name__,
+            )
+            return None, False
         return clients, False
 
     async def _async_list_clients_globally(self) -> list[dict[str, Any]] | None:
@@ -722,6 +737,7 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         started = monotonic()
         self._poll_had_valid_response = False
         self._poll_had_timeout = False
+        self._poll_had_invalid_response = False
         try:
             data = await self._async_update_data_internal()
         except Exception as error:
@@ -786,6 +802,9 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
             if response is None
         }
         if len(failed_deco_macs) == len(deco_macs):
+            # An invalid-only cycle must not be reported as a valid empty poll.
+            if self._poll_had_invalid_response:
+                raise ValueError("Invalid Deco client list response") from None
             # Unknown client-to-node assignments must also survive a poll
             # where no Deco returned a valid client list.
             return old_clients
