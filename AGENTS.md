@@ -335,6 +335,27 @@ policy for AI-assisted development.
   error text. Test its bounded display, unavailable state when cleared, and
   absence from integration logs and the config-entry diagnostics download.
 
+## Invalid-only mesh client polls and global fallback (issue #67, 2026-11-23)
+
+- **Verified:** a physical Deco mesh still raised `ValueError("Invalid Deco
+  client list response")` in the client's all-nodes-incomplete branch after
+  PRs #68/#69 were merged. The existing per-node validation correctly
+  rejects unsupported firmware response types; the all-invalid condition
+  is not evidence of an actual empty client inventory. Never broaden the
+  accepted schema or mark count readiness without a valid response.
+- Before failing such a full mesh refresh, make **one bounded global
+  `device_mac=default` client query** only when no actual per-node poll
+  succeeded and at least one was rejected as invalid. Validate the entire
+  global list before mutating cached clients and attribute it to the known
+  master only. Do not mark satellites successfully polled from a global
+  response. A failed, invalid or timed-out global query leaves prior state
+  intact and remains a visible failure; authentication and cancellation
+  are never hidden. Avoid repeated global queries when any peer is healthy.
+- Cover full per-node failures with valid, invalid and timeout global
+  results, verified ready counts, client identity, previous activity,
+  speed totals, no new entity IDs, and private diagnostics. Real router
+  compatibility of the global query is unverified pending hardware logs.
+
 ## Legacy firmware empty client-list representations (issue #67)
 
 - **Verified code-path regression:** historical
