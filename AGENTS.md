@@ -852,6 +852,22 @@ policy for AI-assisted development.
   nickname refreshes and unchanged MACs. Device naming at registration time
   may not be updated until Home Assistant reloads the integration.
 
+## Preserve complete backhaul connection types (main/extra comparison, 2026-11-23)
+
+- **Verified regression:** `extra` joins the entire firmware
+  `connection_type` list for the read-only **Backhaul type** diagnostic,
+  while `main` previously used index `[0]` and silently lost its remaining
+  wireless bands. A firmware list `['band2_4', 'band5']` must display
+  `band2_4, band5`, in source order.
+- Preserve the original `<deco_mac>_connection_type` sensor unique ID,
+  default-disabled diagnostic classification, device association, and
+  raw `connection_type` attribute on the existing Deco tracker. Do not
+  create per-band replacements or change the firmware model field.
+- Format single legacy string values without conversion, return `None`
+  for missing, empty or non-string/mixed firmware lists, and never
+  interpolate raw payloads in logs. Test master and satellites, both/single
+  bands, malformed payloads, refresh and state loss/recovery.
+
 ## Optional wireless backhaul metadata (upstream PR #595)
 
 - Treat `bssid_sta_2g` and `bssid_sta_5g` from the Deco device list as
