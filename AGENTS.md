@@ -62,8 +62,11 @@ reading these instructions:
   validate capped delays, partial mesh recovery, session privacy and compatibility.
 - [Deco runtime lifecycle validation](.agents/skills/deco-lifecycle-validation/SKILL.md):
   validate entry setup/unload, coordinator shutdown, callbacks and safe logout.
-- [Deco wireless-status validation](.agents/skills/deco-wireless-status-validation/SKILL.md):
-  validate optional WLAN error boundaries, privacy, master changes and teardown.
+- [Deco wireless-status and write validation](.agents/skills/deco-wireless-status-validation/SKILL.md):
+  validate optional WLAN reads and narrowly scoped, explicitly invoked
+  firmware-supported writes, including privacy, master ownership, safe
+  acknowledgements and lifecycle. Permission in the skill is not proof
+  that write support is already implemented on `main`.
 - [Deco mobile WAN usage validation](.agents/skills/deco-mobile-usage-validation/SKILL.md):
   validate optional 4G/5G data usage, parser privacy, master ownership, sensor discovery and entry lifecycle.
 - [Deco system-log export validation](.agents/skills/deco-system-log-validation/SKILL.md):
