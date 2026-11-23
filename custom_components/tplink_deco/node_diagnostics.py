@@ -119,7 +119,12 @@ def parse_node_diagnostics(data: dict[str, object]) -> dict[str, DiagnosticValue
                 values[key] = level
                 values.setdefault("signal_level", level)
 
-    topology = _topology_value(data.get("topology"))
+    raw_topology = data.get("topology")
+    topology = _topology_value(raw_topology)
     if topology is not None:
         values["topology"] = topology
+    elif role == "master" and (raw_topology is None or raw_topology == {}):
+        # The confirmed mesh master is the root node, but an absent mode
+        # does not establish "fixed" topology as the legacy extra branch did.
+        values["topology"] = "root"
     return values
