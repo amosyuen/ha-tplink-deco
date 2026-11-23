@@ -233,7 +233,6 @@ async def test_new_client_discovery_does_not_log_client_mac(
     assert coordinator.health.last_successful_update is not None
 
 
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "invalid_response",
