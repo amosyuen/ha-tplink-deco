@@ -7,6 +7,7 @@ import logging
 import traceback
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
+from unittest.mock import patch
 
 import pytest
 
@@ -274,8 +275,9 @@ async def test_mesh_non_list_peer_preserves_valid_client_sensors_and_recovers(
         ]
 
     api.async_list_clients = AsyncMock(side_effect=_list_clients)
-    with caplog.at_level(logging.DEBUG):
-        await coordinator.async_refresh()
+    with patch("custom_components.tplink_deco.coordinator.async_dispatcher_send"):
+        with caplog.at_level(logging.DEBUG):
+            await coordinator.async_refresh()
 
     assert coordinator.last_update_success is True
     assert coordinator.health.last_error == "0"
