@@ -76,6 +76,7 @@ def _reboot_post(api: TplinkDecoApi, token: str, cookie: str) -> tuple:
     """Build the expected authenticated transport arguments for one reboot."""
     return call(
         f"{HOST}/cgi-bin/luci/;stok={token}/admin/device",
+        allow_redirects=False,
         params={"form": "system"},
         data="synthetic-payload",
         headers={"Content-Type": "application/json"},
