@@ -58,9 +58,7 @@ async def _setup_sensors(
         ) as connect,
         patch(
             "custom_components.tplink_deco.sensor.entity_registry.async_get",
-            return_value=MagicMock(
-                async_get_entity_id=MagicMock(return_value=None)
-            ),
+            return_value=MagicMock(async_get_entity_id=MagicMock(return_value=None)),
         ),
     ):
         await async_setup_entry(hass, config_entry, async_add_entities)
