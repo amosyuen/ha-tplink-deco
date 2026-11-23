@@ -189,7 +189,7 @@ Their physical-firmware validation remains a separate limitation.
   interpolate client MACs. The implementation and focused regressions
   are on `main` (merge commit `35d1c0c`); physical firmware testing
   remains unverified.
-- **Issue #67 (PR #68 merged; follow-up PR pending):** non-list
+- **Issue #67 (PRs #68 and #69 merged):** non-list
   `client_list` replies cause an unsuccessful _per-node_ poll rather than
   taking down the entire client coordinator. On real mesh hardware, a
   repeated unsupported-list response was observed while a second Deco
