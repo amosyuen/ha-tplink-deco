@@ -162,6 +162,15 @@
     "binary_sensor": {
       "standalone": {
         "name": "Frittstående hovedenhet"
+      },
+      "master": {
+        "name": "Hoved-Deco"
+      },
+      "slave": {
+        "name": "Satellitt-Deco"
+      },
+      "set_gateway_support": {
+        "name": "Støtte for å angi gateway"
       }
     },
     "button": {
