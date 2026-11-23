@@ -33,8 +33,8 @@ from .exceptions import LoginForbiddenException
 from .exceptions import LoginInvalidException
 from .exceptions import TimeoutException
 from .exceptions import TransientConnectionException
-from .exceptions import UnsafeRedirectException
 from .exceptions import UnexpectedApiException
+from .exceptions import UnsafeRedirectException
 from .system_log import MAX_SYSTEM_LOG_BYTES
 from .system_log import SystemLogLevel
 from .system_log import decode_system_log
@@ -792,9 +792,7 @@ class TplinkDecoApi:
         final_status = redirected_response.status
         if isinstance(final_status, int) and 300 <= final_status < 400:
             redirected_response.release()
-            raise UnsafeRedirectException(
-                "Deco returned multiple redirects"
-            ) from None
+            raise UnsafeRedirectException("Deco returned multiple redirects") from None
         if isinstance(final_status, int) and final_status < 400:
             self._host = target_origin
             _LOGGER.debug("Deco API switched to HTTPS after same-host 307 redirect")
