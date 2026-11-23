@@ -91,20 +91,21 @@ async def test_standalone_master_has_no_network_totals() -> None:
 
     assert _total_sensors(async_add) == []
     ids = [
-        entity.unique_id
-        for call in async_add.call_args_list
-        for entity in call.args[0]
+        entity.unique_id for call in async_add.call_args_list for entity in call.args[0]
     ]
     assert {f"{MASTER_MAC}_down", f"{MASTER_MAC}_up"}.issubset(ids)
     assert len([uid for uid in ids if uid.endswith(("_down", "_up"))]) == 2
-    assert len(
-        [
-            entity
-            for call in async_add.call_args_list
-            for entity in call.args[0]
-            if isinstance(entity, TplinkCoordinatorHealthSensor)
-        ]
-    ) == 8
+    assert (
+        len(
+            [
+                entity
+                for call in async_add.call_args_list
+                for entity in call.args[0]
+                if isinstance(entity, TplinkCoordinatorHealthSensor)
+            ]
+        )
+        == 8
+    )
 
     for _ in range(3):
         on_update()
