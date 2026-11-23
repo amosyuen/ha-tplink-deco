@@ -73,9 +73,7 @@ async def test_late_diagnostic_values_register_once_without_placeholder_entities
 
     assert callback.__name__ == "_add_untracked_deco_sensors"
     assert _diagnostics(added) == []
-    assert {f"{MASTER_MAC}_down", f"{MASTER_MAC}_up"}.issubset(
-        _sensor_ids(added)
-    )
+    assert {f"{MASTER_MAC}_down", f"{MASTER_MAC}_up"}.issubset(_sensor_ids(added))
     assert f"{MASTER_MAC}_total_down" not in _sensor_ids(added)
     assert f"{MASTER_MAC}_total_up" not in _sensor_ids(added)
 
