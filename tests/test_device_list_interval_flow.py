@@ -18,6 +18,7 @@ import voluptuous as vol
 from custom_components.tplink_deco import config_flow
 from custom_components.tplink_deco.const import CONF_DEVICE_LIST_INTERVAL
 from custom_components.tplink_deco.const import CONF_EXPOSE_WIFI_SSIDS
+from custom_components.tplink_deco.const import CONF_USE_HTTPS
 from custom_components.tplink_deco.const import DOMAIN
 
 
@@ -201,7 +202,8 @@ async def test_invalid_interval_can_be_corrected_in_same_flow(
     if kind == "setup":
         hass.config_entries.async_update_entry.assert_not_called()
         saved = flow.async_create_entry.call_args.kwargs["data"]
-        assert set(credential_payloads[0]) == set(original_valid_data)
+        assert set(credential_payloads[0]) == set(original_valid_data) | {CONF_USE_HTTPS}
+        assert credential_payloads[0][CONF_USE_HTTPS] is True
     else:
         hass.config_entries.async_update_entry.assert_called_once()
         assert hass.config_entries.async_update_entry.call_args.kwargs["entry"] is entry
