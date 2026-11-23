@@ -159,6 +159,15 @@
     "binary_sensor": {
       "standalone": {
         "name": "Samostatné hlavné zariadenie"
+      },
+      "master": {
+        "name": "Hlavné Deco"
+      },
+      "slave": {
+        "name": "Satelitné Deco"
+      },
+      "set_gateway_support": {
+        "name": "Podpora nastavenia brány"
       }
     },
     "button": {
