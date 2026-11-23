@@ -30,8 +30,8 @@ from .const import CONF_EXPOSE_WIFI_SSIDS
 from .const import CONF_LINK_CLIENT_DEVICES
 from .const import CONF_TIMEOUT_ERROR_RETRIES
 from .const import CONF_TIMEOUT_SECONDS
-from .const import CONF_VERIFY_SSL
 from .const import CONF_USE_HTTPS
+from .const import CONF_VERIFY_SSL
 from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
 from .const import COORDINATOR_MOBILE_KEY
@@ -329,7 +329,7 @@ class TplinkDecoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 }
             elif not _valid_ssid_choice(candidate_data):
                 self._errors = {CONF_EXPOSE_WIFI_SSIDS: "invalid_expose_wifi_ssids"}
-            elif (transport_errors := _transport_errors(candidate_data)):
+            elif transport_errors := _transport_errors(candidate_data):
                 self._errors = transport_errors
             else:
                 candidate_data.setdefault(CONF_USE_HTTPS, DEFAULT_USE_HTTPS)
@@ -403,7 +403,7 @@ class TplinkDecoOptionsFlowHandler(config_entries.OptionsFlow):
                 }
             elif not _valid_ssid_choice(submitted_data):
                 self._errors = {CONF_EXPOSE_WIFI_SSIDS: "invalid_expose_wifi_ssids"}
-            elif (transport_errors := _transport_errors({**self.data, **submitted_data})):
+            elif transport_errors := _transport_errors({**self.data, **submitted_data}):
                 self._errors = transport_errors
             else:
                 _ensure_user_input_optionals(submitted_data)
