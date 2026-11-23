@@ -209,6 +209,17 @@ Their physical-firmware validation remains a separate limitation.
   The related master `Topology` regression was fixed in merged PR #68
   by displaying `root` from a confirmed master role without asserting an
   unreported `fixed` firmware mode.
+  **2026-11-23 follow-up (draft fix):** real hardware still reported
+  `Invalid Deco client list response` when **all** per-node polls were
+  unsupported or otherwise incomplete. A single healthy peer had already
+  been isolated correctly. When every node fails and at least one reply is
+  invalid, try one existing, authenticated, validated global
+  `device_mac=default` query before failing the entire client coordinator.
+  A successful global result is attributed only to the known master;
+  satellite per-node counts are not declared validated. All-invalid global
+  recovery still fails without pretending that missing clients are an empty
+  list. No new firmware shape is accepted, and the actual live response
+  type or global compatibility remains unverified.
 - Down/Up throughput aggregation includes only clients with truthy
   `online` status. Per-Deco data rates additionally require the matching
   `deco_mac`; network-wide totals include online clients across nodes.
