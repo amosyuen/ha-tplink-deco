@@ -153,8 +153,11 @@ Their physical-firmware validation remains a separate limitation.
   diagnostics keep their MAC-based unique IDs and can later report
   `None` without being removed. Firmware fields that never appear do not
   create placeholder entities. Master-dependent **network-total** sensors
-  continue to use the coordinator's normal **post-update listener**,
-  which registers totals once per entry. Keep known offline nodes.
+  use the coordinator's normal **post-update listener** and register once per
+  entry only when a known master has at least one known satellite. Retained
+  offline satellites still count as mesh members. A standalone master keeps
+  per-Deco Down/Up sensors and optional coordinator-health diagnostics without
+  redundant network-wide totals.
 - **Client tracker discovery (merged in PR #27):** `SIGNAL_CLIENT_ADDED`
   can fire before the client coordinator's refreshed `data` is committed.
   Retain that dispatcher for compatibility, but also register a normal
@@ -393,8 +396,10 @@ Their physical-firmware validation remains a separate limitation.
   Optional SSID state attributes appear **only** when the per-entry consent
   setting `expose_wifi_ssids` is explicitly `true`; that setting defaults
   to `false` on new and existing installations.
-- `sensor` exposes Down/Up totals per node and across the network,
-  per-node `Connected clients` diagnostics and optional diagnostic
+- `sensor` exposes Down/Up totals per node and, only for a mesh with a
+  known satellite, across the network. Standalone masters omit network
+  totals while retaining their independent coordinator-health diagnostics.
+  Per-node `Connected clients` diagnostics and optional diagnostic
   readings (firmware Device Type, IP address, BSSIDs, backhaul type/rate and
   CPU/memory). The existing `connection_type` diagnostic **Backhaul type**
   exposes every firmware-reported band as a comma-separated string (for
