@@ -536,14 +536,12 @@ async def test_all_invalid_node_lists_recover_from_valid_global_client_list(
         coordinator_clients=coordinator,
         deco_mac=MASTER_MAC,
     )
-    satellite_count = TplinkDecoClientCountSensor(
-        coordinator_decos=coordinator._deco_update_coordinator,
-        coordinator_clients=coordinator,
-        deco_mac=SATELLITE_MAC,
-    )
     assert master_count.available is True
     assert master_count.native_value == 2
-    assert satellite_count.available is False
+    # Sensor discovery only instantiates counts for validated Deco nodes;
+    # directly constructing an unregistered satellite entity is not a
+    # valid availability assertion.
+    assert SATELLITE_MAC not in coordinator.successfully_polled_deco_macs
 
     throughput = TplinkTotalClientDataRateSensor(
         coordinator_decos=coordinator._deco_update_coordinator,
