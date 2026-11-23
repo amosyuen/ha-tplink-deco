@@ -63,6 +63,14 @@ description: "Use when implementing or reviewing bounded Deco API retries for tr
    never make valid degraded-data behavior fail merely to satisfy a
    negative test. Assert no raw upstream errors, credentials or
    identifiers appear in logs.
+   **Issue #67 follow-up:** verify that a non-list top-level `client_list`
+   from one mesh node is isolated as a failed peer instead of a valid empty
+   reply, and that successful peers remain available. Check a typed error
+   at the actual API boundary, node-state preservation, linked count and
+   throughput entities, recovery after a later valid poll, and visibly
+   unsuccessful all-invalid cycles. Keep malformed items in otherwise
+   list-shaped responses subject to the original atomic validation.
+   Validate only safe error classes/types in logs, not router payload data.
 9. Update existing transport tests that assumed a disconnect always
    propagates immediately. Preserve their original authentication
    assertions and check `timeout_error_retries=0` separately.
