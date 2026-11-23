@@ -243,12 +243,8 @@ def test_malformed_optional_fields_never_create_invented_states(
     ("payload", "expected"),
     [
         pytest.param({"role": "master"}, "root", id="master-no-field"),
-        pytest.param(
-            {"role": "master", "topology": None}, "root", id="master-null"
-        ),
-        pytest.param(
-            {"role": "master", "topology": {}}, "root", id="master-empty-map"
-        ),
+        pytest.param({"role": "master", "topology": None}, "root", id="master-null"),
+        pytest.param({"role": "master", "topology": {}}, "root", id="master-empty-map"),
         pytest.param(
             {"role": "master", "topology": {"auto": True}},
             "auto",
@@ -304,7 +300,9 @@ def test_topology_uses_known_master_root_without_inventing_firmware_mode(
 
 
 @pytest.mark.asyncio
-async def test_master_root_topology_sensor_preserves_peer_and_registry_identity() -> None:
+async def test_master_root_topology_sensor_preserves_peer_and_registry_identity() -> (
+    None
+):
     """Keep root state available while validating mode and recovery per node."""
     coordinator = _coordinator()
     master_node = _node()
