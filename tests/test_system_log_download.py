@@ -116,7 +116,13 @@ def _assert_log_export_requests(
         strict=True,
     ):
         assert save_call.args == (url,)
-        assert set(save_call.kwargs) == {"allow_redirects", "params", "data", "cookies", "ssl"}
+        assert set(save_call.kwargs) == {
+            "allow_redirects",
+            "params",
+            "data",
+            "cookies",
+            "ssl",
+        }
         assert save_call.kwargs["allow_redirects"] is False
         assert save_call.kwargs["params"] == {"form": "save_log"}
         assert save_call.kwargs["cookies"] == {"sysauth": cookie}
