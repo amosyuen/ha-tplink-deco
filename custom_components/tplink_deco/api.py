@@ -24,6 +24,7 @@ import homeassistant.util.ssl as ssl
 
 from .const import DEFAULT_TIMEOUT_ERROR_RETRIES
 from .const import DEFAULT_TIMEOUT_SECONDS
+from .exceptions import InvalidClientListException
 from .exceptions import EmptyDataException
 from .exceptions import ForbiddenException
 from .exceptions import LoginForbiddenException
@@ -553,6 +554,12 @@ class TplinkDecoApi:
 
         try:
             client_list = data["result"]["client_list"]
+            # Never interpret an unrecognized firmware response as an empty
+            # client list. The coordinator can isolate this failed node.
+            if not isinstance(client_list, list):
+                raise InvalidClientListException(
+                    "Deco client-list response must be a list"
+                )
             # client_list is only the connected clients
             _LOGGER.debug("Deco client-list client_count=%d", len(client_list))
 
