@@ -32,10 +32,16 @@ description: "Validate TP-Link Deco runtime node discovery, synchronous dispatch
    treats them as callbacks, not blocking jobs. In the current fork,
    `device_tracker.py` and `sensor.py` already do this; inspect the
    binary-sensor handler before changing it.
-6. Keep registration idempotent by MAC for each platform. New nodes must
-   obtain their original `device_tracker`, per-node `binary_sensor` and
-   regular/diagnostic `sensor` entities without changing any existing
-   entity IDs, master/satellite registry links or configuration.
+6. Keep registration idempotent by MAC and key for each platform. New nodes
+   must obtain their original `device_tracker`, per-node `binary_sensor`
+   and regular/diagnostic `sensor` entities, without changing previous
+   master/satellite registry links or configuration. Firmware flags
+   `standalone`, `master`, `slave` and `set_gateway_support` use
+   disabled-by-default binary sensors. Preserve the legacy sensor-domain
+   entities only when a registry entry already exists and belongs to the
+   same config entry; use strict booleans and preserve `unavailable` on
+   unknown or failed data. Exercise post-update flag discovery separately
+   from new-node dispatcher notifications.
    Network-wide Total Down/Up sensors continue to use the coordinator
    update listener, but only register when a master has at least one known
    satellite (including retained offline nodes). Do not register them for a
