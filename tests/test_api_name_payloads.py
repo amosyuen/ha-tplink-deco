@@ -152,4 +152,4 @@ async def test_non_list_firmware_client_reply_is_rejected_without_private_data(
             await api._async_list_clients("default")
 
     assert "sensitive-test-client-name" not in caplog.text
-    assert "Deco client-list parsing failed (InvalidClientListException)" in caplog.text
+    assert "Deco client-list parsing failed" not in caplog.text
