@@ -44,6 +44,7 @@ from .const import CONF_LINK_CLIENT_DEVICES
 from .const import CONF_TIMEOUT_ERROR_RETRIES
 from .const import CONF_TIMEOUT_SECONDS
 from .const import CONF_VERIFY_SSL
+from .const import CONF_USE_HTTPS
 from .const import COORDINATOR_CLIENTS_KEY
 from .const import COORDINATOR_DECOS_KEY
 from .const import COORDINATOR_MOBILE_KEY
@@ -54,6 +55,7 @@ from .const import DEFAULT_LINK_CLIENT_DEVICES
 from .const import DEFAULT_SCAN_INTERVAL
 from .const import DEFAULT_TIMEOUT_ERROR_RETRIES
 from .const import DEFAULT_TIMEOUT_SECONDS
+from .const import DEFAULT_USE_HTTPS
 from .const import DEVICE_TYPE_CLIENT
 from .const import DEVICE_TYPE_DECO
 from .const import DOMAIN
@@ -142,6 +144,7 @@ async def async_create_and_refresh_coordinators(
         verify_ssl,
         timeout_error_retries,
         timeout_seconds,
+        use_https=config_data.get(CONF_USE_HTTPS, DEFAULT_USE_HTTPS) is not False,
     )
     deco_coordinator = TplinkDecoUpdateCoordinator(
         hass,
