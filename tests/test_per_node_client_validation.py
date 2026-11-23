@@ -238,7 +238,14 @@ async def test_new_client_discovery_does_not_log_client_mac(
 @pytest.mark.parametrize(
     "invalid_response",
     [None, {}, {"private": PRIVATE_VALUE}, "", PRIVATE_VALUE, 42],
-    ids=["null", "empty-object", "populated-object", "empty-string", "string", "number"],
+    ids=[
+        "null",
+        "empty-object",
+        "populated-object",
+        "empty-string",
+        "string",
+        "number",
+    ],
 )
 @pytest.mark.parametrize("failed_node", [MASTER_MAC, SATELLITE_MAC])
 async def test_mesh_non_list_peer_preserves_valid_client_sensors_and_recovers(
