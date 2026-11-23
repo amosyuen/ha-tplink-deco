@@ -568,6 +568,10 @@ class TplinkDecoApi:
             # Never interpret an unrecognized firmware response as an empty
             # client list. The coordinator can isolate this failed node.
             if not isinstance(client_list, list):
+                _LOGGER.debug(
+                    "Deco client-list rejected unsupported %s type",
+                    type(client_list).__name__,
+                )
                 raise InvalidClientListException(
                     "Deco client-list response must be a list"
                 )
