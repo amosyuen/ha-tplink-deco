@@ -58,6 +58,12 @@ The additional read-only diagnostics retain `<deco_mac>_<key>` unique IDs:
 | Station BSSID, 2.4 GHz / 5 GHz              | `bssid_sta_2g`, `bssid_sta_5g`                    |
 | Gateway configuration capability / topology | `set_gateway_support`, `topology`                 |
 
+The read-only **Backhaul type** diagnostic shows every band reported in the
+router's `connection_type` list. For example, both `band2_4` and `band5` are
+shown as `band2_4, band5` on a dual-band backhaul, matching the `extra`
+branch. A single band or legacy string is preserved; missing or malformed
+values are not guessed. The existing sensor and Deco tracker IDs are unchanged.
+
 **Set gateway support** only reports a firmware capability; it does not change
 the gateway. **Nickname** shows the firmware nickname, independently of the
 Home Assistant device name. False flags and zero signal levels are valid.
