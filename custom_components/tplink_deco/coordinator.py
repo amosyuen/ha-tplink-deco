@@ -643,6 +643,12 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         except TransientConnectionException:
             _LOGGER.debug("Global Deco client poll incomplete")
             return None
+        except InvalidClientListException:
+            # An unsupported global firmware shape cannot rescue a failed
+            # per-node cycle. Never treat it as an empty client inventory.
+            self._poll_had_invalid_response = True
+            _LOGGER.debug("Global Deco client poll returned an unsupported list type")
+            return None
         except aiohttp.ClientResponseError as err:
             if not 500 <= err.status < 600:
                 raise
@@ -773,7 +779,18 @@ class TplinkDecoClientUpdateCoordinator(DataUpdateCoordinator):
         if server_error:
             self._apply_client_backoff()
 
-        if global_only or server_error:
+        # A mesh can reject every per-node client_list shape while still
+        # supporting the documented "default" global client query. Try one
+        # validated fallback before marking the whole coordinator failed.
+        all_nodes_incomplete = bool(deco_client_responses) and all(
+            response is None for response, _ in deco_client_responses
+        )
+        all_nodes_invalid = all_nodes_incomplete and self._poll_had_invalid_response
+        if global_only or server_error or all_nodes_invalid:
+            if all_nodes_invalid and not server_error:
+                _LOGGER.debug(
+                    "All Deco node client polls failed; trying one global query"
+                )
             master = self._deco_update_coordinator.data.master_deco
             if master is not None:
                 global_clients = await self._async_list_clients_globally()
