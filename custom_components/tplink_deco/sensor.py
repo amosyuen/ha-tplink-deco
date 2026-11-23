@@ -77,8 +77,6 @@ RESTORED_DIAGNOSTIC_SENSOR_DESCRIPTIONS = tuple(
         ("inet_error_msg", "Internet error message"),
         ("nickname", "Nickname"),
         ("role", "Role"),
-        ("master", "Master Deco"),
-        ("slave", "Slave Deco"),
         ("signal_level", "Signal level"),
         ("signal_level24", "Signal level 2.4Ghz"),
         ("signal_level5", "Signal level 5Ghz"),
@@ -87,15 +85,20 @@ RESTORED_DIAGNOSTIC_SENSOR_DESCRIPTIONS = tuple(
         ("client_mesh", "Client mesh"),
         ("bssid_sta_2g", "BSSID 2.4 GHz (Station)"),
         ("bssid_sta_5g", "BSSID 5 GHz (Station)"),
-        ("set_gateway_support", "Set gateway support"),
         ("topology", "Topology"),
     )
 )
 
 
-# Keep an existing legacy sensor-domain entity working for its automations.
-LEGACY_STANDALONE_SENSOR_DESCRIPTION = _restored_diagnostic_description(
-    "standalone", "Standalone Master"
+# Only re-register pre-existing sensor-domain flags for old automations.
+LEGACY_BINARY_DIAGNOSTIC_SENSOR_DESCRIPTIONS = tuple(
+    _restored_diagnostic_description(key, name)
+    for key, name in (
+        ("standalone", "Standalone Master"),
+        ("master", "Master Deco"),
+        ("slave", "Slave Deco"),
+        ("set_gateway_support", "Set gateway support"),
+    )
 )
 
 
@@ -352,24 +355,22 @@ async def async_setup_entry(
                 new_entities.extend(_build_entities_for_deco(deco))
                 tracked_macs.add(mac)
 
-            descriptions = DIAGNOSTIC_SENSOR_DESCRIPTIONS
-            legacy_id = legacy_registry.async_get_entity_id(
-                "sensor", DOMAIN, f"{mac}_standalone"
-            )
-            if legacy_id is not None:
+            legacy_descriptions = []
+            for description in LEGACY_BINARY_DIAGNOSTIC_SENSOR_DESCRIPTIONS:
+                legacy_id = legacy_registry.async_get_entity_id(
+                    "sensor", DOMAIN, f"{mac}_{description.key}"
+                )
+                if legacy_id is None:
+                    continue
                 legacy_entry = legacy_registry.async_get(legacy_id)
                 if (
                     legacy_entry is not None
                     and legacy_entry.config_entry_id == entry.entry_id
                 ):
-                    # Preserve old automations and registry preferences without
-                    # generating sensor-domain entries for fresh installations.
-                    descriptions = (
-                        *descriptions,
-                        LEGACY_STANDALONE_SENSOR_DESCRIPTION,
-                    )
+                    # Preserve old automations and custom registry settings.
+                    legacy_descriptions.append(description)
 
-            for description in descriptions:
+            for description in (*DIAGNOSTIC_SENSOR_DESCRIPTIONS, *legacy_descriptions):
                 sensor_key = (mac, description.key)
                 if sensor_key in tracked_diagnostics or _is_empty(
                     description.value_fn(deco)
