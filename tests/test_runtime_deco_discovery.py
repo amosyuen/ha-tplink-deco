@@ -179,6 +179,14 @@ async def test_discovery_creates_trackers_binary_sensors_and_node_sensors(
     added_binary = MagicMock()
     added_sensor = MagicMock()
     with ExitStack() as patches:
+        patches.enter_context(
+            patch(
+                "custom_components.tplink_deco.sensor.entity_registry.async_get",
+                return_value=MagicMock(
+                    async_get_entity_id=MagicMock(return_value=None)
+                ),
+            )
+        )
         for module in ("device_tracker", "binary_sensor", "sensor"):
             patches.enter_context(
                 patch(
