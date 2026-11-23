@@ -175,6 +175,26 @@ description: "Validate TP-Link Deco setup, options and reauthentication flows, i
   privacy, follow
   [the WLAN validation skill](../deco-wireless-status-validation/SKILL.md).
 
+## HTTPS transport mode regression (issue #70)
+
+- Keep `CONF_USE_HTTPS` as an entry-specific boolean defaulting to `True`
+  without forcing a migration. Do not conflate it with `CONF_VERIFY_SSL`.
+  Validate URL scheme and origin and the submitted boolean before any API
+  login, then retain the previous entry on failures.
+- Check a valid HTTPS address with HTTPS enabled; HTTP-only and HTTP address;
+  HTTPS host with HTTP-only (field error); invalid scheme, malformed port,
+  credentials in URL and invalid boolean (field error). Existing entries without
+  the option must retain the current automatic HTTPS upgrade. Preserve the
+  same entry data across reauth and unrelated options.
+- Mock bound POST transport for login/key exchange, ordinary requests and
+  manual system-log download. Assert `allow_redirects=False` for both
+  modes, and that only same-host HTTP 307/308 upgrades to HTTPS with the
+  original method/body/params/cookies. HTTP-only must not follow and must
+  expose the sanitized `https_required` UI error. Reject cross-host,
+  different-path, malformed, repeated, HTTPS→HTTP and 301/302/303 redirects.
+  Test timeout/cancellation and secret-free logs. Run both HA matrices and
+  all pre-commit/HACS/Hassfest checks on the final head.
+
 ## Windows local test commands
 
 ```powershell
