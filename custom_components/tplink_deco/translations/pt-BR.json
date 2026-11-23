@@ -16,10 +16,14 @@
           "timeout_seconds": "Tempo limite em segundos",
           "timeout_error_retries": "Número de novas tentativas após o tempo limite",
           "verify_ssl": "Verificar se o certificado SSL é válido",
+          "use_https": "Usar HTTPS (permitir redirecionamento automático)",
           "client_prefix": "Prefixo do nome do cliente",
           "client_postfix": "Sufixo do nome do cliente",
           "deco_prefix": "Prefixo do nome do Deco",
           "deco_postfix": "Sufixo do nome do Deco"
+        },
+        "data_description": {
+          "use_https": "Quando desativado, usa somente HTTP. Roteadores que exigem HTTPS não poderão conectar. A verificação SSL é uma configuração separada."
         }
       },
       "reauth_confirm": {
@@ -38,7 +42,12 @@
       "invalid_expose_wifi_ssids": "Selecione ativado ou desativado para exibir os nomes das redes Wi-Fi.",
       "invalid_host": "Não foi possível conectar ao host",
       "invalid_scan_interval": "Selecione um intervalo de atualização de 10, 30, 60 ou 120 segundos.",
-      "invalid_device_list_interval": "Digite 0 para atualizar apenas na inicialização ou pelo menos 10 segundos para o status do Deco."
+      "invalid_device_list_interval": "Digite 0 para atualizar apenas na inicialização ou pelo menos 10 segundos para o status do Deco.",
+      "invalid_use_https": "Ative ou desative o HTTPS.",
+      "invalid_host_scheme": "Informe um endereço http:// ou https:// sem caminho, credenciais ou parâmetros.",
+      "http_only_requires_http": "O modo somente HTTP requer um endereço http://.",
+      "https_required": "Este Deco exige HTTPS. Ative Usar HTTPS.",
+      "unsafe_redirect": "O Deco retornou um redirecionamento inseguro ou não compatível."
     },
     "abort": {
       "reauth_successful": "Reautenticação concluída com sucesso"
@@ -71,12 +80,16 @@
           "timeout_seconds": "Tempo limite em segundos",
           "timeout_error_retries": "Número de novas tentativas após o tempo limite",
           "verify_ssl": "Verificar se o certificado SSL é válido",
+          "use_https": "Usar HTTPS (permitir redirecionamento automático)",
           "client_prefix": "Prefixo do nome do cliente",
           "client_postfix": "Sufixo do nome do cliente",
           "deco_prefix": "Prefixo do nome do Deco",
           "deco_postfix": "Sufixo do nome do Deco"
         },
-        "description": "Use as credenciais do portal de administração Web. Consulte a documentação para obter instruções de configuração."
+        "description": "Use as credenciais do portal de administração Web. Consulte a documentação para obter instruções de configuração.",
+        "data_description": {
+          "use_https": "Quando desativado, usa somente HTTP. Roteadores que exigem HTTPS não poderão conectar. A verificação SSL é uma configuração separada."
+        }
       }
     },
     "error": {
@@ -86,7 +99,12 @@
       "invalid_expose_wifi_ssids": "Selecione ativado ou desativado para exibir os nomes das redes Wi-Fi.",
       "invalid_host": "Não foi possível conectar ao host",
       "invalid_scan_interval": "Selecione um intervalo de atualização de 10, 30, 60 ou 120 segundos.",
-      "invalid_device_list_interval": "Digite 0 para atualizar apenas na inicialização ou pelo menos 10 segundos para o status do Deco."
+      "invalid_device_list_interval": "Digite 0 para atualizar apenas na inicialização ou pelo menos 10 segundos para o status do Deco.",
+      "invalid_use_https": "Ative ou desative o HTTPS.",
+      "invalid_host_scheme": "Informe um endereço http:// ou https:// sem caminho, credenciais ou parâmetros.",
+      "http_only_requires_http": "O modo somente HTTP requer um endereço http://.",
+      "https_required": "Este Deco exige HTTPS. Ative Usar HTTPS.",
+      "unsafe_redirect": "O Deco retornou um redirecionamento inseguro ou não compatível."
     },
     "abort": {
       "reauth_successful": "Reautenticação concluída com sucesso"
