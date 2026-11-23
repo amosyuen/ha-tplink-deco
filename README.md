@@ -631,6 +631,12 @@ Note: The router also has its own timeout so increasing this may not help.
 
 How many times to retry timeout errors for one request. You can increase this if you get a lot of timeout errors from your router.
 
+### Use HTTPS
+
+**Use HTTPS** is enabled by default. With an `http://` router address, the integration may upgrade a same-router HTTP 307/308 redirect to HTTPS and remember its HTTPS port for later requests. You can also configure an `https://` router address directly.
+
+Disable **Use HTTPS** only when you explicitly need **HTTP-only** communication. Enter an `http://` router address; the integration refuses an HTTPS redirect instead of following it. Some Deco firmware enforces HTTPS, in which case HTTP-only mode cannot connect. Disabling transport encryption reduces protection on your local network. This setting cannot change the router's HTTPS enforcement, and is separate from certificate verification below.
+
 ### Verify SSL Certificate
 
 Turn off this config option if your browser gives you a warning that the SSL certificate is self-signed when you visit the router host IP in your browser.
