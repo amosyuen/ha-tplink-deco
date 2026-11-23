@@ -886,6 +886,27 @@ policy for AI-assisted development.
   retained instructions and exclusion markers without changing the
   minimum HA version, existing runtime platforms or configuration data.
 
+## HTTPS transport option and redirect safety (issue #70)
+
+- **Observed behavior (2026-11-23):** real Deco firmware responds with
+  an HTTP 307 redirect to HTTPS and continues to authenticate on the new
+  origin. `verify_ssl` controls certificate trust and must not act as a
+  protocol switch. New `use_https` defaults to `True` for legacy entries.
+- If explicitly disabled, reject any HTTPS host URL before credential tests
+  or config writes, keep every API request on HTTP, and surface a sanitized
+  `https_required` error when the router enforces HTTPS. Never claim
+  the option changes router firmware; warn about reduced transport security.
+- For both transport modes, prevent automatic aiohttp redirects from sending
+  credentials or LuCI tokens to another host. When HTTPS is permitted, follow
+  only a same-host 307/308 HTTP→HTTPS POST preserving path, method, params,
+  cookies and redirected port. Reject untrusted or repeated redirects.
+  Apply the same guard to login, key exchange, regular encrypted API requests,
+  and unencrypted system-log export.
+- Test setup/options/reauth and old entries, real HTTP session request
+  arguments, redirect hostility, connection errors, cancellation, and
+  registry/unique ID preservation across reload. Do not log redirect URLs,
+  router credentials, cookies or tokens.
+
 ## Same-router HTTPS redirects and session cookies (upstream PR #539)
 
 - Newer aiohttp versions drop per-request cookies when an HTTP-to-HTTPS
