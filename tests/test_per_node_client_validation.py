@@ -53,7 +53,6 @@ def _coordinator(
     )
     return coordinator, api
 
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "invalid_entry",
@@ -115,7 +114,6 @@ async def test_late_invalid_node_reply_preserves_prior_client_state(
     assert PRIVATE_VALUE not in "".join(traceback.format_exception(exc.value))
     api.async_list_clients.assert_awaited_once_with(MASTER_MAC, timeout_error_retries=0)
 
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize("response", [{"bad": PRIVATE_VALUE}, PRIVATE_VALUE, 42])
 async def test_malformed_node_response_type_is_rejected_without_state_changes(
@@ -134,7 +132,6 @@ async def test_malformed_node_response_type_is_rejected_without_state_changes(
     assert old_client.online is True
     assert not coordinator.successfully_polled_deco_macs
     assert coordinator.health.last_error == "ValueError"
-
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
@@ -184,7 +181,6 @@ async def test_invalid_client_ip_normalizes_without_rejecting_valid_peer(
     assert PRIVATE_VALUE not in caplog.text
     api.async_list_clients.assert_awaited_once_with(MASTER_MAC, timeout_error_retries=0)
 
-
 @pytest.mark.asyncio
 async def test_valid_peer_updates_when_other_node_times_out() -> None:
     """A missing node response remains incomplete, not an empty success."""
@@ -212,7 +208,6 @@ async def test_valid_peer_updates_when_other_node_times_out() -> None:
     assert coordinator.successfully_polled_deco_macs == {MASTER_MAC}
     assert coordinator.health.timeout_count == 1
 
-
 @pytest.mark.asyncio
 async def test_new_client_discovery_does_not_log_client_mac(
     caplog: pytest.LogCaptureFixture,
@@ -231,7 +226,6 @@ async def test_new_client_discovery_does_not_log_client_mac(
     assert NEW_CLIENT_MAC not in caplog.text
     assert PRIVATE_VALUE not in caplog.text
     assert coordinator.health.last_successful_update is not None
-
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
@@ -334,7 +328,6 @@ async def test_mesh_non_list_peer_preserves_valid_client_sensors_and_recovers(
     assert coordinator.data[CLIENT_MAC] is old_client
     assert coordinator.data[CLIENT_MAC].name == "restored"
 
-
 @pytest.mark.asyncio
 async def test_typed_firmware_client_error_is_isolated_to_one_peer() -> None:
     """Treat the API's specific shape error as a failed node, not an empty list."""
@@ -356,7 +349,6 @@ async def test_typed_firmware_client_error_is_isolated_to_one_peer() -> None:
     assert coordinator.successfully_polled_deco_macs == {MASTER_MAC}
     assert coordinator.health.last_error == "0"
 
-
 @pytest.mark.asyncio
 async def test_all_invalid_mesh_client_lists_remain_failed_not_empty() -> None:
     """Reject a fully invalid mesh without changing cached node identities."""
@@ -374,3 +366,94 @@ async def test_all_invalid_mesh_client_lists_remain_failed_not_empty() -> None:
     assert coordinator.health.last_error == "ValueError"
     assert coordinator.health.consecutive_failures == 1
     assert coordinator.successfully_polled_deco_macs == set()
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("legacy_empty", [{}, ""], ids=["empty-object", "empty-string"])
+@pytest.mark.parametrize("empty_node", [MASTER_MAC, SATELLITE_MAC])
+async def test_real_api_legacy_empty_reply_keeps_both_mesh_counts_live(
+    legacy_empty: dict[str, object] | str,
+    empty_node: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Normalize actual firmware replies before atomic per-node reconciliation."""
+    old_client = TpLinkDecoClient(CLIENT_MAC)
+    old_client.deco_mac = empty_node
+    old_client.online = True
+    old_client.last_activity = datetime.now(timezone.utc) - timedelta(hours=1)
+    coordinator, _ = _coordinator({CLIENT_MAC: old_client}, two_decos=True)
+    populated_node = SATELLITE_MAC if empty_node == MASTER_MAC else MASTER_MAC
+
+    api = TplinkDecoApi(
+        session=MagicMock(),
+        host="http://192.0.2.1",
+        username="admin",
+        password="dummy-password",
+        verify_ssl=True,
+    )
+    api.async_login_if_needed = AsyncMock()
+    api._encode_payload = MagicMock(return_value="mocked-request-body")
+    api._async_post = AsyncMock(return_value={"data": "encrypted-fixture"})
+    api._stok = "synthetic-token"
+
+    def _decode_data(context: str, encrypted: str) -> dict[str, object]:
+        """Return node-specific decrypted fixtures without a router request."""
+        assert encrypted == "encrypted-fixture"
+        is_empty_node = context == f"List Clients {empty_node}"
+        return {
+            "error_code": 0,
+            "result": {
+                "client_list": (
+                    legacy_empty
+                    if is_empty_node
+                    else [
+                        {
+                            "mac": NEW_CLIENT_MAC,
+                            "name": "fixture",
+                            "online": True,
+                            "down_speed": 80,
+                        }
+                    ]
+                )
+            },
+        }
+
+    api._decrypt_data = MagicMock(side_effect=_decode_data)
+    coordinator.api = api
+    with patch("custom_components.tplink_deco.coordinator.async_dispatcher_send"):
+        with caplog.at_level(logging.DEBUG):
+            await coordinator.async_refresh()
+
+    assert coordinator.last_update_success is True
+    assert coordinator.health.last_error == "0"
+    assert coordinator.successfully_polled_deco_macs == {MASTER_MAC, SATELLITE_MAC}
+    assert coordinator.data[CLIENT_MAC] is old_client
+    assert old_client.deco_mac == empty_node
+    assert old_client.online is False
+    assert coordinator.data[NEW_CLIENT_MAC].deco_mac == populated_node
+    assert coordinator.data[NEW_CLIENT_MAC].online is True
+    assert api._async_post.await_count == 2
+
+    for node_mac, expected_count in ((empty_node, 0), (populated_node, 1)):
+        count_sensor = TplinkDecoClientCountSensor(
+            coordinator_decos=coordinator._deco_update_coordinator,
+            coordinator_clients=coordinator,
+            deco_mac=node_mac,
+        )
+        assert count_sensor.available is True
+        assert count_sensor.native_value == expected_count
+        assert count_sensor.unique_id == f"{node_mac}_client_count"
+
+    rate_sensor = TplinkTotalClientDataRateSensor(
+        coordinator_decos=coordinator._deco_update_coordinator,
+        coordinator_clients=coordinator,
+        name="Network download",
+        unique_id="mesh_total_down",
+        client_attribute="down_kilobytes_per_s",
+        deco=None,
+    )
+    assert rate_sensor.available is True
+    assert rate_sensor.native_value == pytest.approx(10.0)
+    assert "Deco client poll returned an unsupported list type" not in caplog.text
+    assert "Invalid Deco client list response" not in caplog.text
+    assert CLIENT_MAC not in caplog.text
+    assert NEW_CLIENT_MAC not in caplog.text
