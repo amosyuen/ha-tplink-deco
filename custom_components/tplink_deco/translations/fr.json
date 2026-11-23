@@ -15,12 +15,16 @@
           "timeout_seconds": "Délai d’attente en secondes",
           "timeout_error_retries": "Nombre de nouvelles tentatives après un délai d’attente dépassé",
           "verify_ssl": "Vérifier la validité du certificat SSL",
+          "use_https": "Utiliser HTTPS (autoriser la redirection automatique)",
           "client_prefix": "Préfixe des noms de clients",
           "client_postfix": "Suffixe des noms de clients",
           "deco_prefix": "Préfixe des noms de Deco",
           "deco_postfix": "Suffixe des noms de Deco"
         },
-        "description": "Utilisez les identifiants du portail d’administration Web. Consultez la documentation pour connaître les conditions de connexion."
+        "description": "Utilisez les identifiants du portail d’administration Web. Consultez la documentation pour connaître les conditions de connexion.",
+        "data_description": {
+          "use_https": "Si désactivé, utiliser uniquement HTTP. Les routeurs exigeant HTTPS ne seront pas accessibles. La vérification SSL est distincte."
+        }
       },
       "reauth_confirm": {
         "title": "TP-Link Deco",
@@ -38,7 +42,12 @@
       "timeout_connect": "Délai de connexion dépassé",
       "unknown": "Erreur inconnue",
       "invalid_scan_interval": "Choisissez un intervalle d’actualisation de 10, 30, 60 ou 120 secondes.",
-      "invalid_device_list_interval": "Choisissez 0 pour une mise à jour uniquement au démarrage ou au moins 10 secondes pour l’état des Deco."
+      "invalid_device_list_interval": "Choisissez 0 pour une mise à jour uniquement au démarrage ou au moins 10 secondes pour l’état des Deco.",
+      "invalid_use_https": "Activez ou désactivez HTTPS.",
+      "invalid_host_scheme": "Saisissez une adresse http:// ou https:// sans chemin, identifiants ni paramètres.",
+      "http_only_requires_http": "Le mode HTTP uniquement nécessite une adresse http://.",
+      "https_required": "Ce Deco exige HTTPS. Activez Utiliser HTTPS.",
+      "unsafe_redirect": "Le Deco a renvoyé une redirection non sécurisée ou non prise en charge."
     },
     "abort": {
       "reauth_successful": "Réauthentification réussie"
@@ -60,12 +69,16 @@
           "timeout_seconds": "Délai d’attente en secondes",
           "timeout_error_retries": "Nombre de nouvelles tentatives après un délai d’attente dépassé",
           "verify_ssl": "Vérifier la validité du certificat SSL",
+          "use_https": "Utiliser HTTPS (autoriser la redirection automatique)",
           "client_prefix": "Préfixe des noms de clients",
           "client_postfix": "Suffixe des noms de clients",
           "deco_prefix": "Préfixe des noms de Deco",
           "deco_postfix": "Suffixe des noms de Deco"
         },
-        "description": "Utilisez les identifiants du portail d’administration Web. Consultez la documentation pour connaître les conditions de connexion."
+        "description": "Utilisez les identifiants du portail d’administration Web. Consultez la documentation pour connaître les conditions de connexion.",
+        "data_description": {
+          "use_https": "Si désactivé, utiliser uniquement HTTP. Les routeurs exigeant HTTPS ne seront pas accessibles. La vérification SSL est distincte."
+        }
       }
     },
     "error": {
@@ -75,7 +88,12 @@
       "timeout_connect": "Délai de connexion dépassé",
       "unknown": "Erreur inconnue",
       "invalid_scan_interval": "Choisissez un intervalle d’actualisation de 10, 30, 60 ou 120 secondes.",
-      "invalid_device_list_interval": "Choisissez 0 pour une mise à jour uniquement au démarrage ou au moins 10 secondes pour l’état des Deco."
+      "invalid_device_list_interval": "Choisissez 0 pour une mise à jour uniquement au démarrage ou au moins 10 secondes pour l’état des Deco.",
+      "invalid_use_https": "Activez ou désactivez HTTPS.",
+      "invalid_host_scheme": "Saisissez une adresse http:// ou https:// sans chemin, identifiants ni paramètres.",
+      "http_only_requires_http": "Le mode HTTP uniquement nécessite une adresse http://.",
+      "https_required": "Ce Deco exige HTTPS. Activez Utiliser HTTPS.",
+      "unsafe_redirect": "Le Deco a renvoyé une redirection non sécurisée ou non prise en charge."
     },
     "abort": {
       "reauth_successful": "Réauthentification réussie"
