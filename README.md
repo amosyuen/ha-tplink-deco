@@ -58,6 +58,14 @@ The additional read-only diagnostics retain `<deco_mac>_<key>` unique IDs:
 | Station BSSID, 2.4 GHz / 5 GHz              | `bssid_sta_2g`, `bssid_sta_5g`                    |
 | Gateway configuration capability / topology | `set_gateway_support`, `topology`                 |
 
+**Standalone Master** is an opt-in `binary_sensor`, using the same
+`<deco_mac>_standalone` unique ID in the binary-sensor domain. It is **On**
+for a confirmed master with no known satellites, **Off** for a known mesh,
+and **Unavailable** if the topology is unknown. Previously registered
+`sensor.*_standalone` entries remain functional as legacy sensors so
+existing automations are not broken; fresh installs do not create them.
+The entity ID changes domain when users switch to the binary sensor.
+
 The read-only **Backhaul type** diagnostic shows every band reported in the
 router's `connection_type` list. For example, both `band2_4` and `band5` are
 shown as `band2_4, band5` on a dual-band backhaul, matching the `extra`
