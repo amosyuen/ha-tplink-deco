@@ -331,7 +331,16 @@ policy for AI-assisted development.
   offline satellites still belong to the known mesh. Require exactly one
   current master; cover missing/ambiguous masters, late fields, false/zero,
   offline recovery, reload identities and multiple entries in regression
-  tests. The opt-in `inet_error_msg` sensor is the explicit exception for firmware
+  tests.
+- **Standalone sensor-domain conversion:** A boolean standalone diagnostic
+  must be a disabled-by-default binary sensor. Since an old `sensor.*`
+  entity ID cannot be kept under a new domain, keep **only previously
+  registered** sensor-domain entities working for existing automations.
+  Check exact config-entry ownership before legacy registration. Never
+  create new legacy records, remove registry entries, or enable the new
+  binary entity automatically. Validate strict true/false/unknown states,
+  retained offline satellites, late discovery, registry customization,
+  separate entries and translation parity. The opt-in `inet_error_msg` sensor is the explicit exception for firmware
   error text. Test its bounded display, unavailable state when cleared, and
   absence from integration logs and the config-entry diagnostics download.
 
