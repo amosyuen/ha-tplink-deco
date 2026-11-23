@@ -71,6 +71,15 @@ description: "Use when implementing or reviewing bounded Deco API retries for tr
    unsuccessful all-invalid cycles. Keep malformed items in otherwise
    list-shaped responses subject to the original atomic validation.
    Validate only safe error classes/types in logs, not router payload data.
+   **Issue #67 legacy empty representation follow-up:** distinguish an
+   explicitly present empty firmware `client_list` represented by `{}` or
+   `""` from absent, null, populated and malformed forms. Normalize only
+   the two empty forms after authenticated error checking, before node
+   preflight. Run end-to-end mocked API/coordinator tests for both master
+   and satellite, assert both per-Deco count sensors stay available,
+   ensure normal grace transitions and privacy-safe type-only diagnostics.
+   Physical firmware shape remains unverified until measured; do not
+   generalize to arbitrary dictionary or string payloads.
 9. Update existing transport tests that assumed a disconnect always
    propagates immediately. Preserve their original authentication
    assertions and check `timeout_error_retries=0` separately.
