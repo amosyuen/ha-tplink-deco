@@ -239,6 +239,125 @@ def test_malformed_optional_fields_never_create_invented_states(
     assert absent_key not in parse_node_diagnostics(payload)
 
 
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [
+        pytest.param({"role": "master"}, "root", id="master-no-field"),
+        pytest.param(
+            {"role": "master", "topology": None}, "root", id="master-null"
+        ),
+        pytest.param(
+            {"role": "master", "topology": {}}, "root", id="master-empty-map"
+        ),
+        pytest.param(
+            {"role": "master", "topology": {"auto": True}},
+            "auto",
+            id="master-explicit-auto",
+        ),
+        pytest.param(
+            {"role": "master", "topology": {"auto": False}},
+            "fixed",
+            id="master-explicit-fixed",
+        ),
+        pytest.param(
+            {
+                "role": "master",
+                "topology": {"auto": False, "device_id": SATELLITE},
+            },
+            SATELLITE,
+            id="master-explicit-target",
+        ),
+        pytest.param(
+            {"role": "slave", "topology": {"auto": True}},
+            "auto",
+            id="satellite-explicit-auto",
+        ),
+        pytest.param({"role": "slave"}, None, id="satellite-no-field"),
+        pytest.param(
+            {"role": "master", "topology": {"auto": "false"}},
+            None,
+            id="master-invalid-explicit-auto",
+        ),
+        pytest.param(
+            {"role": "master", "topology": {"auto": False, "device_id": []}},
+            None,
+            id="master-invalid-target",
+        ),
+        pytest.param(
+            {"role": "master", "topology": []},
+            None,
+            id="master-invalid-type",
+        ),
+        pytest.param({"role": "unknown"}, None, id="unknown-role"),
+        pytest.param(
+            {"role": "master", "group_status": "disconnected"},
+            None,
+            id="offline-master",
+        ),
+    ],
+)
+def test_topology_uses_known_master_root_without_inventing_firmware_mode(
+    payload: dict[str, object], expected: str | None
+) -> None:
+    """Only infer the master root position, never an unreported fixed mode."""
+    assert parse_node_diagnostics(payload).get("topology") == expected
+
+
+@pytest.mark.asyncio
+async def test_master_root_topology_sensor_preserves_peer_and_registry_identity() -> None:
+    """Keep root state available while validating mode and recovery per node."""
+    coordinator = _coordinator()
+    master_node = _node()
+    master_node.pop("topology")
+    satellite_node = _node(SATELLITE, "slave")
+    satellite_node["topology"] = {"auto": True}
+
+    _inventory(coordinator, [master_node, satellite_node])
+    _, added, notify = await _platform(coordinator)
+    sensors = _sensors(added)
+    master_sensor = sensors[f"{MASTER}_topology"]
+    satellite_sensor = sensors[f"{SATELLITE}_topology"]
+
+    assert master_sensor.native_value == "root"
+    assert master_sensor.available
+    assert master_sensor.unique_id == f"{MASTER}_topology"
+    assert master_sensor.device_info["identifiers"] == {(DOMAIN, MASTER)}
+    assert satellite_sensor.native_value == "auto"
+    assert satellite_sensor.available
+    assert satellite_sensor.unique_id == f"{SATELLITE}_topology"
+
+    _inventory(
+        coordinator,
+        [
+            {**master_node, "topology": {"auto": False, "device_id": SATELLITE}},
+            satellite_node,
+        ],
+    )
+    notify()
+    assert master_sensor.native_value == SATELLITE
+    assert master_sensor.available
+    assert satellite_sensor.native_value == "auto"
+
+    _inventory(
+        coordinator,
+        [{**master_node, "topology": {"auto": "false"}}, satellite_node],
+    )
+    notify()
+    assert master_sensor.native_value is None
+    assert not master_sensor.available
+    assert satellite_sensor.available
+
+    _inventory(coordinator, [master_node, satellite_node])
+    notify()
+    assert master_sensor.native_value == "root"
+    assert master_sensor.available
+    assert set(_sensors(added)) == set(sensors)
+
+    _, reloaded, _ = await _platform(coordinator)
+    assert set(_sensors(reloaded)) == set(sensors)
+    assert _sensors(reloaded)[f"{MASTER}_topology"].native_value == "root"
+
+
 def test_missing_fields_flags_and_signal_fallback() -> None:
     """Keep unknown fields absent and accept explicit false and zero values."""
     assert parse_node_diagnostics({}) == {}
