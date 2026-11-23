@@ -93,6 +93,20 @@ RESTORED_DIAGNOSTIC_SENSOR_DESCRIPTIONS = tuple(
 )
 
 
+def _format_backhaul_types(value: object) -> str | None:
+    """Expose every reported backhaul type as a valid sensor state."""
+    if isinstance(value, str):
+        return value if value.strip() else None
+
+    if not isinstance(value, list) or not value:
+        return None
+
+    if not all(isinstance(band, str) and band.strip() for band in value):
+        return None
+
+    return ", ".join(value)
+
+
 DIAGNOSTIC_SENSOR_DESCRIPTIONS: tuple[TplinkDecoDiagnosticSensorDescription, ...] = (
     TplinkDecoDiagnosticSensorDescription(
         key="device_type",
@@ -127,11 +141,7 @@ DIAGNOSTIC_SENSOR_DESCRIPTIONS: tuple[TplinkDecoDiagnosticSensorDescription, ...
         name="Backhaul type",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
-        value_fn=lambda deco: (
-            deco.connection_type[0]
-            if isinstance(deco.connection_type, list) and deco.connection_type
-            else deco.connection_type
-        ),
+        value_fn=lambda deco: _format_backhaul_types(deco.connection_type),
     ),
     TplinkDecoDiagnosticSensorDescription(
         key="backhaul_speed",
