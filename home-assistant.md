@@ -190,11 +190,11 @@ Their physical-firmware validation remains a separate limitation.
   are on `main` (merge commit `35d1c0c`); physical firmware testing
   remains unverified.
 - **Issue #67 (proposed fix, not yet merged):** a non-list top-level
-  `client_list` is a failed *per-node* poll, not a successful empty list.
+  `client_list` is a failed _per-node_ poll, not a successful empty list.
   The API raises a typed, fixed-message shape error; the client coordinator
   preserves prior state for the affected node while processing validated
   peers. No count readiness is granted for the failed peer. An all-invalid
-  cycle still raises a sanitized `ValueError`, and malformed client *items*
+  cycle still raises a sanitized `ValueError`, and malformed client _items_
   retain the existing atomic whole-response preflight and rejection.
   The node, payload contents and credentials are never logged. Physical
   router compatibility remains unverified. The separately reported
