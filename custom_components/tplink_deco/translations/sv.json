@@ -13,12 +13,16 @@
           "timeout_seconds": "Timeout sekunder",
           "timeout_error_retries": "Timeout error retry count",
           "verify_ssl": "Verifiera att SSL certifikatet är giltigt",
+          "use_https": "Använd HTTPS (tillåt automatisk omdirigering)",
           "client_prefix": "Klientnamn prefix",
           "client_postfix": "Klientnamn suffix",
           "deco_prefix": "Deconamn prefix",
           "deco_postfix": "Deconamn suffix",
           "link_client_devices": "Länka klientspårare till enheter via MAC-adress",
           "expose_wifi_ssids": "Visa Wi-Fi-nätverksnamn på Wi-Fi-statussensorerna"
+        },
+        "data_description": {
+          "use_https": "När alternativet är av används endast HTTP. Routrar som kräver HTTPS kan då inte anslutas. SSL-verifiering är en separat inställning."
         }
       },
       "reauth_confirm": {
@@ -39,7 +43,12 @@
       "unknown": "Oväntat fel",
       "invalid_scan_interval": "Välj ett uppdateringsintervall på 10, 30, 60 eller 120 sekunder.",
       "invalid_device_list_interval": "Välj 0 för uppdatering endast vid start eller minst 10 sekunder för Deco-status.",
-      "invalid_expose_wifi_ssids": "Välj på eller av för att visa Wi-Fi-nätverksnamn."
+      "invalid_expose_wifi_ssids": "Välj på eller av för att visa Wi-Fi-nätverksnamn.",
+      "invalid_use_https": "Välj på eller av för HTTPS.",
+      "invalid_host_scheme": "Ange en http://- eller https://-adress utan sökväg, inloggningsuppgifter eller parametrar.",
+      "http_only_requires_http": "Endast HTTP kräver en http://-adress.",
+      "https_required": "Denna Deco kräver HTTPS. Aktivera Använd HTTPS.",
+      "unsafe_redirect": "Deco returnerade en osäker eller ej stödd omdirigering."
     }
   },
   "options": {
@@ -56,12 +65,16 @@
           "timeout_seconds": "Timeout sekunder",
           "timeout_error_retries": "Timeout error retry count",
           "verify_ssl": "Verifiera att SSL certifikatet är giltigt",
+          "use_https": "Använd HTTPS (tillåt automatisk omdirigering)",
           "client_prefix": "Klientnamn prefix",
           "client_postfix": "Klientnamn suffix",
           "deco_prefix": "Deconamn prefix",
           "deco_postfix": "Deconamn suffix",
           "link_client_devices": "Länka klientspårare till enheter via MAC-adress",
           "expose_wifi_ssids": "Visa Wi-Fi-nätverksnamn på Wi-Fi-statussensorerna"
+        },
+        "data_description": {
+          "use_https": "När alternativet är av används endast HTTP. Routrar som kräver HTTPS kan då inte anslutas. SSL-verifiering är en separat inställning."
         }
       }
     },
@@ -75,7 +88,12 @@
       "unknown": "Oväntat fel",
       "invalid_scan_interval": "Välj ett uppdateringsintervall på 10, 30, 60 eller 120 sekunder.",
       "invalid_device_list_interval": "Välj 0 för uppdatering endast vid start eller minst 10 sekunder för Deco-status.",
-      "invalid_expose_wifi_ssids": "Välj på eller av för att visa Wi-Fi-nätverksnamn."
+      "invalid_expose_wifi_ssids": "Välj på eller av för att visa Wi-Fi-nätverksnamn.",
+      "invalid_use_https": "Välj på eller av för HTTPS.",
+      "invalid_host_scheme": "Ange en http://- eller https://-adress utan sökväg, inloggningsuppgifter eller parametrar.",
+      "http_only_requires_http": "Endast HTTP kräver en http://-adress.",
+      "https_required": "Denna Deco kräver HTTPS. Aktivera Använd HTTPS.",
+      "unsafe_redirect": "Deco returnerade en osäker eller ej stödd omdirigering."
     }
   },
   "entity": {
