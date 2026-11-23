@@ -309,6 +309,119 @@ async def test_new_standalone_binary_does_not_create_legacy_sensor() -> None:
     } == set(_flag_binary_sensors(binary_added))
 
 
+@pytest.mark.asyncio
+async def test_master_slave_and_gateway_binary_flags_preserve_tristate_and_identity() -> (
+    None
+):
+    """Expose exact firmware booleans while preserving node device identity."""
+    coordinator = _coordinator()
+    _inventory(coordinator, [_node(), _node(SATELLITE, "slave")])
+    added, notify = await _binary_platform(coordinator)
+    flags = _flag_binary_sensors(added)
+
+    assert set(flags) == {
+        f"{mac}_{key}"
+        for mac in (MASTER, SATELLITE)
+        for key in BINARY_FLAG_KEYS
+    }
+    for mac, expected in (
+        (MASTER, {"master": True, "slave": False}),
+        (SATELLITE, {"master": False, "slave": True}),
+    ):
+        for key, state in (*expected.items(), ("set_gateway_support", False)):
+            entity = flags[f"{mac}_{key}"]
+            assert entity.is_on is state
+            assert entity.available
+            assert entity.translation_key == key
+            assert entity.unique_id == f"{mac}_{key}"
+            assert entity.device_info["identifiers"] == {(DOMAIN, mac)}
+            assert entity.entity_description.entity_registry_enabled_default is False
+            assert entity.entity_description.entity_category == "diagnostic"
+
+    notify()
+    assert set(_flag_binary_sensors(added)) == set(flags)
+    _inventory(
+        coordinator,
+        [
+            {**_node(), "set_gateway_support": 1},
+            {**_node(SATELLITE, "slave"), "set_gateway_support": 0},
+        ],
+    )
+    notify()
+    assert flags[f"{MASTER}_set_gateway_support"].is_on is True
+    assert flags[f"{SATELLITE}_set_gateway_support"].is_on is False
+
+    _inventory(
+        coordinator,
+        [
+            {**_node(), "role": "invalid", "set_gateway_support": "true"},
+            {**_node(SATELLITE, "slave"), "group_status": "disconnected"},
+        ],
+    )
+    notify()
+    for key in ("master", "slave", "set_gateway_support"):
+        assert flags[f"{MASTER}_{key}"].is_on is None
+        assert not flags[f"{MASTER}_{key}"].available
+        assert not flags[f"{SATELLITE}_{key}"].available
+
+    _inventory(coordinator, [_node()])
+    notify()
+    assert coordinator.data.decos[SATELLITE].online is False
+    assert not flags[f"{SATELLITE}_master"].available
+    assert flags[f"{MASTER}_master"].is_on is True
+    assert flags[f"{MASTER}_slave"].is_on is False
+    assert set(_flag_binary_sensors(added)) == set(flags)
+
+
+@pytest.mark.asyncio
+async def test_gateway_flag_discovered_after_role_is_known_and_entries_isolated() -> None:
+    """Register later firmware flags once without cross-entry suppression."""
+    coordinator = _coordinator()
+    _inventory(coordinator, [{"mac": MASTER}])
+    added, notify = await _binary_platform(coordinator)
+    assert not _flag_binary_sensors(added)
+
+    _inventory(coordinator, [{"mac": MASTER, "role": "master"}])
+    notify()
+    assert set(_flag_binary_sensors(added)) == {
+        f"{MASTER}_master",
+        f"{MASTER}_slave",
+        f"{MASTER}_standalone",
+    }
+    _inventory(
+        coordinator, [{"mac": MASTER, "role": "master", "set_gateway_support": 1}]
+    )
+    notify()
+    notify()
+    assert _flag_binary_sensors(added)[f"{MASTER}_set_gateway_support"].is_on is True
+    assert len(_flag_binary_sensors(added)) == 4
+
+    second = _coordinator("mesh-two")
+    _inventory(second, [{"mac": SATELLITE, "role": "slave", "set_gateway_support": 0}])
+    other_added, other_notify = await _binary_platform(second, "mesh-two")
+    other_flags = _flag_binary_sensors(other_added)
+    assert other_flags[f"{SATELLITE}_master"].is_on is False
+    assert other_flags[f"{SATELLITE}_slave"].is_on is True
+    assert other_flags[f"{SATELLITE}_set_gateway_support"].is_on is False
+    other_notify()
+    assert set(_flag_binary_sensors(other_added)) == set(other_flags)
+
+
+@pytest.mark.asyncio
+async def test_foreign_registry_ownership_does_not_restore_legacy_flags() -> None:
+    """Never resurrect a previous sensor belonging to another config entry."""
+    coordinator = _coordinator()
+    _inventory(coordinator, [_node()])
+    registry = MagicMock()
+    registry.async_get_entity_id.return_value = "sensor.other_entry_flag"
+    registry.async_get.return_value = SimpleNamespace(config_entry_id="mesh-two")
+
+    _, added, _ = await _platform(coordinator, legacy_registry=registry)
+    assert not BINARY_FLAG_KEYS.intersection(
+        {entity.entity_description.key for entity in _sensors(added).values()}
+    )
+
+
 @pytest.mark.parametrize("internet", [False, True, 0, 1, "up", "offline"])
 def test_internet_status_uses_the_real_firmware_field(internet: object) -> None:
     """Retain genuine scalar states instead of reading extra's unset inet field."""
