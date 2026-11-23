@@ -173,6 +173,15 @@
     "binary_sensor": {
       "standalone": {
         "name": "Principal autônomo"
+      },
+      "master": {
+        "name": "Deco principal"
+      },
+      "slave": {
+        "name": "Deco satélite"
+      },
+      "set_gateway_support": {
+        "name": "Configuração de gateway suportada"
       }
     },
     "button": {
