@@ -328,9 +328,17 @@ async def test_health_sensors_register_once_and_keep_existing_ids() -> None:
             COORDINATOR_CLIENTS_KEY: client_coordinator,
         }
         add_entities = MagicMock()
-        with patch(
-            "custom_components.tplink_deco.sensor.async_dispatcher_connect",
-            return_value=MagicMock(),
+        with (
+            patch(
+                "custom_components.tplink_deco.sensor.async_dispatcher_connect",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "custom_components.tplink_deco.sensor.entity_registry.async_get",
+                return_value=MagicMock(
+                    async_get_entity_id=MagicMock(return_value=None)
+                ),
+            ),
         ):
             await async_setup_entry(
                 hass, SimpleNamespace(entry_id=entry_id), add_entities
