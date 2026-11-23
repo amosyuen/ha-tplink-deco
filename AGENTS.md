@@ -335,6 +335,19 @@ policy for AI-assisted development.
   error text. Test its bounded display, unavailable state when cleared, and
   absence from integration logs and the config-entry diagnostics download.
 
+- **Issue #67 firmware empty-client-list compatibility:** historical
+  `extra` code iterated explicit zero-length dictionaries/strings as
+  empty sequences, while stricter `main` client-list validation emitted
+  repeated type errors for a mesh node and invalidated its count readiness.
+  Support only a present, authenticated `client_list` of exactly zero
+  length with type `dict` or `str` as a candidate legacy empty-list
+  encoding. The exact physical firmware variant has not been captured, so
+  verify using safe **type-only** debug output after deployment.
+  Preserve rejection of absent, null, populated, malformed and unexpected
+  types, without logging the firmware payload. Test both master/satellite
+  roles, real API-to-coordinator update paths, zero counts, grace-period
+  transitions, unchanged entity IDs and authentication errors.
+
 ## Restored unavailable client identity (upstream #619)
 
 - **Observed failure:** Home Assistant can persist an unavailable device
