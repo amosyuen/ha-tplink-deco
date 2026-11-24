@@ -33,9 +33,7 @@ def _api() -> TplinkDecoApi:
     api._stok = "synthetic-token"
     api._encode_payload = MagicMock(return_value="encrypted")
     api._async_post = AsyncMock(return_value={"data": "ciphertext"})
-    api._decrypt_data = MagicMock(
-        return_value={"error_code": 0, "result": {}}
-    )
+    api._decrypt_data = MagicMock(return_value={"error_code": 0, "result": {}})
     return api
 
 
@@ -272,7 +270,9 @@ async def test_switch_discovery_is_owner_scoped_and_idempotent() -> None:
         }
     }
     batches: list[list[object]] = []
-    with patch("custom_components.tplink_deco.switch._migrate_polling_switch_unique_id"):
+    with patch(
+        "custom_components.tplink_deco.switch._migrate_polling_switch_unique_id"
+    ):
         await async_setup_entry(hass, entry, batches.append)
 
     entities = [entity for batch in batches for entity in batch]
@@ -316,7 +316,9 @@ async def test_iot_switch_not_discovered_without_current_valid_status() -> None:
         }
     }
     batches: list[list[object]] = []
-    with patch("custom_components.tplink_deco.switch._migrate_polling_switch_unique_id"):
+    with patch(
+        "custom_components.tplink_deco.switch._migrate_polling_switch_unique_id"
+    ):
         await async_setup_entry(hass, entry, batches.append)
     assert sum(len(batch) for batch in batches) == 1
 
