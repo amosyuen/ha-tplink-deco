@@ -180,6 +180,11 @@
       "reboot_all": {
         "name": "Redémarrer tous les Deco"
       }
+    },
+    "switch": {
+      "iot_wifi": {
+        "name": "Réseau Wi-Fi IoT"
+      }
     }
   }
 }
