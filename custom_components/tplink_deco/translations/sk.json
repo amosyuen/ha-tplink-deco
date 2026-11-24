@@ -177,6 +177,11 @@
       "reboot_all": {
         "name": "Reštartovať všetky zariadenia Deco"
       }
+    },
+    "switch": {
+      "iot_wifi": {
+        "name": "IoT Wi-Fi"
+      }
     }
   }
 }
