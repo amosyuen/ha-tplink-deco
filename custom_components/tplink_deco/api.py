@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Callable
 import base64
 import hashlib
 import json
@@ -295,6 +296,59 @@ class TplinkDecoApi:
         if not isinstance(result, dict):
             raise UnexpectedApiException("Wireless status response is malformed")
         return result
+
+    async def async_set_iot_wireless(
+        self, enabled: bool, owner_is_current: Callable[[], bool]
+    ) -> None:
+        """Send one guarded, encrypted IoT WiFi enable command without retries."""
+        if type(enabled) is not bool:
+            raise ValueError("IoT WiFi state must be a boolean")
+        if not callable(owner_is_current):
+            raise ValueError("IoT WiFi requires a master ownership guard")
+        if not owner_is_current():
+            raise UnexpectedApiException("IoT WiFi master is no longer current")
+
+        await self.async_login_if_needed()
+        # Authentication can await; never send a command for a superseded master.
+        if not owner_is_current():
+            raise UnexpectedApiException("IoT WiFi master changed before the write")
+
+        failed = False
+        try:
+            response = await self._async_post(
+                "Set IoT WiFi",
+                f"{self._host}/cgi-bin/luci/;stok={self._stok}/admin/wireless",
+                params={"form": "wlan"},
+                data=self._encode_payload(
+                    {
+                        "operation": "write",
+                        "params": {"iot": {"host": {"enable": enabled}}},
+                    }
+                ),
+            )
+            ciphertext = response.get("data") if isinstance(response, dict) else None
+            if not isinstance(ciphertext, str) or not ciphertext:
+                failed = True
+            else:
+                # Reuse the WLAN decoder's privacy-safe error boundary.
+                payload = self._decrypt_data("Get wireless status", ciphertext)
+                status = (
+                    payload.get("error_code", payload.get("errorcode"))
+                    if isinstance(payload, dict)
+                    else None
+                )
+                failed = (
+                    type(status) is not int
+                    or status != 0
+                    or not isinstance(payload.get("result"), dict)
+                )
+        except Exception:
+            # Never replay an uncertain write or surface a token-bearing cause.
+            failed = True
+        if failed or not owner_is_current():
+            raise UnexpectedApiException(
+                "IoT WiFi change could not be confirmed; refresh router state"
+            )
 
     async def async_get_mobile_data_usage(self) -> int | None:
         """Read optional mobile WAN usage in KiB without extra timeout retries."""
