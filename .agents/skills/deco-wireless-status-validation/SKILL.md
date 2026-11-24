@@ -114,6 +114,21 @@ present on an open PR is not yet present on deployed `main`.
   parameters. If the firmware requires additional settings or does
   not confirm that partial updates are safe, reject the action rather
   than guessing its required payload.
+- **IoT-network payload (IoT switch branch):** For a verified
+  `iot.host.enable` field, the narrowly scoped candidate for
+  `admin/wireless?form=wlan` is
+  `{"operation":"write","params":{"iot":{"host":{"enable":true|false}}}}`.
+  This request shape is described by independent reverse-engineered
+  wireless API documentation, not verified physical router tests. Check
+  `iot.host` is a mapping and its existing enable flag is accepted by the
+  parser before allowing a control. Never send `enable_2g`, `enable_5g`,
+  SSIDs, passwords, security or other radio options. The IoT switch must
+  have a distinct unique ID from `binary_sensor.*_wifi_iot`, and needs a
+  successful fresh IoT status snapshot tied to its master generation.
+  Guard ownership after asynchronous login and before issuing the POST.
+  A mocked encrypted ACK is **not** firmware proof; keep the PR draft until
+  real write/readback behavior is confirmed on supported models. Do not
+  retry uncertain writes or report success without readback.
 - **Preflight and concurrency:** Re-read supported network/band
   settings before writing; require the control's entry, selected
   master and capability to remain current. Serialize writes per
