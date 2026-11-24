@@ -281,10 +281,7 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator[dict[str, bool]]
 
         async with self._iot_write_lock:
             current_mac, generation = self._observe_master()
-            if (
-                current_mac != master_mac
-                or not self.iot_state_is_current(master_mac)
-            ):
+            if current_mac != master_mac or not self.iot_state_is_current(master_mac):
                 raise UpdateFailed("IoT WiFi is unavailable on the current master")
 
             # Do not trust cached flags as proof that this firmware supports a
