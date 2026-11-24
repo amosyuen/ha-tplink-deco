@@ -177,6 +177,11 @@
       "reboot_all": {
         "name": "Reboot All"
       }
+    },
+    "switch": {
+      "iot_wifi": {
+        "name": "IoT WiFi"
+      }
     }
   }
 }
