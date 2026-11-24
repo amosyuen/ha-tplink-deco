@@ -155,9 +155,8 @@ class DecoIotWifiSwitch(CoordinatorEntity, SwitchEntity):
     @property
     def available(self) -> bool:
         """Permit control only for a fresh status from the original master."""
-        return (
-            super().available
-            and self.coordinator.iot_state_is_current(self._master_deco.mac)
+        return super().available and self.coordinator.iot_state_is_current(
+            self._master_deco.mac
         )
 
     @property
