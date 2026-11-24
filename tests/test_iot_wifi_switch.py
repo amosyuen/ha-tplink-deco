@@ -62,6 +62,13 @@ def _wireless() -> TplinkDecoWirelessUpdateCoordinator:
     wireless.last_update_success = True
     wireless.data = {"iot": True}
     wireless.async_refresh = AsyncMock()
+    wireless.async_add_listener = MagicMock(return_value=MagicMock())
+    wireless.expose_ssids = False
+    wireless.ssids = {}
+    wireless._next_retry = 0.0
+    wireless._consecutive_failures = 0
+    wireless._ssid_master_mac = None
+    wireless._ssid_master_generation = None
     return wireless
 
 
@@ -282,6 +289,11 @@ async def test_switch_discovery_is_owner_scoped_and_idempotent() -> None:
     callback()
     assert len(batches) == 2
 
+    async def confirm_off() -> None:
+        """Mock the router's post-write status readback."""
+        wireless.data = {"iot": False}
+
+    wireless.async_refresh.side_effect = confirm_off
     await switch.async_turn_off()
     wireless.api.async_set_iot_wireless.assert_awaited_once()
     wireless._deco_coordinator.data.confirmed_online_master = None
@@ -307,3 +319,41 @@ async def test_iot_switch_not_discovered_without_current_valid_status() -> None:
     with patch("custom_components.tplink_deco.switch._migrate_polling_switch_unique_id"):
         await async_setup_entry(hass, entry, batches.append)
     assert sum(len(batch) for batch in batches) == 1
+
+
+@pytest.mark.asyncio
+async def test_real_wireless_refresh_claims_only_its_master_generation() -> None:
+    """New IoT controls require a successful poll, never stale cached flags."""
+    wireless = _wireless()
+    wireless._iot_state_identity = None
+    assert await wireless._async_update_data() == {"iot": True}
+    assert wireless._iot_state_identity == (MASTER_MAC, 0)
+
+    wireless._deco_coordinator.data.master_deco = TpLinkDeco("02:00:00:00:01:98")
+    wireless._observe_master()
+    assert wireless._iot_state_identity is None
+    assert not wireless.iot_state_is_current(MASTER_MAC)
+
+
+@pytest.mark.asyncio
+async def test_concurrent_iot_actions_are_serialized() -> None:
+    """A second command must not enter its preflight while first holds lock."""
+    wireless = _wireless()
+    first_entered = asyncio.Event()
+    release_first = asyncio.Event()
+
+    async def delayed_write(*args: object) -> None:
+        """Hold the first write until the other action has been scheduled."""
+        first_entered.set()
+        await release_first.wait()
+
+    wireless.api.async_set_iot_wireless.side_effect = delayed_write
+
+    first = asyncio.create_task(wireless.async_set_iot_enabled(True, MASTER_MAC))
+    await first_entered.wait()
+    second = asyncio.create_task(wireless.async_set_iot_enabled(True, MASTER_MAC))
+    await asyncio.sleep(0)
+    assert wireless.api.async_get_wireless.await_count == 1
+    release_first.set()
+    await asyncio.gather(first, second)
+    assert wireless.api.async_get_wireless.await_count == 2
