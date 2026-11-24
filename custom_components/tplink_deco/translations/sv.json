@@ -177,6 +177,11 @@
       "reboot_all": {
         "name": "Starta om alla Deco-enheter"
       }
+    },
+    "switch": {
+      "iot_wifi": {
+        "name": "IoT-nätverk"
+      }
     }
   }
 }
