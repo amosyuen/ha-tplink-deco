@@ -1,6 +1,6 @@
 import asyncio
-from collections.abc import Callable
 import base64
+from collections.abc import Callable
 import hashlib
 import json
 import logging
