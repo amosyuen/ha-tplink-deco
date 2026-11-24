@@ -180,6 +180,11 @@
       "reboot_all": {
         "name": "Start alle Deco-enheter på nytt"
       }
+    },
+    "switch": {
+      "iot_wifi": {
+        "name": "IoT-nettverk"
+      }
     }
   }
 }
