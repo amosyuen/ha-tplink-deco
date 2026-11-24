@@ -97,6 +97,32 @@ Recorder can retain it in history and backups. The sensor displays up to
 255 characters on one line and becomes unavailable when the message clears.
 The integration omits the message from its logs and diagnostics download.
 
+### IoT network switch (experimental; firmware verification pending)
+
+The **IoT-netwerk** (`IoT WiFi`) Home Assistant `switch` controls the
+IoT network on the confirmed online master Deco. It is discovered only after
+a valid current IoT status read and remains independent of the existing
+read-only `binary_sensor` for IoT WiFi. The master device and entity IDs
+of existing status and polling controls remain unchanged.
+
+Each user-initiated on/off action re-reads the `iot.host.enable` flag,
+checks master MAC and generation, and submits only
+`{"operation":"write","params":{"iot":{"host":{"enable":true|false}}}}`
+through the existing authenticated, encrypted
+`admin/wireless?form=wlan` API. The value shown is the subsequently
+observed router state, never an optimistic command. Unsupported firmware,
+missing or malformed flags, loss of online-master ownership, or
+failed/uncertain write acknowledgement cause a controlled failure.
+The integration never retries a potentially applied write or changes SSIDs,
+passwords, bands, VLANs, guest networks or main WiFi settings.
+
+**Firmware limitation:** The partial IoT network write and encrypted write
+acknowledgement are documented by an independent reverse-engineered API,
+but have not been tested on physical Deco firmware in this integration.
+This pull request remains experimental/draft until tested with supported
+models and firmware. Disabling IoT WiFi will disconnect devices that rely
+on that network; confirm that this is acceptable before using the switch.
+
 ### Optional mobile WAN data usage (upstream #631)
 
 On supported Deco 4G/5G router models, a **Mobile data usage** sensor
