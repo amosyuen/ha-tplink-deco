@@ -737,6 +737,38 @@ crypto material are not logged during transport/login. Unexpected wireless
 API exceptions are contained as optional update failures, while Home
 Assistant authentication errors and task cancellation remain distinct.
 
+## IoT WiFi switch (unmerged feature branch)
+
+The IoT status `binary_sensor` remains a read-only entity with the original
+`<master_mac>_wifi_iot` unique ID. The separate `switch` uses
+`<master_mac>_iot_wifi_switch`, stays associated with the confirmed online
+master Deco, and does not change existing polling controls or registry IDs.
+The switch is discovered after a valid WLAN read that belongs to that
+master's current generation. Former-master entities become unavailable
+without remapping their identity; no switch is created for missing or
+malformed IoT flags. No writes occur during setup or polling.
+
+On explicit Home Assistant on/off, the switch serializes commands per
+config entry, checks a uniquely confirmed online master, then re-reads
+`iot.host.enable` before sending a single encrypted
+`admin/wireless?form=wlan` write with
+`{"operation":"write","params":{"iot":{"host":{"enable":true|false}}}}`.
+The API validates a numeric success code, encrypted acknowledgement and
+mapping result, and does not retry ambiguous writes. A MAC/generation guard
+is evaluated across awaits, including authentication; A → B → A handovers
+cannot legitimize old commands. A subsequent wireless refresh must confirm
+the requested state before Home Assistant reports success. The existing
+WLAN failure cooldown remains independent of the Deco/client coordinators;
+no SSIDs, passwords, tokens or raw router payloads are logged or transmitted
+as part of the setting change.
+
+This feature is **not yet on `main`** and partial IoT writes remain
+**unverified on physical TP-Link Deco hardware**. The documented request
+shape is based on independent protocol analysis, not a device-tested
+guarantee for every firmware. Keep this PR in draft until a supported
+model's write acknowledgement, readback and safe partial-update behavior
+have been verified. Turning off the IoT network disconnects its clients.
+
 ## Optional mobile WAN usage and error contract (merged PR #43)
 
 The optional, per-entry mobile coordinator polls the encrypted, read-only
