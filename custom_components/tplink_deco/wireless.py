@@ -1,5 +1,6 @@
-"""Read-only WiFi network status for supported TP-Link Deco firmware."""
+"""Optional WiFi status and guarded IoT network control for TP-Link Deco."""
 
+import asyncio
 from dataclasses import dataclass
 from datetime import timedelta
 import logging
@@ -200,6 +201,8 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator[dict[str, bool]]
         self._ssid_master_generation: int | None = None
         self._next_retry = 0.0
         self._consecutive_failures = 0
+        self._iot_write_lock = asyncio.Lock()
+        self._iot_state_identity: tuple[str, int] | None = None
         if config_entry is not None:
             config_entry.async_on_unload(
                 deco_coordinator.async_add_listener(self._handle_deco_update)
@@ -219,6 +222,7 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator[dict[str, bool]]
         if master_mac != self._observed_master_mac:
             self._observed_master_mac = master_mac
             self._master_generation += 1
+            self._iot_state_identity = None
             self.ssids = {}
             self._ssid_master_mac = None
             self._ssid_master_generation = None
@@ -244,6 +248,89 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator[dict[str, bool]]
         ):
             return {}
         return self.ssids.get(network_key, {})
+
+    def _iot_owner_is_current(self, master_mac: str, generation: int) -> bool:
+        """Require the original, uniquely confirmed online master."""
+        current_mac, current_generation = self._observe_master()
+        deco_data = self._deco_coordinator.data
+        online_master = getattr(deco_data, "confirmed_online_master", None)
+        return (
+            not self._deco_coordinator.paused
+            and current_mac == master_mac
+            and current_generation == generation
+            and online_master is not None
+            and online_master.mac == master_mac
+        )
+
+    def iot_state_is_current(self, master_mac: str) -> bool:
+        """Report whether an IoT status read belongs to this live master."""
+        current_mac, generation = self._observe_master()
+        return (
+            current_mac == master_mac
+            and self._iot_state_identity == (master_mac, generation)
+            and self._iot_owner_is_current(master_mac, generation)
+            and self.last_update_success
+            and isinstance(self.data, dict)
+            and isinstance(self.data.get("iot"), bool)
+        )
+
+    async def async_set_iot_enabled(self, enabled: bool, master_mac: str) -> None:
+        """Change the IoT WiFi enable flag after a verified, serialized preflight."""
+        if type(enabled) is not bool:
+            raise ValueError("IoT WiFi state must be a boolean")
+
+        async with self._iot_write_lock:
+            current_mac, generation = self._observe_master()
+            if (
+                current_mac != master_mac
+                or not self.iot_state_is_current(master_mac)
+            ):
+                raise UpdateFailed("IoT WiFi is unavailable on the current master")
+
+            # Do not trust cached flags as proof that this firmware supports a
+            # safe, partial IoT write. Check its explicit iot/host section now.
+            preflight_failed = False
+            try:
+                config = await async_call_and_propagate_config_error(
+                    self.api.async_get_wireless
+                )
+            except ConfigEntryAuthFailed:
+                raise
+            except Exception:
+                preflight_failed = True
+                config = None
+            if preflight_failed:
+                raise UpdateFailed("Unable to verify IoT WiFi settings")
+            if not self._iot_owner_is_current(master_mac, generation):
+                raise UpdateFailed("Master Deco changed before the IoT WiFi write")
+            iot = config.get("iot") if isinstance(config, dict) else None
+            host = iot.get("host") if isinstance(iot, dict) else None
+            if not isinstance(host, dict) or _parse_enabled(host.get("enable")) is None:
+                raise UpdateFailed("IoT WiFi is unsupported by this firmware")
+
+            write_failed = False
+            try:
+                await self.api.async_set_iot_wireless(
+                    enabled,
+                    lambda: self._iot_owner_is_current(master_mac, generation),
+                )
+            except ConfigEntryAuthFailed:
+                raise
+            except Exception:
+                # The write could already have succeeded; do not roll it back.
+                write_failed = True
+            if write_failed:
+                raise UpdateFailed("IoT WiFi write was not confirmed; check the router")
+            if not self._iot_owner_is_current(master_mac, generation):
+                raise UpdateFailed("Master Deco changed during IoT WiFi update")
+
+            # Do not optimistically update coordinator.data or the switch.
+            await self.async_refresh()
+            if (
+                not self.iot_state_is_current(master_mac)
+                or self.data.get("iot") is not enabled
+            ):
+                raise UpdateFailed("IoT WiFi state could not be verified after write")
 
     @property
     def retry_remaining_seconds(self) -> int:
@@ -316,6 +403,14 @@ class TplinkDecoWirelessUpdateCoordinator(DataUpdateCoordinator[dict[str, bool]]
                 self.ssids = {}
                 self._ssid_master_mac = None
                 self._ssid_master_generation = None
+            self._iot_state_identity = (
+                (current_master, current_generation)
+                if current_master is not None
+                and (request_master, request_generation)
+                == (current_master, current_generation)
+                and "iot" in states
+                else None
+            )
             self.reset_retry()
             _LOGGER.debug("Wireless network keys=%s", sorted(states))
             return states
